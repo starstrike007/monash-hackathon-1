@@ -26,7 +26,8 @@ Build the smallest coherent product that proves the hackathon idea. Prefer a wor
 
 ## UI
 
-- Reuse the project’s existing design system and components.
+- Use shadcn/ui components for interfaces by default. Do not build interface primitives or common controls from scratch.
+- When a requirement is not covered directly, compose or extend shadcn/ui patterns and components rather than creating a parallel system. Prefer shadcn/ui usage over consuming Radix primitives directly.
 - Preserve keyboard access, visible focus, readable contrast, responsive layout, and useful loading, empty, and error states.
 - Avoid decorative complexity that does not help the demo or the user.
 
