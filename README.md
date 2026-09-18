@@ -8,7 +8,18 @@ Hackathon project workspace.
 
 ## Quick start
 
-The implementation stack is not chosen yet. Once the app is scaffolded, document the exact install and run commands here rather than relying on local knowledge.
+```bash
+npm install
+npm run dev
+```
+
+The app is a Vite + React dashboard using Tailwind CSS and shadcn-style UI components. It currently uses local demo data so the shell is ready while the hackathon problem statement is still being defined.
+
+To create a production build:
+
+```bash
+npm run build
+```
 
 ## Environment
 
