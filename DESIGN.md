@@ -1,15 +1,12 @@
 # Design direction
 
-This project borrows the authenticated workspace shell from `../herro-main`:
+The dashboard in this repository is the visual source of truth. Match its existing
+screens, shared components, tokens, typography, spacing, icons, and interaction patterns
+before introducing new UI.
 
-- `frontend/src/components/Sidebar.jsx`
-- `frontend/src/components/Header.jsx`
-- `frontend/src/index.css`
-- `frontend/tailwind.config.js`
-
-This is a visual reference for our dashboard, not a dependency on Herro's routing,
-authentication, Supabase, feature flags, or business data. Keep those concerns in this
-project's existing application boundaries.
+For new components or interaction patterns, beUI (https://beui.dev/) is an optional
+reference. Use its registry and motion guides for ideas or implementation starting points,
+then adapt them to this project's existing design system and dependencies.
 
 ## Design principles
 
@@ -17,14 +14,17 @@ project's existing application boundaries.
 - One clear orange accent for selected navigation, focus, and primary actions.
 - Dense but readable navigation; use whitespace and dividers instead of heavy cards.
 - Small, neutral supporting text. Do not use color alone to communicate status.
+- Treat the current dashboard and its shared components as the source of truth for new UI.
+- Consult beUI for new component patterns when the existing component set does not cover
+  the interaction, while keeping the result consistent with this dashboard.
 - Use Phosphor Icons via `@phosphor-icons/react` for navigation, actions, and status icons.
 - Reuse the existing shadcn-style components in `src/components/ui` when implementing
   these patterns.
 
 ## Core color palette
 
-These are the normalized values used by Herro's workspace shell and should be the source
-of truth for new shell UI.
+These are the normalized values used by the dashboard and should be the source of truth for
+new shell UI.
 
 | Token            | Value                 | Use                                                            |
 | ---------------- | --------------------- | -------------------------------------------------------------- |
@@ -127,10 +127,10 @@ the workspace shell itself stays orange, neutral, and low contrast.
 - Respect `prefers-reduced-motion`: remove transform animation and retain only a short
   opacity transition or an immediate state change.
 
-### Adapted nav-row recipe
+### Nav-row recipe
 
-The original Herro row is route-aware and preloads authenticated pages. Our version should
-keep the same visual treatment while receiving navigation behavior through props:
+The nav row should receive navigation behavior through props while keeping the dashboard's
+visual treatment:
 
 ```jsx
 function SidebarNavRow({ active, icon: Icon, label, badge, onClick }) {
@@ -159,9 +159,9 @@ function SidebarNavRow({ active, icon: Icon, label, badge, onClick }) {
 
 ## Workspace navbar / header
 
-Herro's authenticated header is a quiet page-context bar rather than a marketing navbar.
-It should sit above the main content and explain where the user is without competing with
-the page's primary action.
+The workspace header is a quiet page-context bar rather than a marketing navbar. It should
+sit above the main content and explain where the user is without competing with the page's
+primary action.
 
 ### Anatomy and tokens
 
@@ -211,7 +211,7 @@ function WorkspaceHeader({ title, subtitle, context }) {
   callbacks.
 - Preserve keyboard focus, `aria-current`, accessible names, and the mobile drawer's
   close behavior.
-- Do not add Herro-specific dependencies or copy its Supabase/authentication code into this
-  project.
+- Do not introduce a parallel visual system or external component dependency when the
+  existing dashboard components and tokens meet the need.
 - If these patterns are implemented, verify the shell at narrow, intermediate, and wide
   widths, including keyboard navigation and reduced-motion behavior.
