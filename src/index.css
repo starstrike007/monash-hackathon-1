@@ -1,14 +1,14 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import 'tailwindcss';
 
 @theme inline {
-  --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
-  font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
-  color: #0f172a;
-  background: #f7f8fa;
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  color: #4a4a4a;
+  background: #fcfcfc;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -19,13 +19,13 @@
 
 html {
   min-width: 320px;
-  background: #f7f8fa;
+  background: #fcfcfc;
 }
 
 body {
   margin: 0;
   min-width: 320px;
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 button,

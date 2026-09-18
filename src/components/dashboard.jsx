@@ -1,20 +1,19 @@
 import { useState } from 'react'
 import {
-  ArrowDownRight,
   ArrowUpRight,
   Bell,
   Check,
-  ChevronDown,
-  Download,
-  FolderKanban,
-  Menu,
-  MoreHorizontal,
+  CaretDown,
+  DotsThree,
+  DownloadSimple,
+  FolderSimple,
+  List,
+  MagnifyingGlass,
   Plus,
-  Search,
   Target,
-  TrendingUp,
-  UsersRound,
-} from 'lucide-react'
+  TrendUp,
+  UsersThree,
+} from '@phosphor-icons/react'
 
 import { DashboardSidebar } from '@/components/dashboard-sidebar'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -26,10 +25,10 @@ import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 
 const stats = [
-  { label: 'Active projects', value: '12', change: '+8.2%', icon: FolderKanban, tone: 'indigo' },
-  { label: 'Team members', value: '24', change: '+4.1%', icon: UsersRound, tone: 'sky' },
+  { label: 'Active projects', value: '12', change: '+8.2%', icon: FolderSimple, tone: 'blue' },
+  { label: 'Team members', value: '24', change: '+4.1%', icon: UsersThree, tone: 'sky' },
   { label: 'Tasks completed', value: '184', change: '+12.5%', icon: Check, tone: 'emerald' },
-  { label: 'On track', value: '92.4%', change: '+3.8%', icon: TrendingUp, tone: 'amber' },
+  { label: 'On track', value: '92.4%', change: '+3.8%', icon: TrendUp, tone: 'amber' },
 ]
 
 const activityData = [
@@ -46,18 +45,18 @@ const activity = [
   { initials: 'JL', name: 'Jordan Lee', action: 'completed the research brief', time: '12 min ago', color: 'bg-orange-100 text-orange-700' },
   { initials: 'PS', name: 'Priya Shah', action: 'created a new project', time: '45 min ago', color: 'bg-blue-100 text-blue-700' },
   { initials: 'MC', name: 'Marcus Chen', action: 'commented on the launch plan', time: '2 hours ago', color: 'bg-emerald-100 text-emerald-700' },
-  { initials: 'AM', name: 'Alex Morgan', action: 'updated the team goals', time: 'Yesterday', color: 'bg-indigo-100 text-indigo-700' },
+  { initials: 'AM', name: 'Alex Morgan', action: 'updated the team goals', time: 'Yesterday', color: 'bg-[#EDF3FE] text-[#4493F8]' },
 ]
 
 const projects = [
   { name: 'Customer discovery', owner: 'Jordan Lee', progress: 78, status: 'On track', color: 'bg-emerald-500' },
-  { name: 'Launch planning', owner: 'Priya Shah', progress: 54, status: 'In progress', color: 'bg-indigo-500' },
+  { name: 'Launch planning', owner: 'Priya Shah', progress: 54, status: 'In progress', color: 'bg-[#4493F8]' },
   { name: 'Brand refresh', owner: 'Marcus Chen', progress: 32, status: 'Needs attention', color: 'bg-amber-500' },
 ]
 
 function StatCard({ label, value, change, icon: Icon, tone }) {
   const toneClasses = {
-    indigo: 'bg-indigo-50 text-indigo-600',
+    blue: 'bg-[#EDF3FE] text-[#4493F8]',
     sky: 'bg-sky-50 text-sky-600',
     emerald: 'bg-emerald-50 text-emerald-600',
     amber: 'bg-amber-50 text-amber-600',
@@ -68,17 +67,17 @@ function StatCard({ label, value, change, icon: Icon, tone }) {
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-sm text-slate-500">{label}</p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{value}</p>
+            <p className="text-sm text-[#7B7B7B]">{label}</p>
+            <p className="mt-2 text-2xl font-semibold tracking-tight text-[#4A4A4A]">{value}</p>
           </div>
           <span className={cn('flex h-9 w-9 items-center justify-center rounded-lg', toneClasses[tone])}>
-            <Icon className="h-4 w-4" aria-hidden="true" />
+            <Icon className="h-4 w-4" weight="regular" aria-hidden="true" />
           </span>
         </div>
         <div className="mt-4 flex items-center gap-1.5 text-xs">
-          <ArrowUpRight className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
+          <ArrowUpRight className="h-3.5 w-3.5 text-emerald-600" weight="bold" aria-hidden="true" />
           <span className="font-medium text-emerald-600">{change}</span>
-          <span className="text-slate-400">vs. last month</span>
+          <span className="text-[#A3A3A3]">vs. last month</span>
         </div>
       </CardContent>
     </Card>
@@ -96,39 +95,43 @@ export function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f8fa] text-slate-950">
-      <div className="flex min-h-screen">
+    <div className="min-h-dvh bg-[#FCFCFC] text-[#4A4A4A]">
+      <div className="flex min-h-dvh">
         <DashboardSidebar
           activeItem={activeItem}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           onNavigate={setActiveItem}
+          onSearch={() => showNotice('Search is ready for your workspace data.')}
         />
 
         <main className="min-w-0 flex-1">
-          <header className="border-b border-slate-200 bg-white/90 px-4 backdrop-blur sm:px-6 lg:px-8">
+          <header className="h-16 shrink-0 border-b border-neutral-200/80 bg-neutral-100/70 px-4 backdrop-blur-sm sm:px-6 lg:px-8">
             <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between gap-4">
               <div className="flex min-w-0 items-center gap-3">
-                <Button variant="ghost" size="icon" className="-ml-2 lg:hidden" onClick={() => setSidebarOpen(true)} aria-label="Open navigation">
-                  <Menu className="h-5 w-5" aria-hidden="true" />
+                <Button variant="ghost" size="icon" className="-ml-2 text-[#7B7B7B] lg:hidden" onClick={() => setSidebarOpen(true)} aria-label="Open navigation">
+                  <List className="h-5 w-5" weight="regular" aria-hidden="true" />
                 </Button>
-                <div className="hidden items-center gap-2 text-sm text-slate-400 sm:flex">
-                  <span>Workspace</span>
-                  <span className="text-slate-300">/</span>
+                <div className="min-w-0">
+                  <h1 className="truncate text-[15px] font-semibold leading-snug text-neutral-900">{activeItem}</h1>
+                  <p className="mt-0.5 truncate text-[12px] text-neutral-500">Workspace · Unified operations panel</p>
                 </div>
-                <span className="truncate text-sm font-medium text-slate-700">{activeItem}</span>
               </div>
               <div className="flex items-center gap-1 sm:gap-2">
-                <Button variant="ghost" size="icon" className="text-slate-500" aria-label="Search" onClick={() => showNotice('Search is ready for your workspace data.')}>
-                  <Search className="h-4 w-4" aria-hidden="true" />
+                <div className="hidden items-center gap-1.5 rounded-full border border-neutral-200/80 bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-700 md:flex">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#4493F8]" aria-hidden="true" />
+                  <span>Demo workspace</span>
+                </div>
+                <Button variant="ghost" size="icon" className="text-[#7B7B7B]" aria-label="Search" onClick={() => showNotice('Search is ready for your workspace data.')}>
+                  <MagnifyingGlass className="h-4 w-4" weight="regular" aria-hidden="true" />
                 </Button>
-                <Button variant="ghost" size="icon" className="relative text-slate-500" aria-label="Notifications" onClick={() => showNotice('You are all caught up.') }>
+                <Button variant="ghost" size="icon" className="relative text-[#7B7B7B]" aria-label="Notifications" onClick={() => showNotice('You are all caught up.') }>
                   <Bell className="h-4 w-4" aria-hidden="true" />
-                  <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                  <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#4493F8]" />
                 </Button>
-                <Separator orientation="vertical" className="mx-1 hidden h-6 sm:block" />
+                <Separator orientation="vertical" className="mx-1 hidden h-6 bg-[#EEEEEE] sm:block" />
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-indigo-100 text-indigo-700">AM</AvatarFallback>
+                  <AvatarFallback className="bg-[#EDF3FE] text-[#4493F8]">AM</AvatarFallback>
                 </Avatar>
               </div>
             </div>
@@ -137,22 +140,22 @@ export function Dashboard() {
           <div className="mx-auto max-w-[1440px] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
             <section className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
               <div>
-                <p className="text-sm font-medium text-indigo-600">Friday, September 18, 2026</p>
-                <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">Good morning, Alex</h1>
-                <p className="mt-2 text-sm text-slate-500">Here’s what’s happening across your workspace.</p>
+                <p className="text-sm font-medium text-[#4493F8]">Friday, September 18, 2026</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#4A4A4A] sm:text-3xl">Good morning, Alex</h2>
+                <p className="mt-2 text-sm text-[#7B7B7B]">Here’s what’s happening across your workspace.</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <label className="sr-only" htmlFor="date-range">Date range</label>
                 <div className="relative">
-                  <select id="date-range" className="h-10 appearance-none rounded-lg border border-slate-200 bg-white py-2 pl-3 pr-9 text-sm font-medium text-slate-700 shadow-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200">
+                  <select id="date-range" className="h-10 appearance-none rounded-lg border border-[#F0F0F0] bg-white py-2 pl-3 pr-9 text-sm font-medium text-[#4A4A4A] outline-none focus:border-[#4493F8] focus:ring-2 focus:ring-[#4493F8]/20">
                     <option>Last 30 days</option>
                     <option>Last 7 days</option>
                     <option>This quarter</option>
                   </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-3 h-4 w-4 text-slate-400" aria-hidden="true" />
+                  <CaretDown className="pointer-events-none absolute right-3 top-3 h-4 w-4 text-[#A3A3A3]" weight="regular" aria-hidden="true" />
                 </div>
                 <Button variant="outline" onClick={() => showNotice('Your report is being prepared.') }>
-                  <Download className="mr-2 h-4 w-4" aria-hidden="true" />
+                  <DownloadSimple className="mr-2 h-4 w-4" weight="regular" aria-hidden="true" />
                   Export
                 </Button>
                 <Button onClick={() => showNotice('New project flow is ready to connect.') }>
@@ -174,24 +177,24 @@ export function Dashboard() {
                     <CardDescription className="mt-1">Completed tasks over the past week</CardDescription>
                   </div>
                   <Button variant="ghost" size="icon" className="-mr-2 -mt-2" aria-label="More activity options" onClick={() => showNotice('Activity options are coming soon.') }>
-                    <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+                    <DotsThree className="h-5 w-5" weight="bold" aria-hidden="true" />
                   </Button>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex h-56 items-end gap-2 border-b border-l border-slate-200 px-3 pb-0 pt-6 sm:gap-4 sm:px-5">
+                  <div className="flex h-56 items-end gap-2 border-b border-l border-[#EEEEEE] px-3 pb-0 pt-6 sm:gap-4 sm:px-5">
                     {activityData.map((item) => (
                       <div className="flex h-full flex-1 flex-col items-center justify-end gap-2" key={item.day}>
                         <div className="group relative flex h-full w-full items-end justify-center">
-                          <div className="absolute bottom-0 hidden rounded bg-slate-900 px-2 py-1 text-[10px] font-medium text-white group-hover:block">{item.value}</div>
-                          <div className="w-full max-w-10 rounded-t-md bg-indigo-100 transition-colors group-hover:bg-indigo-500" style={{ height: `${item.value}%` }} />
+                          <div className="absolute bottom-0 hidden rounded bg-[#4A4A4A] px-2 py-1 text-[10px] font-medium text-white group-hover:block">{item.value}</div>
+                          <div className="w-full max-w-10 rounded-t-md bg-[#EDF3FE] transition-colors group-hover:bg-[#4493F8]" style={{ height: `${item.value}%` }} />
                         </div>
-                        <span className="mb-3 text-xs text-slate-400">{item.day}</span>
+                        <span className="mb-3 text-xs text-[#A3A3A3]">{item.day}</span>
                       </div>
                     ))}
                   </div>
-                  <div className="mt-5 flex items-center gap-5 text-xs text-slate-500">
-                    <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-indigo-500" />Completed</span>
-                    <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-slate-200" />Remaining capacity</span>
+                  <div className="mt-5 flex items-center gap-5 text-xs text-[#7B7B7B]">
+                    <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#4493F8]" />Completed</span>
+                    <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#F0F0F0]" />Remaining capacity</span>
                   </div>
                 </CardContent>
               </Card>
@@ -202,27 +205,27 @@ export function Dashboard() {
                     <CardTitle>Team goals</CardTitle>
                     <CardDescription className="mt-1">Progress toward this quarter’s goals</CardDescription>
                   </div>
-                  <Target className="h-5 w-5 text-indigo-500" aria-hidden="true" />
+                  <Target className="h-5 w-5 text-[#4493F8]" weight="regular" aria-hidden="true" />
                 </CardHeader>
                 <CardContent className="space-y-5">
                   <div>
                     <div className="mb-2 flex items-center justify-between text-sm">
-                      <span className="font-medium text-slate-700">Launch readiness</span>
-                      <span className="text-slate-500">76%</span>
+                      <span className="font-medium text-[#4A4A4A]">Launch readiness</span>
+                      <span className="text-[#7B7B7B]">76%</span>
                     </div>
                     <Progress value={76} />
                   </div>
                   <div>
                     <div className="mb-2 flex items-center justify-between text-sm">
-                      <span className="font-medium text-slate-700">Customer interviews</span>
-                      <span className="text-slate-500">64%</span>
+                      <span className="font-medium text-[#4A4A4A]">Customer interviews</span>
+                      <span className="text-[#7B7B7B]">64%</span>
                     </div>
                     <Progress value={64} />
                   </div>
                   <div>
                     <div className="mb-2 flex items-center justify-between text-sm">
-                      <span className="font-medium text-slate-700">Documentation</span>
-                      <span className="text-slate-500">48%</span>
+                      <span className="font-medium text-[#4A4A4A]">Documentation</span>
+                      <span className="text-[#7B7B7B]">48%</span>
                     </div>
                     <Progress value={48} />
                   </div>
@@ -243,7 +246,7 @@ export function Dashboard() {
                 <CardContent className="px-0 pb-1">
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[560px] text-left text-sm">
-                      <thead className="border-y border-slate-100 bg-slate-50/70 text-xs font-medium text-slate-500">
+                      <thead className="border-y border-[#EEEEEE] bg-[#FCFCFC] text-xs font-medium text-[#7B7B7B]">
                         <tr>
                           <th className="px-5 py-3 font-medium">Project</th>
                           <th className="px-5 py-3 font-medium">Owner</th>
@@ -253,13 +256,13 @@ export function Dashboard() {
                       </thead>
                       <tbody>
                         {projects.map((project) => (
-                          <tr className="border-b border-slate-100 last:border-0" key={project.name}>
-                            <td className="px-5 py-4 font-medium text-slate-800">{project.name}</td>
-                            <td className="px-5 py-4 text-slate-500">{project.owner}</td>
+                          <tr className="border-b border-[#EEEEEE] last:border-0" key={project.name}>
+                            <td className="px-5 py-4 font-medium text-[#4A4A4A]">{project.name}</td>
+                            <td className="px-5 py-4 text-[#7B7B7B]">{project.owner}</td>
                             <td className="px-5 py-4">
                               <div className="flex items-center gap-3">
                                 <Progress value={project.progress} className="h-1.5 w-20" />
-                                <span className="text-xs text-slate-500">{project.progress}%</span>
+                                <span className="text-xs text-[#7B7B7B]">{project.progress}%</span>
                               </div>
                             </td>
                             <td className="px-5 py-4"><Badge variant={project.status === 'Needs attention' ? 'warning' : 'success'}><span className={cn('mr-1.5 h-1.5 w-1.5 rounded-full', project.color)} />{project.status}</Badge></td>
@@ -286,8 +289,8 @@ export function Dashboard() {
                         <AvatarFallback className={cn('text-[10px]', item.color)}>{item.initials}</AvatarFallback>
                       </Avatar>
                       <div className="min-w-0 flex-1 text-sm leading-5">
-                        <p className="text-slate-700"><span className="font-medium text-slate-900">{item.name}</span> {item.action}</p>
-                        <p className="mt-0.5 text-xs text-slate-400">{item.time}</p>
+                        <p className="text-[#4A4A4A]"><span className="font-medium text-neutral-900">{item.name}</span> {item.action}</p>
+                        <p className="mt-0.5 text-xs text-[#A3A3A3]">{item.time}</p>
                       </div>
                     </div>
                   ))}
@@ -295,7 +298,7 @@ export function Dashboard() {
               </Card>
             </section>
 
-            <footer className="mt-8 flex flex-col gap-2 border-t border-slate-200 pt-5 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between">
+            <footer className="mt-8 flex flex-col gap-2 border-t border-[#EEEEEE] pt-5 text-xs text-[#A3A3A3] sm:flex-row sm:items-center sm:justify-between">
               <span>Northstar workspace · Demo data</span>
               <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> All systems operational</span>
             </footer>
@@ -304,7 +307,7 @@ export function Dashboard() {
       </div>
 
       {notice && (
-        <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-lg" role="status">
+        <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-[#4A4A4A] px-4 py-3 text-sm font-medium text-white shadow-lg" role="status">
           {notice}
         </div>
       )}

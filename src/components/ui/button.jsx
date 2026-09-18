@@ -4,17 +4,17 @@ import { cva } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  'group relative isolate inline-flex items-center justify-center overflow-hidden whitespace-nowrap rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/30 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
-        default: 'bg-slate-900 text-white shadow-sm hover:bg-slate-800',
-        outline: 'border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50',
-        ghost: 'text-slate-500 hover:bg-slate-100 hover:text-slate-900',
-        secondary: 'bg-slate-100 text-slate-700 hover:bg-slate-200',
+        default: 'rounded-lg border border-[#d85a00] bg-[#fd6100] text-white shadow-[0_1px_2px_rgba(176,58,0,0.25)] hover:brightness-[1.03] active:brightness-[0.98]',
+        outline: 'border border-[#F0F0F0] bg-white text-[#4A4A4A] hover:bg-[#F6F6F6]',
+        ghost: 'text-[#7B7B7B] hover:bg-[#F6F6F6] hover:text-[#4A4A4A]',
+        secondary: 'bg-[#F0F0F0] text-[#4A4A4A] hover:bg-[#F6F6F6]',
       },
       size: {
-        default: 'h-10 px-4 py-2',
+        default: 'h-9 px-3 py-2',
         sm: 'h-9 rounded-md px-3',
         lg: 'h-11 rounded-lg px-5',
         icon: 'h-9 w-9',
@@ -27,13 +27,26 @@ const buttonVariants = cva(
   },
 )
 
-const Button = React.forwardRef(({ className, variant, size, type = 'button', ...props }, ref) => (
+const Button = React.forwardRef(({ children, className, variant, size, type = 'button', ...props }, ref) => (
   <button
     className={cn(buttonVariants({ variant, size, className }))}
     ref={ref}
     type={type}
     {...props}
-  />
+  >
+    {variant === 'default' || variant === undefined ? (
+      <>
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 rounded-[inherit] shadow-[inset_0_2px_0_0_rgba(255,213,94,0.9),inset_0_-2px_0_0_rgba(177,53,0,0.18)]"
+          style={{
+            backgroundImage: 'linear-gradient(to bottom, #ffbf30 0%, #ff9704 11%, #ff7c00 52%, #fd6100 100%)',
+          }}
+        />
+        <span className="relative z-10 inline-flex items-center">{children}</span>
+      </>
+    ) : children}
+  </button>
 ))
 Button.displayName = 'Button'
 

@@ -9,10 +9,10 @@ const Progress = React.forwardRef(({ className, value = 0, ...props }, ref) => (
     aria-valuemin={0}
     aria-valuemax={100}
     aria-valuenow={value}
-    className={cn('relative h-2 w-full overflow-hidden rounded-full bg-slate-100', className)}
+    className={cn('relative h-2 w-full overflow-hidden rounded-full bg-[#F0F0F0]', className)}
     {...props}
   >
-    <div className="h-full bg-slate-900 transition-all" style={{ width: `${value}%` }} />
+    <div className="h-full bg-[#4493F8] transition-all" style={{ width: `${value}%` }} />
   </div>
 ))
 Progress.displayName = 'Progress'
