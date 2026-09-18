@@ -1,6 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
 @import 'tailwindcss';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
   --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
 }
@@ -9,8 +11,14 @@
   font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
   color: #0f172a;
   background: #f7f8fa;
+  color-scheme: light;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+}
+
+html.dark {
+  background: #020617;
+  color-scheme: dark;
 }
 
 * {
@@ -26,6 +34,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background: inherit;
 }
 
 button,

@@ -13,7 +13,7 @@ const AvatarImage = React.forwardRef(({ className, alt = '', ...props }, ref) =>
 AvatarImage.displayName = 'AvatarImage'
 
 const AvatarFallback = React.forwardRef(({ className, ...props }, ref) => (
-  <span ref={ref} className={cn('flex h-full w-full items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600', className)} {...props} />
+  <span ref={ref} className={cn('flex h-full w-full items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300', className)} {...props} />
 ))
 AvatarFallback.displayName = 'AvatarFallback'
 
