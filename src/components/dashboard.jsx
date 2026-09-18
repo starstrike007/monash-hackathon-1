@@ -16,6 +16,7 @@ import {
 } from '@phosphor-icons/react'
 
 import { DashboardSidebar } from '@/components/dashboard-sidebar'
+import { UsageOverview } from '@/components/usage-overview'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -165,9 +166,15 @@ export function Dashboard() {
               </div>
             </section>
 
-            <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Workspace summary">
-              {stats.map((stat) => <StatCard key={stat.label} {...stat} />)}
-            </section>
+            <div className="mt-8 grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_400px]">
+              <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Workspace summary">
+                {stats.map((stat) => <StatCard key={stat.label} {...stat} />)}
+              </section>
+
+              <aside className="sticky top-20 hidden h-fit w-[400px] p-8 xl:block" aria-label="Usage summary">
+                <UsageOverview onAction={showNotice} />
+              </aside>
+            </div>
 
             <section className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(340px,0.85fr)]">
               <Card>
