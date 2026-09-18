@@ -1,22 +1,17 @@
 import { useState } from 'react'
 import {
-  ArrowUpRight,
   Bell,
-  Check,
   CaretDown,
   DotsThree,
   DownloadSimple,
-  FolderSimple,
   List,
   MagnifyingGlass,
   Plus,
   Target,
-  TrendUp,
-  UsersThree,
 } from '@phosphor-icons/react'
 
 import { DashboardSidebar } from '@/components/dashboard-sidebar'
-import { UsageOverview } from '@/components/usage-overview'
+import { UsageMetricCard, UsageOverview } from '@/components/usage-overview'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -24,13 +19,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
-
-const stats = [
-  { label: 'Active projects', value: '12', change: '+8.2%', icon: FolderSimple, tone: 'blue' },
-  { label: 'Team members', value: '24', change: '+4.1%', icon: UsersThree, tone: 'sky' },
-  { label: 'Tasks completed', value: '184', change: '+12.5%', icon: Check, tone: 'emerald' },
-  { label: 'On track', value: '92.4%', change: '+3.8%', icon: TrendUp, tone: 'amber' },
-]
 
 const activityData = [
   { day: 'Mon', value: 42 },
@@ -40,6 +28,13 @@ const activityData = [
   { day: 'Fri', value: 64 },
   { day: 'Sat', value: 35 },
   { day: 'Sun', value: 52 },
+]
+
+const stats = [
+  { label: 'Active projects', value: '12', change: '+8.2%' },
+  { label: 'Team members', value: '24', change: '+4.1%' },
+  { label: 'Tasks completed', value: '184', change: '+12.5%' },
+  { label: 'On track', value: '92.4%', change: '+3.8%' },
 ]
 
 const activity = [
@@ -55,7 +50,7 @@ const activity = [
     name: 'Priya Shah',
     action: 'created a new project',
     time: '45 min ago',
-    color: 'bg-blue-100 text-blue-700',
+    color: 'bg-orange-100 text-orange-700',
   },
   {
     initials: 'MC',
@@ -69,7 +64,7 @@ const activity = [
     name: 'Alex Morgan',
     action: 'updated the team goals',
     time: 'Yesterday',
-    color: 'bg-[#EDF3FE] text-[#4493F8]',
+    color: 'bg-[#FFF1E6] text-[#FD6100]',
   },
 ]
 
@@ -86,7 +81,7 @@ const projects = [
     owner: 'Priya Shah',
     progress: 54,
     status: 'In progress',
-    color: 'bg-[#4493F8]',
+    color: 'bg-[#FD6100]',
   },
   {
     name: 'Brand refresh',
@@ -97,35 +92,15 @@ const projects = [
   },
 ]
 
-function StatCard({ label, value, change, icon: Icon, tone }) {
-  const toneClasses = {
-    blue: 'bg-[#EDF3FE] text-[#4493F8]',
-    sky: 'bg-sky-50 text-sky-600',
-    emerald: 'bg-emerald-50 text-emerald-600',
-    amber: 'bg-amber-50 text-amber-600',
-  }
-
+function StatCard({ label, value, change, onSelect }) {
   return (
-    <Card>
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-sm text-[#7B7B7B]">{label}</p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight text-[#4A4A4A]">{value}</p>
-          </div>
-          <span
-            className={cn('flex h-9 w-9 items-center justify-center rounded-lg', toneClasses[tone])}
-          >
-            <Icon className="h-4 w-4" weight="regular" aria-hidden="true" />
-          </span>
-        </div>
-        <div className="mt-4 flex items-center gap-1.5 text-xs">
-          <ArrowUpRight className="h-3.5 w-3.5 text-emerald-600" weight="bold" aria-hidden="true" />
-          <span className="font-medium text-emerald-600">{change}</span>
-          <span className="text-[#A3A3A3]">vs. last month</span>
-        </div>
-      </CardContent>
-    </Card>
+    <UsageMetricCard
+      label={label}
+      value={value}
+      secondaryText={change}
+      onSelect={() => onSelect(`${label}: ${value} (${change} vs. last month)`)}
+      ariaLabel={`${label}: ${value}, ${change} vs. last month`}
+    />
   )
 }
 
@@ -174,7 +149,7 @@ export function Dashboard() {
               </div>
               <div className="flex items-center gap-1 sm:gap-2">
                 <div className="hidden items-center gap-1.5 rounded-full border border-neutral-200/80 bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-700 md:flex">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#4493F8]" aria-hidden="true" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#FD6100]" aria-hidden="true" />
                   <span>Demo workspace</span>
                 </div>
                 <Button
@@ -194,14 +169,14 @@ export function Dashboard() {
                   onClick={() => showNotice('You are all caught up.')}
                 >
                   <Bell className="h-4 w-4" aria-hidden="true" />
-                  <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#4493F8]" />
+                  <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#FD6100]" />
                 </Button>
                 <Separator
                   orientation="vertical"
                   className="mx-1 hidden h-6 bg-[#EEEEEE] sm:block"
                 />
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-[#EDF3FE] text-[#4493F8]">AM</AvatarFallback>
+                  <AvatarFallback className="bg-[#FFF1E6] text-[#FD6100]">AM</AvatarFallback>
                 </Avatar>
               </div>
             </div>
@@ -210,7 +185,7 @@ export function Dashboard() {
           <div className="mx-auto max-w-[1440px] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
             <section className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
               <div>
-                <p className="text-sm font-medium text-[#4493F8]">Friday, September 18, 2026</p>
+                <p className="text-sm font-medium text-[#FD6100]">Friday, September 18, 2026</p>
                 <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#4A4A4A] sm:text-3xl">
                   Good morning, Alex
                 </h2>
@@ -225,7 +200,7 @@ export function Dashboard() {
                 <div className="relative">
                   <select
                     id="date-range"
-                    className="h-10 appearance-none rounded-lg border border-[#F0F0F0] bg-white py-2 pl-3 pr-9 text-sm font-medium text-[#4A4A4A] outline-none focus:border-[#4493F8] focus:ring-2 focus:ring-[#4493F8]/20"
+                    className="h-10 appearance-none rounded-lg border border-[#F0F0F0] bg-white py-2 pl-3 pr-9 text-sm font-medium text-[#4A4A4A] outline-none focus:border-[#FD6100] focus:ring-2 focus:ring-[#FD6100]/20"
                   >
                     <option>Last 30 days</option>
                     <option>Last 7 days</option>
@@ -257,7 +232,7 @@ export function Dashboard() {
                 aria-label="Workspace summary"
               >
                 {stats.map((stat) => (
-                  <StatCard key={stat.label} {...stat} />
+                  <StatCard key={stat.label} {...stat} onSelect={showNotice} />
                 ))}
               </section>
 
@@ -300,7 +275,7 @@ export function Dashboard() {
                             {item.value}
                           </div>
                           <div
-                            className="w-full max-w-10 rounded-t-md bg-[#EDF3FE] transition-colors group-hover:bg-[#4493F8]"
+                            className="w-full max-w-10 rounded-t-md bg-[#FFF1E6] transition-colors group-hover:bg-[#FD6100]"
                             style={{ height: `${item.value}%` }}
                           />
                         </div>
@@ -310,7 +285,7 @@ export function Dashboard() {
                   </div>
                   <div className="mt-5 flex items-center gap-5 text-xs text-[#7B7B7B]">
                     <span className="flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full bg-[#4493F8]" />
+                      <span className="h-2 w-2 rounded-full bg-[#FD6100]" />
                       Completed
                     </span>
                     <span className="flex items-center gap-2">
@@ -329,7 +304,7 @@ export function Dashboard() {
                       Progress toward this quarter’s goals
                     </CardDescription>
                   </div>
-                  <Target className="h-5 w-5 text-[#4493F8]" weight="regular" aria-hidden="true" />
+                  <Target className="h-5 w-5 text-[#FD6100]" weight="regular" aria-hidden="true" />
                 </CardHeader>
                 <CardContent className="space-y-5">
                   <div>
