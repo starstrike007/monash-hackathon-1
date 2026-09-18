@@ -31,6 +31,9 @@ domain data must remain specific to this project.
 - Make agent work legible: show progress, sources, tool calls, proposed changes, and human
   approval points when they are relevant to the workflow.
 - Prefer compact, composable workspace primitives over decorative panels or marketing UI.
+- Remove generic shell filler such as demo labels, placeholder-data notices, and broad
+  operational-status claims when they do not help the user complete a task. Keep only copy
+  that explains navigation, data, or an available action.
 - Use Phosphor Icons via `@phosphor-icons/react` for navigation, actions, and status icons.
 - Reuse the existing shadcn-style components in `src/components/ui` when implementing
   these patterns.

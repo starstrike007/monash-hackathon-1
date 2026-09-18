@@ -23,7 +23,7 @@ React Grab is enabled in development builds only. Keep the Vite server running, 
 npm run react-grab
 ```
 
-Hover an element in the browser and press `Cmd+C` (or `Ctrl+C`) to copy source-aware context. The watcher prints each grab so an agent can consume it. If a browser extension also provides a component-grab overlay, disable that extension for this local app to avoid competing grab controllers.
+Hover an element in the browser and press `Cmd+C` (or `Ctrl+C`) to copy source-aware context. The watcher prints each grab so an agent can consume it. React Grab and the Wrangler Grab extension can both stay installed, but only activate one grab mode at a time: keep Wrangler Grab mode off while using React Grab, then toggle Wrangler Grab on when you need its component export actions.
 
 To create a production build:
 

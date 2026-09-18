@@ -196,6 +196,50 @@ export function WranglePlusIcon(props) {
   )
 }
 
+export function WrangleChevronLeftIcon(props) {
+  return (
+    <WrangleIcon {...props}>
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="m15 6-6 6 6 6"
+      />
+    </WrangleIcon>
+  )
+}
+
+export function WrangleXIcon(props) {
+  return (
+    <WrangleIcon {...props}>
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        d="m6 6 12 12M18 6 6 18"
+      />
+    </WrangleIcon>
+  )
+}
+
+export function WrangleSearchIcon(props) {
+  return (
+    <WrangleIcon {...props}>
+      <circle cx="10.75" cy="10.75" r="6.25" stroke="currentColor" strokeWidth="2" />
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        d="m15.5 15.5 5 5"
+      />
+    </WrangleIcon>
+  )
+}
+
 // These small, filled additions extend the captured family for future screens.
 export function WrangleHandshakeIcon(props) {
   return (
@@ -258,4 +302,7 @@ export const WRANGLER_ICON_COLLECTION = {
   handshake: WrangleHandshakeIcon,
   compass: WrangleCompassIcon,
   signal: WrangleSignalIcon,
+  chevronLeft: WrangleChevronLeftIcon,
+  close: WrangleXIcon,
+  search: WrangleSearchIcon,
 }

@@ -105,7 +105,7 @@ function StatCard({ label, value, change, onSelect }) {
 }
 
 export function Dashboard() {
-  const [activeItem, setActiveItem] = useState('Dashboard')
+  const [activeItem, setActiveItem] = useState('Overview')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [notice, setNotice] = useState('')
 
@@ -142,16 +142,9 @@ export function Dashboard() {
                   <h1 className="truncate text-[15px] font-semibold leading-snug text-neutral-900">
                     {activeItem}
                   </h1>
-                  <p className="mt-0.5 truncate text-[12px] text-neutral-500">
-                    Workspace · Unified operations panel
-                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-1 sm:gap-2">
-                <div className="hidden items-center gap-1.5 rounded-full border border-neutral-200/80 bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-700 md:flex">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#FD6100]" aria-hidden="true" />
-                  <span>Demo workspace</span>
-                </div>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -433,13 +426,6 @@ export function Dashboard() {
                 </CardContent>
               </Card>
             </section>
-
-            <footer className="mt-8 flex flex-col gap-2 border-t border-[#EEEEEE] pt-5 text-xs text-[#A3A3A3] sm:flex-row sm:items-center sm:justify-between">
-              <span>Northstar workspace · Demo data</span>
-              <span className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> All systems operational
-              </span>
-            </footer>
           </div>
         </main>
       </div>
