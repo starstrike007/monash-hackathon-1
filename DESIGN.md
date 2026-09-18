@@ -4,14 +4,19 @@ The dashboard in this repository is the visual source of truth. Match its existi
 screens, shared components, tokens, typography, spacing, icons, and interaction patterns
 before introducing new UI.
 
-For new components or interaction patterns, beUI (https://beui.dev/) is the preferred
-reference. Check its registry and motion guides when the existing component set does not
-cover the need, then adapt the pattern to this project's design system and dependencies.
-This does not mean every new component must be implemented from beUI; reuse existing
+For new components or interaction patterns, [Beautiful UI](https://www.beautifului.dev/)
+is the preferred external reference. It is a catalog of crafted primitives for AI-native
+interfaces, including agent progress, reasoning traces, streaming responses, approvals,
+tool calls, data tables, workflow diagrams, insights, code changes, and screen control.
+Use it to study interaction structure and information hierarchy, then adapt the pattern to
+this project's design system and dependencies.
+
+This does not mean every new component must be implemented from Beautiful UI; reuse existing
 components and tokens when they already solve the problem, and do not add dependencies only
-to match an example. Any beUI component we adopt must be restyled to use this project's
-orange palette, semantic color tokens, typography, surfaces, borders, and interaction
-states; never import beUI's visual colors as-is.
+to match an example. Any pattern we adopt must be restyled to use this project's orange
+palette, semantic color tokens, typography, surfaces, borders, and interaction states.
+Beautiful UI's creamery-operations content is reference/demo content only; product copy and
+domain data must remain specific to this project.
 
 ## Design principles
 
@@ -20,12 +25,63 @@ states; never import beUI's visual colors as-is.
 - Dense but readable navigation; use whitespace and dividers instead of heavy cards.
 - Small, neutral supporting text. Do not use color alone to communicate status.
 - Treat the current dashboard and its shared components as the source of truth for new UI.
-- Use beUI as the first external reference for new component patterns when the existing
-  component set does not cover the interaction, while keeping the result consistent with
-  this dashboard.
+- Use Beautiful UI as the first external reference for new AI-interface patterns when the
+  existing component set does not cover the interaction, while keeping the result consistent
+  with this dashboard.
+- Make agent work legible: show progress, sources, tool calls, proposed changes, and human
+  approval points when they are relevant to the workflow.
+- Prefer compact, composable workspace primitives over decorative panels or marketing UI.
 - Use Phosphor Icons via `@phosphor-icons/react` for navigation, actions, and status icons.
 - Reuse the existing shadcn-style components in `src/components/ui` when implementing
   these patterns.
+
+## Beautiful UI reference catalog
+
+Use the following Beautiful UI primitives as a pattern vocabulary. Select the smallest
+primitive that explains the user action or agent state; do not reproduce the entire catalog
+in a single screen.
+
+### Agent and conversation patterns
+
+- **Loading State** — pixel-grid loader with shimmer and elapsed time.
+- **Thinking** — expandable steps for reasoning, search, coding, or other traceable work.
+- **Streaming Text** — streamed answer with inline sources, actions, and follow-ups.
+- **Approval Card** — human-in-the-loop question with explicit options and continue/skip
+  actions.
+- **Tool Chips** — compact representation of tool calls, code edits, and messages.
+- **Task Rows** — live task status for running, failed, and completed work.
+- **Chat** — tabbed conversation with reasoning replies and a composer.
+- **Prompt Bar** — composer with mentions, commands, model selection, and dictation affordance.
+- **Recommendation Card** — suggested action with confidence, alternatives, and accept action.
+- **Context Cards** — retrieved knowledge chunks with source and content metadata.
+
+### Data and workflow patterns
+
+- **Diff Table** — proposed edits to tabular data.
+- **Records Table** — sortable CRM-style grid with tags and relationship status.
+- **Filter Table** — status chips that reorganize live data.
+- **Sidebar Nav** — collapsible workspace/chat navigation with lightweight hover states.
+- **Search** — command search with live filtering, suggestions, and an empty state.
+- **Flowchart** — trigger and condition steps on a dotted workflow canvas.
+- **Insight Cards** — paged agent insights with compact trend visualizations.
+- **Code Block** — line-numbered code with Code/Diff views.
+- **Fine-tune Card** — inspector for adjusting layout and visual properties.
+- **Selection Actions** — selected text passed to the agent for rewrite, shortening, tone,
+  or grammar actions.
+- **Agent Screen** — view, teach, and record an agent's screen activity.
+
+### Adaptation rules
+
+- Keep the current dashboard's light surfaces, hairline borders, typography, spacing, and
+  orange accent as the visual source of truth.
+- Preserve the existing shadcn-style component APIs and compose them before creating a new
+  primitive.
+- Keep agent states explicit and recoverable: distinguish loading, working, awaiting approval,
+  completed, failed, and empty states.
+- Keep source, confidence, and proposed-action metadata close to the content it qualifies.
+- Use progressive disclosure for detailed traces, diffs, and context so the primary workflow
+  remains scannable.
+- Do not copy Beautiful UI's sample creamery data, colors, or branding into product flows.
 
 ## Core color palette
 

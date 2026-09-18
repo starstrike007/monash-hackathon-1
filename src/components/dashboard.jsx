@@ -105,7 +105,7 @@ function StatCard({ label, value, change, onSelect }) {
 }
 
 export function Dashboard() {
-  const [activeItem, setActiveItem] = useState('Overview')
+  const [activeItem, setActiveItem] = useState('Dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [notice, setNotice] = useState('')
 

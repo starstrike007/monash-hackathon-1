@@ -1,265 +1,192 @@
 import { useState } from 'react'
-import {
-  CaretDown,
-  CaretDoubleLeft,
-  ChartBar,
-  FolderSimple,
-  Gear,
-  MagnifyingGlass,
-  Question,
-  SquaresFour,
-  UsersThree,
-  X,
-} from '@phosphor-icons/react'
 
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
+import {
+  WrangleAgentsIcon,
+  WrangleAnalyticsIcon,
+  WrangleCandidatesIcon,
+  WrangleCaretDownIcon,
+  WrangleDashboardIcon,
+  WrangleHandshakeIcon,
+  WrangleInboxIcon,
+  WrangleLibraryIcon,
+  WrangleOutreachIcon,
+  WranglePlusIcon,
+  WrangleSourcingIcon,
+} from '@/components/icons/wrangler-icons'
 import { cn } from '@/lib/utils'
 
 const navigation = [
-  { label: 'Overview', icon: SquaresFour },
-  { label: 'Projects', icon: FolderSimple },
-  { label: 'Insights', icon: ChartBar },
-  { label: 'Team', icon: UsersThree },
+  { label: 'Dashboard', href: '/dashboard', icon: WrangleDashboardIcon },
+  { label: 'Sourcing', href: '/sourcing', icon: WrangleSourcingIcon },
+  { label: 'Outreach', href: '/outreach', icon: WrangleOutreachIcon },
+  { label: 'Inbox', href: '/inbox', icon: WrangleInboxIcon },
+  { label: 'Candidates', href: '/candidates', icon: WrangleCandidatesIcon },
+  { label: 'Analytics', href: '/analytics', icon: WrangleAnalyticsIcon },
+  { label: 'Library', href: '/library', icon: WrangleLibraryIcon },
+  { label: 'Agents', href: '/agents', icon: WrangleAgentsIcon, badge: 'Beta' },
 ]
 
-const accountNavigation = [
-  { label: 'Settings', icon: Gear },
-  { label: 'Help center', icon: Question },
-]
-
-function SidebarNavRow({ active, collapsed, icon: Icon, label, onClick }) {
+function SidebarNavItem({ active, href, icon: Icon, label, badge, onSelect }) {
   return (
-    <button
-      type="button"
+    <a
+      href={href}
       aria-current={active ? 'page' : undefined}
-      aria-label={collapsed ? label : undefined}
-      title={collapsed ? label : undefined}
-      onClick={onClick}
+      onClick={(event) => {
+        event.preventDefault()
+        onSelect(label)
+      }}
       className={cn(
-        'flex min-h-10 w-full items-center rounded-md text-left text-sm font-medium transition-colors duration-200',
-        collapsed ? 'justify-center p-2' : 'gap-2 px-2 py-2',
+        'flex h-[33px] w-[272px] items-center rounded-[8px] p-[6px] text-[14px] leading-[21px] transition-colors duration-200 hover:duration-0',
         active
-          ? 'bg-[#FFF1E6] text-[#FD6100]'
+          ? 'bg-[#F0F0F0] text-[#4A4A4A]'
           : 'text-[#7B7B7B] hover:bg-[#F6F6F6] hover:text-[#4A4A4A]',
       )}
     >
-      <Icon
-        className={cn('h-5 w-5 shrink-0', active ? 'text-[#FD6100]' : 'text-[#A3A3A3]')}
-        weight="regular"
-        aria-hidden="true"
-      />
-      {!collapsed && <span className="min-w-0 flex-1 truncate">{label}</span>}
-    </button>
+      <span className="mr-2 flex h-4 w-4 shrink-0 items-center">
+        <Icon
+          className={cn(
+            'h-5 w-5 transition-colors duration-200',
+            active ? 'text-[#7B7B7B]' : 'text-[#A3A3A3]',
+          )}
+        />
+      </span>
+      <span className="flex h-[21px] min-w-0 flex-1 items-center justify-between overflow-hidden whitespace-nowrap [mask-image:linear-gradient(to_right,black_90%,transparent_100%)]">
+        {label}
+      </span>
+      {badge ? (
+        <span className="ml-auto flex h-[19px] shrink-0 items-center rounded-[4px] bg-[#F6F6F6] px-1.5 py-1 text-[11px] leading-[11px] text-[#7B7B7B]">
+          {badge}
+        </span>
+      ) : null}
+    </a>
   )
 }
 
-function SidebarSection({ children, collapsed, label, open, onToggle }) {
+function CollectionsHeader({ open, onCreate, onToggle }) {
+  function handleKeyDown(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      onToggle()
+    }
+  }
+
   return (
-    <section className="pb-2">
-      <div className="mb-2">
-        {collapsed ? (
-          <div className="my-1 h-px bg-[#EEEEEE]" aria-hidden="true" />
-        ) : (
-          <button
-            type="button"
-            aria-expanded={open}
-            onClick={onToggle}
-            className="flex min-h-10 w-full items-center gap-1.5 rounded-sm px-2 py-2 text-left text-[12px] font-medium leading-[18px] text-[#7B7B7B] transition-colors duration-200 hover:text-[#4A4A4A] lg:min-h-0 lg:px-1 lg:py-1"
-          >
-            <span>{label}</span>
-            <span
-              className={cn(
-                'rounded-[4px] bg-[#F0F0F0] p-px transition-transform',
-                !open && '-rotate-90',
-              )}
-            >
-              <CaretDown className="h-3.5 w-3.5" weight="regular" aria-hidden="true" />
-            </span>
-          </button>
-        )}
-        {(collapsed || open) && <div className="space-y-1">{children}</div>}
-      </div>
-    </section>
+    <div
+      role="button"
+      tabIndex={0}
+      aria-expanded={open}
+      onClick={onToggle}
+      onKeyDown={handleKeyDown}
+      className="group flex h-[26px] w-[272px] select-none items-center gap-[6.4px] rounded-[6px] p-1 text-[12px] font-medium leading-[18px] text-[#7B7B7B] transition-all duration-200 hover:bg-[#F6F6F6] hover:duration-0"
+    >
+      <span>Collections</span>
+      <span className="flex h-4 w-4 items-center justify-center rounded-[4px] bg-[#F0F0F0] p-px transition-transform duration-200">
+        <WrangleCaretDownIcon className={cn('h-3.5 w-3.5', !open && '-rotate-90')} />
+      </span>
+      <button
+        type="button"
+        aria-label="New collection"
+        onClick={(event) => {
+          event.stopPropagation()
+          onCreate()
+        }}
+        className="ml-auto mr-1 flex h-[17px] w-[17px] items-center justify-center rounded-[4px] p-[1.5px] text-[#7B7B7B] transition-all duration-200 hover:bg-[#F0F0F0] hover:text-[#4A4A4A]"
+      >
+        <WranglePlusIcon className="h-3.5 w-3.5" />
+      </button>
+    </div>
   )
 }
 
-export function DashboardSidebar({ activeItem, onNavigate, isOpen, onClose, onSearch }) {
-  const [collapsed, setCollapsed] = useState(false)
-  const [openSections, setOpenSections] = useState({ workspace: true, account: true })
+export function WrangleSidebar({
+  activeItem = 'Dashboard',
+  onNavigate = () => {},
+  onCreateCollection = () => {},
+}) {
+  const [collectionsOpen, setCollectionsOpen] = useState(true)
 
-  function selectItem(label) {
-    onNavigate(label)
-    onClose()
-  }
+  return (
+    <div
+      className="flex h-[451px] min-h-0 w-[288px] flex-none flex-col px-2 text-black"
+      style={{
+        fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+        lineHeight: 1.5,
+      }}
+    >
+      <div className="mb-2 h-[264px] w-[272px]">
+        <nav aria-label="Main navigation" className="h-[264px] w-[272px]">
+          {navigation.map((item) => (
+            <SidebarNavItem
+              key={item.label}
+              {...item}
+              active={activeItem === item.label}
+              onSelect={onNavigate}
+            />
+          ))}
+        </nav>
+      </div>
 
-  function toggleSection(section) {
-    setOpenSections((current) => ({ ...current, [section]: !current[section] }))
-  }
+      <div className="w-[272px] pb-2">
+        <div className="mb-2 w-[272px]">
+          <CollectionsHeader
+            open={collectionsOpen}
+            onCreate={onCreateCollection}
+            onToggle={() => setCollectionsOpen((current) => !current)}
+          />
+          {collectionsOpen ? (
+            <div className="h-[36px] w-[272px]">
+              <button
+                type="button"
+                onClick={() => onNavigate('VC Investors')}
+                className="group flex h-[36px] w-[272px] items-center rounded-[8px] p-[6px] text-left text-[14px] leading-[21px] text-[#7B7B7B] transition-all duration-200 hover:bg-[#F6F6F6] hover:duration-0"
+              >
+                <span className="mr-2 flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] bg-[#FFF4D8] text-[#F1B51C]">
+                  <WrangleHandshakeIcon className="h-3.5 w-3.5" />
+                </span>
+                <span className="min-w-0 flex-1 truncate">VC Investors</span>
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  )
+}
 
+export function DashboardSidebar({
+  activeItem = 'Dashboard',
+  onNavigate = () => {},
+  isOpen = false,
+  onClose = () => {},
+  onCreateCollection = () => {},
+}) {
   return (
     <>
-      {isOpen && (
+      {isOpen ? (
         <button
           type="button"
           aria-label="Close navigation"
           className="fixed inset-0 z-40 bg-black/20 lg:hidden"
           onClick={onClose}
         />
-      )}
+      ) : null}
 
       <aside
         id="dashboard-sidebar"
         data-state={isOpen ? 'open' : 'closed'}
-        data-collapsed={collapsed ? 'true' : 'false'}
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex h-dvh w-[min(18rem,calc(100vw-3rem))] -translate-x-full flex-col overflow-hidden border-r border-[#EEEEEE] bg-[#FAFAFA] px-2 py-2 text-[#4A4A4A] opacity-0 transition-[transform,opacity,width] duration-200 lg:sticky lg:top-0 lg:z-0 lg:h-dvh lg:max-h-dvh lg:min-h-screen lg:translate-x-0 lg:opacity-100 lg:duration-300',
+          'fixed inset-y-0 left-0 z-50 flex w-[min(18rem,calc(100vw-3rem))] -translate-x-full flex-col overflow-hidden bg-white opacity-0 transition-[transform,opacity] duration-200 lg:sticky lg:top-0 lg:z-0 lg:h-dvh lg:w-[288px] lg:translate-x-0 lg:opacity-100 lg:duration-0',
           isOpen && 'translate-x-0 opacity-100',
-          collapsed ? 'lg:w-[68px]' : 'lg:w-72',
         )}
       >
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="relative mb-2 border-b border-[#EEEEEE] pb-2">
-            <div
-              className={cn(
-                'flex items-center',
-                collapsed ? 'justify-center py-1.5' : 'h-[43px] justify-between px-1',
-              )}
-            >
-              {!collapsed && (
-                <button
-                  type="button"
-                  className="flex min-w-0 items-center gap-1.5 rounded-md border border-[#EEEEEE] bg-white p-1.5 text-left transition-colors duration-200 hover:bg-[#F6F6F6]"
-                >
-                  <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[6px] bg-[#FD6100] text-xs font-semibold text-white">
-                    N
-                  </span>
-                  <span className="max-w-[140px] truncate text-sm font-medium text-[#4A4A4A]">
-                    Northstar
-                  </span>
-                  <CaretDown
-                    className="h-4 w-4 shrink-0 text-[#7B7B7B]"
-                    weight="regular"
-                    aria-hidden="true"
-                  />
-                </button>
-              )}
-
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-[#7B7B7B] hover:bg-[#F0F0F0] hover:text-[#4A4A4A] lg:flex"
-                onClick={() => {
-                  if (isOpen) {
-                    onClose()
-                  } else {
-                    setCollapsed((current) => !current)
-                  }
-                }}
-                aria-label={
-                  isOpen ? 'Close navigation' : collapsed ? 'Expand sidebar' : 'Collapse sidebar'
-                }
-                title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              >
-                {isOpen ? <X className="h-4 w-4 lg:hidden" aria-hidden="true" /> : null}
-                <CaretDoubleLeft
-                  className={cn('h-4 w-4', isOpen && 'hidden lg:block', collapsed && 'rotate-180')}
-                  weight="regular"
-                  aria-hidden="true"
-                />
-              </Button>
-            </div>
-
-            {collapsed ? (
-              <button
-                type="button"
-                aria-label="Search"
-                title="Search (⌘ K)"
-                onClick={onSearch}
-                className="flex h-10 w-full items-center justify-center rounded-md border border-[#EEEEEE] bg-white text-xs font-medium text-[#7B7B7B] transition-colors duration-200 hover:bg-[#F6F6F6] lg:h-[34px]"
-              >
-                ⌘K
-              </button>
-            ) : (
-              <button
-                type="button"
-                aria-label="Search"
-                onClick={onSearch}
-                className="flex h-10 w-full min-w-0 items-center rounded-md border border-[#EEEEEE] bg-white pl-2 text-left text-sm text-[#7B7B7B] transition-colors duration-200 hover:bg-[#F6F6F6] lg:h-[34px]"
-              >
-                <span className="min-w-0 flex-1 truncate">Search</span>
-                <span className="mr-1 flex shrink-0 items-center rounded-sm border border-[#EEEEEE] bg-[#F6F6F6] px-1.5 py-0.5 text-xs font-medium text-[#7B7B7B]">
-                  ⌘ K
-                </span>
-                <MagnifyingGlass
-                  className="mr-2 h-4 w-4 text-[#A3A3A3]"
-                  weight="regular"
-                  aria-hidden="true"
-                />
-              </button>
-            )}
-          </div>
-
-          <nav className="min-h-0 flex-1 overflow-y-hidden px-0" aria-label="Main navigation">
-            <SidebarSection
-              collapsed={collapsed}
-              label="Workspace"
-              open={openSections.workspace}
-              onToggle={() => toggleSection('workspace')}
-            >
-              {navigation.map(({ label, icon: Icon }) => (
-                <SidebarNavRow
-                  key={label}
-                  active={activeItem === label}
-                  collapsed={collapsed}
-                  icon={Icon}
-                  label={label}
-                  onClick={() => selectItem(label)}
-                />
-              ))}
-            </SidebarSection>
-
-            <SidebarSection
-              collapsed={collapsed}
-              label="Account"
-              open={openSections.account}
-              onToggle={() => toggleSection('account')}
-            >
-              {accountNavigation.map(({ label, icon: Icon }) => (
-                <SidebarNavRow
-                  key={label}
-                  active={activeItem === label}
-                  collapsed={collapsed}
-                  icon={Icon}
-                  label={label}
-                  onClick={() => selectItem(label)}
-                />
-              ))}
-            </SidebarSection>
-          </nav>
-        </div>
-
-        <div className="mt-2 shrink-0 px-1">
-          <Separator className="mb-4 bg-[#EEEEEE]" />
-          <div className={cn('flex items-center gap-3', collapsed ? 'justify-center' : 'px-1')}>
-            <Avatar>
-              <AvatarFallback className="bg-[#FD6100] text-white">AM</AvatarFallback>
-            </Avatar>
-            {!collapsed && (
-              <>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-[#4A4A4A]">Alex Morgan</p>
-                  <p className="truncate text-xs text-[#7B7B7B]">alex@example.com</p>
-                </div>
-                <Badge variant="outline" className="border-[#EEEEEE] text-[10px] text-[#7B7B7B]">
-                  Free
-                </Badge>
-              </>
-            )}
-          </div>
-        </div>
+        <WrangleSidebar
+          activeItem={activeItem}
+          onCreateCollection={onCreateCollection}
+          onNavigate={(label) => {
+            onNavigate(label)
+            onClose()
+          }}
+        />
       </aside>
     </>
   )
