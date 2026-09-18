@@ -15,11 +15,25 @@ npm run dev
 
 The app is a Vite + React dashboard using Tailwind CSS and shadcn-style UI components. It currently uses local demo data so the shell is ready while the hackathon problem statement is still being defined.
 
+### React Grab
+
+React Grab is enabled in development builds only. Keep the Vite server running, then start its clipboard watcher from the project root:
+
+```bash
+npm run react-grab
+```
+
+Hover an element in the browser and press `Cmd+C` (or `Ctrl+C`) to copy source-aware context. The watcher prints each grab so an agent can consume it. If a browser extension also provides a component-grab overlay, disable that extension for this local app to avoid competing grab controllers.
+
 To create a production build:
 
 ```bash
 npm run build
 ```
+
+## Formatting
+
+The repository uses Prettier with the shared settings in `.prettierrc`. Install the **Prettier - Code formatter** VS Code extension and enable format-on-save through the checked-in workspace settings. Run `npm run format:check` before committing, or `npm run format` to apply formatting.
 
 ## Environment
 

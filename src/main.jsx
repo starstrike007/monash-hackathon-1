@@ -1,5 +1,7 @@
 if (import.meta.env.DEV) {
-  import("react-grab");
+  import('react-grab').catch((error) => {
+    console.error('[React Grab] Failed to initialize. Run npm run dev and retry.', error)
+  })
 }
 
 import React from 'react'

@@ -70,7 +70,12 @@ function SidebarSection({ children, collapsed, label, open, onToggle }) {
             className="flex min-h-10 w-full items-center gap-1.5 rounded-sm px-2 py-2 text-left text-[12px] font-medium leading-[18px] text-[#7B7B7B] transition-colors duration-200 hover:text-[#4A4A4A] lg:min-h-0 lg:px-1 lg:py-1"
           >
             <span>{label}</span>
-            <span className={cn('rounded-[4px] bg-[#F0F0F0] p-px transition-transform', !open && '-rotate-90')}>
+            <span
+              className={cn(
+                'rounded-[4px] bg-[#F0F0F0] p-px transition-transform',
+                !open && '-rotate-90',
+              )}
+            >
               <CaretDown className="h-3.5 w-3.5" weight="regular" aria-hidden="true" />
             </span>
           </button>
@@ -117,7 +122,12 @@ export function DashboardSidebar({ activeItem, onNavigate, isOpen, onClose, onSe
       >
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="relative mb-2 border-b border-[#EEEEEE] pb-2">
-            <div className={cn('flex items-center', collapsed ? 'justify-center py-1.5' : 'h-[43px] justify-between px-1')}>
+            <div
+              className={cn(
+                'flex items-center',
+                collapsed ? 'justify-center py-1.5' : 'h-[43px] justify-between px-1',
+              )}
+            >
               {!collapsed && (
                 <button
                   type="button"
@@ -126,8 +136,14 @@ export function DashboardSidebar({ activeItem, onNavigate, isOpen, onClose, onSe
                   <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[6px] bg-[#4493F8] text-xs font-semibold text-white">
                     N
                   </span>
-                  <span className="max-w-[140px] truncate text-sm font-medium text-[#4A4A4A]">Northstar</span>
-                  <CaretDown className="h-4 w-4 shrink-0 text-[#7B7B7B]" weight="regular" aria-hidden="true" />
+                  <span className="max-w-[140px] truncate text-sm font-medium text-[#4A4A4A]">
+                    Northstar
+                  </span>
+                  <CaretDown
+                    className="h-4 w-4 shrink-0 text-[#7B7B7B]"
+                    weight="regular"
+                    aria-hidden="true"
+                  />
                 </button>
               )}
 
@@ -142,11 +158,17 @@ export function DashboardSidebar({ activeItem, onNavigate, isOpen, onClose, onSe
                     setCollapsed((current) => !current)
                   }
                 }}
-                aria-label={isOpen ? 'Close navigation' : collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                aria-label={
+                  isOpen ? 'Close navigation' : collapsed ? 'Expand sidebar' : 'Collapse sidebar'
+                }
                 title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               >
                 {isOpen ? <X className="h-4 w-4 lg:hidden" aria-hidden="true" /> : null}
-                <CaretDoubleLeft className={cn('h-4 w-4', isOpen && 'hidden lg:block', collapsed && 'rotate-180')} weight="regular" aria-hidden="true" />
+                <CaretDoubleLeft
+                  className={cn('h-4 w-4', isOpen && 'hidden lg:block', collapsed && 'rotate-180')}
+                  weight="regular"
+                  aria-hidden="true"
+                />
               </Button>
             </div>
 
@@ -171,7 +193,11 @@ export function DashboardSidebar({ activeItem, onNavigate, isOpen, onClose, onSe
                 <span className="mr-1 flex shrink-0 items-center rounded-sm border border-[#EEEEEE] bg-[#F6F6F6] px-1.5 py-0.5 text-xs font-medium text-[#7B7B7B]">
                   ⌘ K
                 </span>
-                <MagnifyingGlass className="mr-2 h-4 w-4 text-[#A3A3A3]" weight="regular" aria-hidden="true" />
+                <MagnifyingGlass
+                  className="mr-2 h-4 w-4 text-[#A3A3A3]"
+                  weight="regular"
+                  aria-hidden="true"
+                />
               </button>
             )}
           </div>
@@ -227,7 +253,9 @@ export function DashboardSidebar({ activeItem, onNavigate, isOpen, onClose, onSe
                   <p className="truncate text-sm font-medium text-[#4A4A4A]">Alex Morgan</p>
                   <p className="truncate text-xs text-[#7B7B7B]">alex@example.com</p>
                 </div>
-                <Badge variant="outline" className="border-[#EEEEEE] text-[10px] text-[#7B7B7B]">Free</Badge>
+                <Badge variant="outline" className="border-[#EEEEEE] text-[10px] text-[#7B7B7B]">
+                  Free
+                </Badge>
               </>
             )}
           </div>

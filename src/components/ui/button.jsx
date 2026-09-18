@@ -8,7 +8,8 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'rounded-lg border border-[#d85a00] bg-[#fd6100] text-white shadow-[0_1px_2px_rgba(176,58,0,0.25)] hover:brightness-[1.03] active:brightness-[0.98]',
+        default:
+          'rounded-lg border border-[#d85a00] bg-[#fd6100] text-white shadow-[0_1px_2px_rgba(176,58,0,0.25)] hover:brightness-[1.03] active:brightness-[0.98]',
         outline: 'border border-[#F0F0F0] bg-white text-[#4A4A4A] hover:bg-[#F6F6F6]',
         ghost: 'text-[#7B7B7B] hover:bg-[#F6F6F6] hover:text-[#4A4A4A]',
         secondary: 'bg-[#F0F0F0] text-[#4A4A4A] hover:bg-[#F6F6F6]',
@@ -27,27 +28,32 @@ const buttonVariants = cva(
   },
 )
 
-const Button = React.forwardRef(({ children, className, variant, size, type = 'button', ...props }, ref) => (
-  <button
-    className={cn(buttonVariants({ variant, size, className }))}
-    ref={ref}
-    type={type}
-    {...props}
-  >
-    {variant === 'default' || variant === undefined ? (
-      <>
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 rounded-[inherit] shadow-[inset_0_2px_0_0_rgba(255,213,94,0.9),inset_0_-2px_0_0_rgba(177,53,0,0.18)]"
-          style={{
-            backgroundImage: 'linear-gradient(to bottom, #ffbf30 0%, #ff9704 11%, #ff7c00 52%, #fd6100 100%)',
-          }}
-        />
-        <span className="relative z-10 inline-flex items-center">{children}</span>
-      </>
-    ) : children}
-  </button>
-))
+const Button = React.forwardRef(
+  ({ children, className, variant, size, type = 'button', ...props }, ref) => (
+    <button
+      className={cn(buttonVariants({ variant, size, className }))}
+      ref={ref}
+      type={type}
+      {...props}
+    >
+      {variant === 'default' || variant === undefined ? (
+        <>
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 rounded-[inherit] shadow-[inset_0_2px_0_0_rgba(255,213,94,0.9),inset_0_-2px_0_0_rgba(177,53,0,0.18)]"
+            style={{
+              backgroundImage:
+                'linear-gradient(to bottom, #ffbf30 0%, #ff9704 11%, #ff7c00 52%, #fd6100 100%)',
+            }}
+          />
+          <span className="relative z-10 inline-flex items-center">{children}</span>
+        </>
+      ) : (
+        children
+      )}
+    </button>
+  ),
+)
 Button.displayName = 'Button'
 
 export { Button, buttonVariants }

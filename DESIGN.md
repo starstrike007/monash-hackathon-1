@@ -26,20 +26,20 @@ project's existing application boundaries.
 These are the normalized values used by Herro's workspace shell and should be the source
 of truth for new shell UI.
 
-| Token | Value | Use |
-| --- | --- | --- |
-| `brand` | `#4493F8` | Active navigation, primary actions, focus ring, selected icons |
-| `brand-hover` | `#4493F8` | Brand hover state; keep the accent stable and restrained |
-| `ink` | `#4A4A4A` | Primary shell text |
-| `ink-soft` | `#7B7B7B` | Secondary text, inactive icons, section labels |
-| `ink-faint` | `#A3A3A3` | Placeholder text and low-emphasis icons |
-| `line` | `#EEEEEE` | Sidebar borders, input borders, dividers |
-| `line-soft` | `#F0F0F0` | Raised controls and subtle separators |
-| `surface` | `#FFFFFF` | Cards, controls, popovers |
-| `surface-muted` | `#FCFCFC` | Very soft page/shell surface |
-| `surface-sunken` | `#F6F6F6` | Hover surfaces and keyboard shortcut pills |
-| `surface-raised` | `#F0F0F0` | Small control backgrounds |
-| `destructive` | `oklch(0.58 0.22 27)` | Destructive actions and errors |
+| Token            | Value                 | Use                                                            |
+| ---------------- | --------------------- | -------------------------------------------------------------- |
+| `brand`          | `#4493F8`             | Active navigation, primary actions, focus ring, selected icons |
+| `brand-hover`    | `#4493F8`             | Brand hover state; keep the accent stable and restrained       |
+| `ink`            | `#4A4A4A`             | Primary shell text                                             |
+| `ink-soft`       | `#7B7B7B`             | Secondary text, inactive icons, section labels                 |
+| `ink-faint`      | `#A3A3A3`             | Placeholder text and low-emphasis icons                        |
+| `line`           | `#EEEEEE`             | Sidebar borders, input borders, dividers                       |
+| `line-soft`      | `#F0F0F0`             | Raised controls and subtle separators                          |
+| `surface`        | `#FFFFFF`             | Cards, controls, popovers                                      |
+| `surface-muted`  | `#FCFCFC`             | Very soft page/shell surface                                   |
+| `surface-sunken` | `#F6F6F6`             | Hover surfaces and keyboard shortcut pills                     |
+| `surface-raised` | `#F0F0F0`             | Small control backgrounds                                      |
+| `destructive`    | `oklch(0.58 0.22 27)` | Destructive actions and errors                                 |
 
 ### Semantic shadcn tokens
 
@@ -146,7 +146,10 @@ function SidebarNavRow({ active, icon: Icon, label, badge, onClick }) {
           : 'text-[#7B7B7B] hover:bg-[#F6F6F6] hover:text-[#4A4A4A]',
       )}
     >
-      <Icon className={cn('h-5 w-5 shrink-0', active ? 'text-[#4493F8]' : 'text-[#A3A3A3]')} aria-hidden="true" />
+      <Icon
+        className={cn('h-5 w-5 shrink-0', active ? 'text-[#4493F8]' : 'text-[#A3A3A3]')}
+        aria-hidden="true"
+      />
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {badge}
     </button>
@@ -180,8 +183,12 @@ function WorkspaceHeader({ title, subtitle, context }) {
   return (
     <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-neutral-200/80 bg-neutral-100/70 px-4 backdrop-blur-sm sm:px-6">
       <div className="min-w-0">
-        <h1 className="truncate text-[15px] font-semibold leading-snug text-neutral-900">{title}</h1>
-        {subtitle ? <p className="mt-0.5 truncate text-[12px] text-neutral-500">{subtitle}</p> : null}
+        <h1 className="truncate text-[15px] font-semibold leading-snug text-neutral-900">
+          {title}
+        </h1>
+        {subtitle ? (
+          <p className="mt-0.5 truncate text-[12px] text-neutral-500">{subtitle}</p>
+        ) : null}
       </div>
       {context ? (
         <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-neutral-200/80 bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-700">

@@ -19,5 +19,7 @@ venv/
 .DS_Store
 .idea/
 .vscode/
+!.vscode/
+!.vscode/settings.json
 *.log
 *.swp

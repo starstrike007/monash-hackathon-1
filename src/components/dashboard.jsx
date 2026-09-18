@@ -43,16 +43,58 @@ const activityData = [
 ]
 
 const activity = [
-  { initials: 'JL', name: 'Jordan Lee', action: 'completed the research brief', time: '12 min ago', color: 'bg-orange-100 text-orange-700' },
-  { initials: 'PS', name: 'Priya Shah', action: 'created a new project', time: '45 min ago', color: 'bg-blue-100 text-blue-700' },
-  { initials: 'MC', name: 'Marcus Chen', action: 'commented on the launch plan', time: '2 hours ago', color: 'bg-emerald-100 text-emerald-700' },
-  { initials: 'AM', name: 'Alex Morgan', action: 'updated the team goals', time: 'Yesterday', color: 'bg-[#EDF3FE] text-[#4493F8]' },
+  {
+    initials: 'JL',
+    name: 'Jordan Lee',
+    action: 'completed the research brief',
+    time: '12 min ago',
+    color: 'bg-orange-100 text-orange-700',
+  },
+  {
+    initials: 'PS',
+    name: 'Priya Shah',
+    action: 'created a new project',
+    time: '45 min ago',
+    color: 'bg-blue-100 text-blue-700',
+  },
+  {
+    initials: 'MC',
+    name: 'Marcus Chen',
+    action: 'commented on the launch plan',
+    time: '2 hours ago',
+    color: 'bg-emerald-100 text-emerald-700',
+  },
+  {
+    initials: 'AM',
+    name: 'Alex Morgan',
+    action: 'updated the team goals',
+    time: 'Yesterday',
+    color: 'bg-[#EDF3FE] text-[#4493F8]',
+  },
 ]
 
 const projects = [
-  { name: 'Customer discovery', owner: 'Jordan Lee', progress: 78, status: 'On track', color: 'bg-emerald-500' },
-  { name: 'Launch planning', owner: 'Priya Shah', progress: 54, status: 'In progress', color: 'bg-[#4493F8]' },
-  { name: 'Brand refresh', owner: 'Marcus Chen', progress: 32, status: 'Needs attention', color: 'bg-amber-500' },
+  {
+    name: 'Customer discovery',
+    owner: 'Jordan Lee',
+    progress: 78,
+    status: 'On track',
+    color: 'bg-emerald-500',
+  },
+  {
+    name: 'Launch planning',
+    owner: 'Priya Shah',
+    progress: 54,
+    status: 'In progress',
+    color: 'bg-[#4493F8]',
+  },
+  {
+    name: 'Brand refresh',
+    owner: 'Marcus Chen',
+    progress: 32,
+    status: 'Needs attention',
+    color: 'bg-amber-500',
+  },
 ]
 
 function StatCard({ label, value, change, icon: Icon, tone }) {
@@ -71,7 +113,9 @@ function StatCard({ label, value, change, icon: Icon, tone }) {
             <p className="text-sm text-[#7B7B7B]">{label}</p>
             <p className="mt-2 text-2xl font-semibold tracking-tight text-[#4A4A4A]">{value}</p>
           </div>
-          <span className={cn('flex h-9 w-9 items-center justify-center rounded-lg', toneClasses[tone])}>
+          <span
+            className={cn('flex h-9 w-9 items-center justify-center rounded-lg', toneClasses[tone])}
+          >
             <Icon className="h-4 w-4" weight="regular" aria-hidden="true" />
           </span>
         </div>
@@ -110,12 +154,22 @@ export function Dashboard() {
           <header className="h-16 shrink-0 border-b border-neutral-200/80 bg-neutral-100/70 px-4 backdrop-blur-sm sm:px-6 lg:px-8">
             <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between gap-4">
               <div className="flex min-w-0 items-center gap-3">
-                <Button variant="ghost" size="icon" className="-ml-2 text-[#7B7B7B] lg:hidden" onClick={() => setSidebarOpen(true)} aria-label="Open navigation">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="-ml-2 text-[#7B7B7B] lg:hidden"
+                  onClick={() => setSidebarOpen(true)}
+                  aria-label="Open navigation"
+                >
                   <List className="h-5 w-5" weight="regular" aria-hidden="true" />
                 </Button>
                 <div className="min-w-0">
-                  <h1 className="truncate text-[15px] font-semibold leading-snug text-neutral-900">{activeItem}</h1>
-                  <p className="mt-0.5 truncate text-[12px] text-neutral-500">Workspace · Unified operations panel</p>
+                  <h1 className="truncate text-[15px] font-semibold leading-snug text-neutral-900">
+                    {activeItem}
+                  </h1>
+                  <p className="mt-0.5 truncate text-[12px] text-neutral-500">
+                    Workspace · Unified operations panel
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-1 sm:gap-2">
@@ -123,14 +177,29 @@ export function Dashboard() {
                   <span className="h-1.5 w-1.5 rounded-full bg-[#4493F8]" aria-hidden="true" />
                   <span>Demo workspace</span>
                 </div>
-                <Button variant="ghost" size="icon" className="text-[#7B7B7B]" aria-label="Search" onClick={() => showNotice('Search is ready for your workspace data.')}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-[#7B7B7B]"
+                  aria-label="Search"
+                  onClick={() => showNotice('Search is ready for your workspace data.')}
+                >
                   <MagnifyingGlass className="h-4 w-4" weight="regular" aria-hidden="true" />
                 </Button>
-                <Button variant="ghost" size="icon" className="relative text-[#7B7B7B]" aria-label="Notifications" onClick={() => showNotice('You are all caught up.') }>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative text-[#7B7B7B]"
+                  aria-label="Notifications"
+                  onClick={() => showNotice('You are all caught up.')}
+                >
                   <Bell className="h-4 w-4" aria-hidden="true" />
                   <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#4493F8]" />
                 </Button>
-                <Separator orientation="vertical" className="mx-1 hidden h-6 bg-[#EEEEEE] sm:block" />
+                <Separator
+                  orientation="vertical"
+                  className="mx-1 hidden h-6 bg-[#EEEEEE] sm:block"
+                />
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="bg-[#EDF3FE] text-[#4493F8]">AM</AvatarFallback>
                 </Avatar>
@@ -142,24 +211,40 @@ export function Dashboard() {
             <section className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
               <div>
                 <p className="text-sm font-medium text-[#4493F8]">Friday, September 18, 2026</p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#4A4A4A] sm:text-3xl">Good morning, Alex</h2>
-                <p className="mt-2 text-sm text-[#7B7B7B]">Here’s what’s happening across your workspace.</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#4A4A4A] sm:text-3xl">
+                  Good morning, Alex
+                </h2>
+                <p className="mt-2 text-sm text-[#7B7B7B]">
+                  Here’s what’s happening across your workspace.
+                </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <label className="sr-only" htmlFor="date-range">Date range</label>
+                <label className="sr-only" htmlFor="date-range">
+                  Date range
+                </label>
                 <div className="relative">
-                  <select id="date-range" className="h-10 appearance-none rounded-lg border border-[#F0F0F0] bg-white py-2 pl-3 pr-9 text-sm font-medium text-[#4A4A4A] outline-none focus:border-[#4493F8] focus:ring-2 focus:ring-[#4493F8]/20">
+                  <select
+                    id="date-range"
+                    className="h-10 appearance-none rounded-lg border border-[#F0F0F0] bg-white py-2 pl-3 pr-9 text-sm font-medium text-[#4A4A4A] outline-none focus:border-[#4493F8] focus:ring-2 focus:ring-[#4493F8]/20"
+                  >
                     <option>Last 30 days</option>
                     <option>Last 7 days</option>
                     <option>This quarter</option>
                   </select>
-                  <CaretDown className="pointer-events-none absolute right-3 top-3 h-4 w-4 text-[#A3A3A3]" weight="regular" aria-hidden="true" />
+                  <CaretDown
+                    className="pointer-events-none absolute right-3 top-3 h-4 w-4 text-[#A3A3A3]"
+                    weight="regular"
+                    aria-hidden="true"
+                  />
                 </div>
-                <Button variant="outline" onClick={() => showNotice('Your report is being prepared.') }>
+                <Button
+                  variant="outline"
+                  onClick={() => showNotice('Your report is being prepared.')}
+                >
                   <DownloadSimple className="mr-2 h-4 w-4" weight="regular" aria-hidden="true" />
                   Export
                 </Button>
-                <Button onClick={() => showNotice('New project flow is ready to connect.') }>
+                <Button onClick={() => showNotice('New project flow is ready to connect.')}>
                   <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
                   New project
                 </Button>
@@ -167,11 +252,19 @@ export function Dashboard() {
             </section>
 
             <div className="mt-8 grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_400px]">
-              <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Workspace summary">
-                {stats.map((stat) => <StatCard key={stat.label} {...stat} />)}
+              <section
+                className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+                aria-label="Workspace summary"
+              >
+                {stats.map((stat) => (
+                  <StatCard key={stat.label} {...stat} />
+                ))}
               </section>
 
-              <aside className="sticky top-20 hidden h-fit w-[400px] p-8 xl:block" aria-label="Usage summary">
+              <aside
+                className="sticky top-20 hidden h-fit w-[400px] p-8 xl:block"
+                aria-label="Usage summary"
+              >
                 <UsageOverview onAction={showNotice} />
               </aside>
             </div>
@@ -181,27 +274,49 @@ export function Dashboard() {
                 <CardHeader className="flex-row items-start justify-between gap-4">
                   <div>
                     <CardTitle>Activity overview</CardTitle>
-                    <CardDescription className="mt-1">Completed tasks over the past week</CardDescription>
+                    <CardDescription className="mt-1">
+                      Completed tasks over the past week
+                    </CardDescription>
                   </div>
-                  <Button variant="ghost" size="icon" className="-mr-2 -mt-2" aria-label="More activity options" onClick={() => showNotice('Activity options are coming soon.') }>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="-mr-2 -mt-2"
+                    aria-label="More activity options"
+                    onClick={() => showNotice('Activity options are coming soon.')}
+                  >
                     <DotsThree className="h-5 w-5" weight="bold" aria-hidden="true" />
                   </Button>
                 </CardHeader>
                 <CardContent>
                   <div className="flex h-56 items-end gap-2 border-b border-l border-[#EEEEEE] px-3 pb-0 pt-6 sm:gap-4 sm:px-5">
                     {activityData.map((item) => (
-                      <div className="flex h-full flex-1 flex-col items-center justify-end gap-2" key={item.day}>
+                      <div
+                        className="flex h-full flex-1 flex-col items-center justify-end gap-2"
+                        key={item.day}
+                      >
                         <div className="group relative flex h-full w-full items-end justify-center">
-                          <div className="absolute bottom-0 hidden rounded bg-[#4A4A4A] px-2 py-1 text-[10px] font-medium text-white group-hover:block">{item.value}</div>
-                          <div className="w-full max-w-10 rounded-t-md bg-[#EDF3FE] transition-colors group-hover:bg-[#4493F8]" style={{ height: `${item.value}%` }} />
+                          <div className="absolute bottom-0 hidden rounded bg-[#4A4A4A] px-2 py-1 text-[10px] font-medium text-white group-hover:block">
+                            {item.value}
+                          </div>
+                          <div
+                            className="w-full max-w-10 rounded-t-md bg-[#EDF3FE] transition-colors group-hover:bg-[#4493F8]"
+                            style={{ height: `${item.value}%` }}
+                          />
                         </div>
                         <span className="mb-3 text-xs text-[#A3A3A3]">{item.day}</span>
                       </div>
                     ))}
                   </div>
                   <div className="mt-5 flex items-center gap-5 text-xs text-[#7B7B7B]">
-                    <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#4493F8]" />Completed</span>
-                    <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#F0F0F0]" />Remaining capacity</span>
+                    <span className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-[#4493F8]" />
+                      Completed
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-[#F0F0F0]" />
+                      Remaining capacity
+                    </span>
                   </div>
                 </CardContent>
               </Card>
@@ -210,7 +325,9 @@ export function Dashboard() {
                 <CardHeader className="flex-row items-start justify-between gap-4">
                   <div>
                     <CardTitle>Team goals</CardTitle>
-                    <CardDescription className="mt-1">Progress toward this quarter’s goals</CardDescription>
+                    <CardDescription className="mt-1">
+                      Progress toward this quarter’s goals
+                    </CardDescription>
                   </div>
                   <Target className="h-5 w-5 text-[#4493F8]" weight="regular" aria-hidden="true" />
                 </CardHeader>
@@ -236,7 +353,13 @@ export function Dashboard() {
                     </div>
                     <Progress value={48} />
                   </div>
-                  <Button variant="outline" className="mt-1 w-full" onClick={() => showNotice('Goal management is ready to connect.')}>View goals</Button>
+                  <Button
+                    variant="outline"
+                    className="mt-1 w-full"
+                    onClick={() => showNotice('Goal management is ready to connect.')}
+                  >
+                    View goals
+                  </Button>
                 </CardContent>
               </Card>
             </section>
@@ -246,9 +369,13 @@ export function Dashboard() {
                 <CardHeader className="flex-row items-center justify-between">
                   <div>
                     <CardTitle>Recent projects</CardTitle>
-                    <CardDescription className="mt-1">A quick look at work in progress</CardDescription>
+                    <CardDescription className="mt-1">
+                      A quick look at work in progress
+                    </CardDescription>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => setActiveItem('Projects')}>View all</Button>
+                  <Button variant="ghost" size="sm" onClick={() => setActiveItem('Projects')}>
+                    View all
+                  </Button>
                 </CardHeader>
                 <CardContent className="px-0 pb-1">
                   <div className="overflow-x-auto">
@@ -263,7 +390,10 @@ export function Dashboard() {
                       </thead>
                       <tbody>
                         {projects.map((project) => (
-                          <tr className="border-b border-[#EEEEEE] last:border-0" key={project.name}>
+                          <tr
+                            className="border-b border-[#EEEEEE] last:border-0"
+                            key={project.name}
+                          >
                             <td className="px-5 py-4 font-medium text-[#4A4A4A]">{project.name}</td>
                             <td className="px-5 py-4 text-[#7B7B7B]">{project.owner}</td>
                             <td className="px-5 py-4">
@@ -272,7 +402,18 @@ export function Dashboard() {
                                 <span className="text-xs text-[#7B7B7B]">{project.progress}%</span>
                               </div>
                             </td>
-                            <td className="px-5 py-4"><Badge variant={project.status === 'Needs attention' ? 'warning' : 'success'}><span className={cn('mr-1.5 h-1.5 w-1.5 rounded-full', project.color)} />{project.status}</Badge></td>
+                            <td className="px-5 py-4">
+                              <Badge
+                                variant={
+                                  project.status === 'Needs attention' ? 'warning' : 'success'
+                                }
+                              >
+                                <span
+                                  className={cn('mr-1.5 h-1.5 w-1.5 rounded-full', project.color)}
+                                />
+                                {project.status}
+                              </Badge>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -285,18 +426,31 @@ export function Dashboard() {
                 <CardHeader className="flex-row items-center justify-between">
                   <div>
                     <CardTitle>Recent activity</CardTitle>
-                    <CardDescription className="mt-1">Latest updates from your team</CardDescription>
+                    <CardDescription className="mt-1">
+                      Latest updates from your team
+                    </CardDescription>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => showNotice('Showing the latest updates.')}>View all</Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => showNotice('Showing the latest updates.')}
+                  >
+                    View all
+                  </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {activity.map((item) => (
                     <div className="flex items-start gap-3" key={`${item.name}-${item.time}`}>
                       <Avatar className="h-8 w-8">
-                        <AvatarFallback className={cn('text-[10px]', item.color)}>{item.initials}</AvatarFallback>
+                        <AvatarFallback className={cn('text-[10px]', item.color)}>
+                          {item.initials}
+                        </AvatarFallback>
                       </Avatar>
                       <div className="min-w-0 flex-1 text-sm leading-5">
-                        <p className="text-[#4A4A4A]"><span className="font-medium text-neutral-900">{item.name}</span> {item.action}</p>
+                        <p className="text-[#4A4A4A]">
+                          <span className="font-medium text-neutral-900">{item.name}</span>{' '}
+                          {item.action}
+                        </p>
                         <p className="mt-0.5 text-xs text-[#A3A3A3]">{item.time}</p>
                       </div>
                     </div>
@@ -307,14 +461,19 @@ export function Dashboard() {
 
             <footer className="mt-8 flex flex-col gap-2 border-t border-[#EEEEEE] pt-5 text-xs text-[#A3A3A3] sm:flex-row sm:items-center sm:justify-between">
               <span>Northstar workspace · Demo data</span>
-              <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> All systems operational</span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> All systems operational
+              </span>
             </footer>
           </div>
         </main>
       </div>
 
       {notice && (
-        <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-[#4A4A4A] px-4 py-3 text-sm font-medium text-white shadow-lg" role="status">
+        <div
+          className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-[#4A4A4A] px-4 py-3 text-sm font-medium text-white shadow-lg"
+          role="status"
+        >
           {notice}
         </div>
       )}
