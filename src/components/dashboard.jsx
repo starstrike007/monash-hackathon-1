@@ -1,22 +1,17 @@
 import { useState } from 'react'
 import {
-  ArrowUpRight,
   Bell,
-  Check,
   CaretDown,
   DotsThree,
   DownloadSimple,
-  FolderSimple,
   List,
   MagnifyingGlass,
   Plus,
   Target,
-  TrendUp,
-  UsersThree,
 } from '@phosphor-icons/react'
 
 import { DashboardSidebar } from '@/components/dashboard-sidebar'
-import { UsageOverview } from '@/components/usage-overview'
+import { UsageMetricCard, UsageOverview } from '@/components/usage-overview'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -24,13 +19,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
-
-const stats = [
-  { label: 'Active projects', value: '12', change: '+8.2%', icon: FolderSimple, tone: 'blue' },
-  { label: 'Team members', value: '24', change: '+4.1%', icon: UsersThree, tone: 'sky' },
-  { label: 'Tasks completed', value: '184', change: '+12.5%', icon: Check, tone: 'emerald' },
-  { label: 'On track', value: '92.4%', change: '+3.8%', icon: TrendUp, tone: 'amber' },
-]
 
 const activityData = [
   { day: 'Mon', value: 42 },
@@ -40,6 +28,13 @@ const activityData = [
   { day: 'Fri', value: 64 },
   { day: 'Sat', value: 35 },
   { day: 'Sun', value: 52 },
+]
+
+const stats = [
+  { label: 'Active projects', value: '12', change: '+8.2%' },
+  { label: 'Team members', value: '24', change: '+4.1%' },
+  { label: 'Tasks completed', value: '184', change: '+12.5%' },
+  { label: 'On track', value: '92.4%', change: '+3.8%' },
 ]
 
 const activity = [
@@ -55,33 +50,15 @@ const projects = [
   { name: 'Brand refresh', owner: 'Marcus Chen', progress: 32, status: 'Needs attention', color: 'bg-amber-500' },
 ]
 
-function StatCard({ label, value, change, icon: Icon, tone }) {
-  const toneClasses = {
-    blue: 'bg-[#EDF3FE] text-[#4493F8]',
-    sky: 'bg-sky-50 text-sky-600',
-    emerald: 'bg-emerald-50 text-emerald-600',
-    amber: 'bg-amber-50 text-amber-600',
-  }
-
+function StatCard({ label, value, change, onSelect }) {
   return (
-    <Card>
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-sm text-[#7B7B7B]">{label}</p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight text-[#4A4A4A]">{value}</p>
-          </div>
-          <span className={cn('flex h-9 w-9 items-center justify-center rounded-lg', toneClasses[tone])}>
-            <Icon className="h-4 w-4" weight="regular" aria-hidden="true" />
-          </span>
-        </div>
-        <div className="mt-4 flex items-center gap-1.5 text-xs">
-          <ArrowUpRight className="h-3.5 w-3.5 text-emerald-600" weight="bold" aria-hidden="true" />
-          <span className="font-medium text-emerald-600">{change}</span>
-          <span className="text-[#A3A3A3]">vs. last month</span>
-        </div>
-      </CardContent>
-    </Card>
+    <UsageMetricCard
+      label={label}
+      value={value}
+      secondaryText={change}
+      onSelect={() => onSelect(`${label}: ${value} (${change} vs. last month)`)}
+      ariaLabel={`${label}: ${value}, ${change} vs. last month`}
+    />
   )
 }
 
@@ -168,7 +145,7 @@ export function Dashboard() {
 
             <div className="mt-8 grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_400px]">
               <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Workspace summary">
-                {stats.map((stat) => <StatCard key={stat.label} {...stat} />)}
+                {stats.map((stat) => <StatCard key={stat.label} {...stat} onSelect={showNotice} />)}
               </section>
 
               <aside className="sticky top-20 hidden h-fit w-[400px] p-8 xl:block" aria-label="Usage summary">
