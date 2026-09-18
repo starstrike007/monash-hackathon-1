@@ -270,12 +270,15 @@ export function Dashboard() {
                         className="flex h-full flex-1 flex-col items-center justify-end gap-2"
                         key={item.day}
                       >
-                        <div className="group relative flex h-full w-full items-end justify-center">
-                          <div className="absolute bottom-0 hidden rounded bg-[#4A4A4A] px-2 py-1 text-[10px] font-medium text-white group-hover:block">
+                        <div className="group relative flex h-full w-full cursor-pointer items-end justify-center">
+                          <div
+                            className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 translate-y-1 rounded bg-[#4A4A4A] px-2 py-1 text-xs font-semibold text-white opacity-0 shadow-md transition-all duration-200 group-hover:-translate-y-1 group-hover:opacity-100"
+                            style={{ bottom: `calc(${item.value}% + 6px)` }}
+                          >
                             {item.value}
                           </div>
                           <div
-                            className="w-full max-w-10 rounded-t-md bg-[#FFF1E6] transition-colors group-hover:bg-[#FD6100]"
+                            className="w-full max-w-10 origin-bottom rounded-t-md bg-[#FFF1E6] transition-all duration-200 ease-out group-hover:max-w-14 group-hover:scale-y-[1.08] group-hover:bg-[#FD6100] group-hover:shadow-lg group-hover:shadow-[#FD6100]/30 motion-reduce:transition-none"
                             style={{ height: `${item.value}%` }}
                           />
                         </div>
