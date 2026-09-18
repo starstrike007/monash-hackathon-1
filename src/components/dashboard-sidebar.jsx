@@ -42,12 +42,12 @@ function SidebarNavRow({ active, collapsed, icon: Icon, label, onClick }) {
         'flex min-h-10 w-full items-center rounded-md text-left text-sm font-medium transition-colors duration-200',
         collapsed ? 'justify-center p-2' : 'gap-2 px-2 py-2',
         active
-          ? 'bg-blue-50 text-[#4493F8]'
+          ? 'bg-[#FFF1E6] text-[#FD6100]'
           : 'text-[#7B7B7B] hover:bg-[#F6F6F6] hover:text-[#4A4A4A]',
       )}
     >
       <Icon
-        className={cn('h-5 w-5 shrink-0', active ? 'text-[#4493F8]' : 'text-[#A3A3A3]')}
+        className={cn('h-5 w-5 shrink-0', active ? 'text-[#FD6100]' : 'text-[#A3A3A3]')}
         weight="regular"
         aria-hidden="true"
       />
@@ -123,7 +123,7 @@ export function DashboardSidebar({ activeItem, onNavigate, isOpen, onClose, onSe
                   type="button"
                   className="flex min-w-0 items-center gap-1.5 rounded-md border border-[#EEEEEE] bg-white p-1.5 text-left transition-colors duration-200 hover:bg-[#F6F6F6]"
                 >
-                  <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[6px] bg-[#4493F8] text-xs font-semibold text-white">
+                  <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[6px] bg-[#FD6100] text-xs font-semibold text-white">
                     N
                   </span>
                   <span className="max-w-[140px] truncate text-sm font-medium text-[#4A4A4A]">Northstar</span>
@@ -219,7 +219,7 @@ export function DashboardSidebar({ activeItem, onNavigate, isOpen, onClose, onSe
           <Separator className="mb-4 bg-[#EEEEEE]" />
           <div className={cn('flex items-center gap-3', collapsed ? 'justify-center' : 'px-1')}>
             <Avatar>
-              <AvatarFallback className="bg-[#4493F8] text-white">AM</AvatarFallback>
+              <AvatarFallback className="bg-[#FD6100] text-white">AM</AvatarFallback>
             </Avatar>
             {!collapsed && (
               <>

@@ -39,14 +39,14 @@ const stats = [
 
 const activity = [
   { initials: 'JL', name: 'Jordan Lee', action: 'completed the research brief', time: '12 min ago', color: 'bg-orange-100 text-orange-700' },
-  { initials: 'PS', name: 'Priya Shah', action: 'created a new project', time: '45 min ago', color: 'bg-blue-100 text-blue-700' },
+  { initials: 'PS', name: 'Priya Shah', action: 'created a new project', time: '45 min ago', color: 'bg-orange-100 text-orange-700' },
   { initials: 'MC', name: 'Marcus Chen', action: 'commented on the launch plan', time: '2 hours ago', color: 'bg-emerald-100 text-emerald-700' },
-  { initials: 'AM', name: 'Alex Morgan', action: 'updated the team goals', time: 'Yesterday', color: 'bg-[#EDF3FE] text-[#4493F8]' },
+  { initials: 'AM', name: 'Alex Morgan', action: 'updated the team goals', time: 'Yesterday', color: 'bg-[#FFF1E6] text-[#FD6100]' },
 ]
 
 const projects = [
   { name: 'Customer discovery', owner: 'Jordan Lee', progress: 78, status: 'On track', color: 'bg-emerald-500' },
-  { name: 'Launch planning', owner: 'Priya Shah', progress: 54, status: 'In progress', color: 'bg-[#4493F8]' },
+  { name: 'Launch planning', owner: 'Priya Shah', progress: 54, status: 'In progress', color: 'bg-[#FD6100]' },
   { name: 'Brand refresh', owner: 'Marcus Chen', progress: 32, status: 'Needs attention', color: 'bg-amber-500' },
 ]
 
@@ -97,7 +97,7 @@ export function Dashboard() {
               </div>
               <div className="flex items-center gap-1 sm:gap-2">
                 <div className="hidden items-center gap-1.5 rounded-full border border-neutral-200/80 bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-700 md:flex">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#4493F8]" aria-hidden="true" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#FD6100]" aria-hidden="true" />
                   <span>Demo workspace</span>
                 </div>
                 <Button variant="ghost" size="icon" className="text-[#7B7B7B]" aria-label="Search" onClick={() => showNotice('Search is ready for your workspace data.')}>
@@ -105,11 +105,11 @@ export function Dashboard() {
                 </Button>
                 <Button variant="ghost" size="icon" className="relative text-[#7B7B7B]" aria-label="Notifications" onClick={() => showNotice('You are all caught up.') }>
                   <Bell className="h-4 w-4" aria-hidden="true" />
-                  <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#4493F8]" />
+                  <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#FD6100]" />
                 </Button>
                 <Separator orientation="vertical" className="mx-1 hidden h-6 bg-[#EEEEEE] sm:block" />
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-[#EDF3FE] text-[#4493F8]">AM</AvatarFallback>
+                  <AvatarFallback className="bg-[#FFF1E6] text-[#FD6100]">AM</AvatarFallback>
                 </Avatar>
               </div>
             </div>
@@ -118,14 +118,14 @@ export function Dashboard() {
           <div className="mx-auto max-w-[1440px] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
             <section className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
               <div>
-                <p className="text-sm font-medium text-[#4493F8]">Friday, September 18, 2026</p>
+                <p className="text-sm font-medium text-[#FD6100]">Friday, September 18, 2026</p>
                 <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#4A4A4A] sm:text-3xl">Good morning, Alex</h2>
                 <p className="mt-2 text-sm text-[#7B7B7B]">Here’s what’s happening across your workspace.</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <label className="sr-only" htmlFor="date-range">Date range</label>
                 <div className="relative">
-                  <select id="date-range" className="h-10 appearance-none rounded-lg border border-[#F0F0F0] bg-white py-2 pl-3 pr-9 text-sm font-medium text-[#4A4A4A] outline-none focus:border-[#4493F8] focus:ring-2 focus:ring-[#4493F8]/20">
+                  <select id="date-range" className="h-10 appearance-none rounded-lg border border-[#F0F0F0] bg-white py-2 pl-3 pr-9 text-sm font-medium text-[#4A4A4A] outline-none focus:border-[#FD6100] focus:ring-2 focus:ring-[#FD6100]/20">
                     <option>Last 30 days</option>
                     <option>Last 7 days</option>
                     <option>This quarter</option>
@@ -170,14 +170,14 @@ export function Dashboard() {
                       <div className="flex h-full flex-1 flex-col items-center justify-end gap-2" key={item.day}>
                         <div className="group relative flex h-full w-full items-end justify-center">
                           <div className="absolute bottom-0 hidden rounded bg-[#4A4A4A] px-2 py-1 text-[10px] font-medium text-white group-hover:block">{item.value}</div>
-                          <div className="w-full max-w-10 rounded-t-md bg-[#EDF3FE] transition-colors group-hover:bg-[#4493F8]" style={{ height: `${item.value}%` }} />
+                          <div className="w-full max-w-10 rounded-t-md bg-[#FFF1E6] transition-colors group-hover:bg-[#FD6100]" style={{ height: `${item.value}%` }} />
                         </div>
                         <span className="mb-3 text-xs text-[#A3A3A3]">{item.day}</span>
                       </div>
                     ))}
                   </div>
                   <div className="mt-5 flex items-center gap-5 text-xs text-[#7B7B7B]">
-                    <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#4493F8]" />Completed</span>
+                    <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#FD6100]" />Completed</span>
                     <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#F0F0F0]" />Remaining capacity</span>
                   </div>
                 </CardContent>
@@ -189,7 +189,7 @@ export function Dashboard() {
                     <CardTitle>Team goals</CardTitle>
                     <CardDescription className="mt-1">Progress toward this quarter’s goals</CardDescription>
                   </div>
-                  <Target className="h-5 w-5 text-[#4493F8]" weight="regular" aria-hidden="true" />
+                  <Target className="h-5 w-5 text-[#FD6100]" weight="regular" aria-hidden="true" />
                 </CardHeader>
                 <CardContent className="space-y-5">
                   <div>
