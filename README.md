@@ -31,6 +31,7 @@ Copy `.env.example` to `.env` and fill in local values. Never commit `.env` or r
 - Prefer the smallest working end-to-end slice.
 - Reuse existing project and platform capabilities before adding dependencies.
 - Keep the demo path reproducible for every teammate.
+- Follow the [team Git workflow](docs/team-git-workflow.md) for branches, pull requests, and conflict resolution.
 
 ## Hackathon checklist
 

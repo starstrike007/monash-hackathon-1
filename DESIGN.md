@@ -14,7 +14,7 @@ project's existing application boundaries.
 ## Design principles
 
 - Calm, light workspace surfaces with hairline borders.
-- One clear blue accent for selected navigation, focus, and primary actions.
+- One clear orange accent for selected navigation, focus, and primary actions.
 - Dense but readable navigation; use whitespace and dividers instead of heavy cards.
 - Small, neutral supporting text. Do not use color alone to communicate status.
 - Use Phosphor Icons via `@phosphor-icons/react` for navigation, actions, and status icons.
@@ -28,8 +28,8 @@ of truth for new shell UI.
 
 | Token | Value | Use |
 | --- | --- | --- |
-| `brand` | `#4493F8` | Active navigation, primary actions, focus ring, selected icons |
-| `brand-hover` | `#4493F8` | Brand hover state; keep the accent stable and restrained |
+| `brand` | `#FD6100` | Active navigation, primary actions, focus ring, selected icons |
+| `brand-hover` | `#FD6100` | Brand hover state; keep the accent stable and restrained |
 | `ink` | `#4A4A4A` | Primary shell text |
 | `ink-soft` | `#7B7B7B` | Secondary text, inactive icons, section labels |
 | `ink-faint` | `#A3A3A3` | Placeholder text and low-emphasis icons |
@@ -54,7 +54,7 @@ named shell palette:
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: #4493f8;
+  --primary: #fd6100;
   --primary-foreground: #ffffff;
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -65,14 +65,14 @@ named shell palette:
   --destructive: oklch(0.58 0.22 27);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: #4493f8;
+  --ring: #fd6100;
   --radius: 0.625rem;
 }
 ```
 
-Useful chart accents from the same source are `#3B82F6`, `#A855F7`, `#EF4444`,
+Useful chart accents from the same source are `#F97316`, `#A855F7`, `#EF4444`,
 `#F59E0B`, and `#22C55E`. Use them only when a visualization needs multiple series;
-the workspace shell itself stays blue, neutral, and low contrast.
+the workspace shell itself stays orange, neutral, and low contrast.
 
 ## Sidebar
 
@@ -111,8 +111,8 @@ the workspace shell itself stays blue, neutral, and low contrast.
 - Navigation rows use a `40px` minimum touch target, `8px` horizontal padding, `6px`
   radius, and a `20px` icon box.
 - Inactive rows: text and icons in `#7B7B7B` / `#A3A3A3`; hover surface `#F6F6F6`.
-- Active row: `#EFF6FF` (`blue-50`) surface, `#4493F8` text, and `#4493F8` icon.
-- Count badges use `#4493F8` with white text, `11px` type, and a full pill radius.
+- Active row: `#FFF1E6` surface, `#FD6100` text, and `#FD6100` icon.
+- Count badges use `#FD6100` with white text, `11px` type, and a full pill radius.
 - Collapsed mode keeps the icons and active treatment, hides labels, and exposes the
   destination through `title` text or an accessible name.
 
@@ -142,11 +142,11 @@ function SidebarNavRow({ active, icon: Icon, label, badge, onClick }) {
       className={cn(
         'flex min-h-10 w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors',
         active
-          ? 'bg-blue-50 text-[#4493F8]'
+          ? 'bg-[#FFF1E6] text-[#FD6100]'
           : 'text-[#7B7B7B] hover:bg-[#F6F6F6] hover:text-[#4A4A4A]',
       )}
     >
-      <Icon className={cn('h-5 w-5 shrink-0', active ? 'text-[#4493F8]' : 'text-[#A3A3A3]')} aria-hidden="true" />
+      <Icon className={cn('h-5 w-5 shrink-0', active ? 'text-[#FD6100]' : 'text-[#A3A3A3]')} aria-hidden="true" />
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {badge}
     </button>
