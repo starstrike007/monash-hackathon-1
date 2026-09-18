@@ -4,9 +4,14 @@ The dashboard in this repository is the visual source of truth. Match its existi
 screens, shared components, tokens, typography, spacing, icons, and interaction patterns
 before introducing new UI.
 
-For new components or interaction patterns, beUI (https://beui.dev/) is an optional
-reference. Use its registry and motion guides for ideas or implementation starting points,
-then adapt them to this project's existing design system and dependencies.
+For new components or interaction patterns, beUI (https://beui.dev/) is the preferred
+reference. Check its registry and motion guides when the existing component set does not
+cover the need, then adapt the pattern to this project's design system and dependencies.
+This does not mean every new component must be implemented from beUI; reuse existing
+components and tokens when they already solve the problem, and do not add dependencies only
+to match an example. Any beUI component we adopt must be restyled to use this project's
+orange palette, semantic color tokens, typography, surfaces, borders, and interaction
+states; never import beUI's visual colors as-is.
 
 ## Design principles
 
@@ -15,8 +20,9 @@ then adapt them to this project's existing design system and dependencies.
 - Dense but readable navigation; use whitespace and dividers instead of heavy cards.
 - Small, neutral supporting text. Do not use color alone to communicate status.
 - Treat the current dashboard and its shared components as the source of truth for new UI.
-- Consult beUI for new component patterns when the existing component set does not cover
-  the interaction, while keeping the result consistent with this dashboard.
+- Use beUI as the first external reference for new component patterns when the existing
+  component set does not cover the interaction, while keeping the result consistent with
+  this dashboard.
 - Use Phosphor Icons via `@phosphor-icons/react` for navigation, actions, and status icons.
 - Reuse the existing shadcn-style components in `src/components/ui` when implementing
   these patterns.
