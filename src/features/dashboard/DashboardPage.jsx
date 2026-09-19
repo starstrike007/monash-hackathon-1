@@ -262,17 +262,17 @@ export function DashboardPage({ navigate, initialRunId = null }) {
               href={submissionUrl()}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex h-12 items-center gap-3 rounded-xl border border-[#D5D0C2] bg-white px-5 text-sm font-semibold text-[#26353D] hover:bg-[#FCFAF4]"
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 text-sm font-semibold leading-none transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100 bg-white text-[#26353D] shadow-sm"
             >
-              <ArrowDown size={19} />
+              <ArrowDown size={16} className="shrink-0" />
               Export submission JSON
             </a>
             <button
-              className="inline-flex h-12 items-center gap-3 rounded-xl bg-[#0E5A66] px-5 text-sm font-semibold text-white hover:bg-[#0B4B55] disabled:opacity-60"
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 text-sm font-semibold leading-none transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100 bg-[#0E5A66] text-white hover:bg-[#0B4B55] disabled:opacity-60 disabled:hover:scale-100 disabled:hover:shadow-none"
               onClick={startPipeline}
               disabled={running}
             >
-              <Play size={18} weight="fill" />
+              <Play size={16} weight="fill" className="shrink-0" />
               {running ? 'Running pipeline…' : 'Run pipeline'}
             </button>
           </div>

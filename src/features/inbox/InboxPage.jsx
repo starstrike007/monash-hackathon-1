@@ -6,21 +6,50 @@ import { getAllEmails, getDashboard } from '@/lib/api'
 import { categoryLabel } from '@/lib/types'
 
 const filters = [
-  { key: '', label: 'All' },
-  { key: 'needs_review', label: 'Needs review' },
-  { key: 'mismatch', label: 'Mismatch' },
-  { key: 'no_mismatch', label: 'No mismatch' },
+  {
+    key: '',
+    label: 'All',
+    idle: 'bg-white text-[#46555E] shadow-sm',
+    idleCount: 'bg-[#E9E5D9] text-[#46555E]',
+    selected: 'bg-[#16232B] text-white',
+    selectedCount: 'bg-[#294A5C] text-white',
+  },
+  {
+    key: 'needs_review',
+    label: 'Needs review',
+    idle: 'bg-[#FBEBCF] text-[#8A5300]',
+    idleCount: 'bg-white/70 text-[#8A5300]',
+    selected: 'bg-[#C47A00] text-white',
+    selectedCount: 'bg-white/25 text-white',
+  },
+  {
+    key: 'mismatch',
+    label: 'Mismatch',
+    idle: 'bg-[#F8E3E0] text-[#A32720]',
+    idleCount: 'bg-white/70 text-[#A32720]',
+    selected: 'bg-[#CF3B32] text-white',
+    selectedCount: 'bg-white/25 text-white',
+  },
+  {
+    key: 'no_mismatch',
+    label: 'No mismatch',
+    idle: 'bg-[#E2F1E8] text-[#17693F]',
+    idleCount: 'bg-white/70 text-[#17693F]',
+    selected: 'bg-[#2B965C] text-white',
+    selectedCount: 'bg-white/25 text-white',
+  },
 ]
 
 function FilterButton({ filter, active, count, onClick }) {
   return (
     <button
-      className={`rounded-full border px-6 py-3 text-sm font-semibold transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100 ${active ? 'border-[#16232B] bg-[#16232B] text-white' : 'border-[#D5D0C2] bg-white text-[#46555E] hover:bg-[#FCFAF4]'}`}
+      className={`inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 text-sm font-semibold leading-none transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100 ${active ? filter.selected : filter.idle}`}
       onClick={onClick}
+      aria-pressed={active}
     >
       {filter.label}
       <span
-        className={`ml-3 rounded-full px-2 py-0.5 text-xs ${active ? 'bg-[#294A5C] text-white' : 'bg-[#E9E5D9] text-[#46555E]'}`}
+        className={`rounded-full px-2 py-0.5 text-xs ${active ? filter.selectedCount : filter.idleCount}`}
       >
         {count}
       </span>
