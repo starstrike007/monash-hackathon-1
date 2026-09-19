@@ -4,7 +4,12 @@ from typing import Any
 
 from app.adapters.openai_client import OpenAIClient
 from app.api.schemas.common import EmailCategory
-from app.pipeline.classify import classify_email, classify_email_with_trace, strip_noise
+from app.pipeline.classify import (
+    ClassificationService,
+    classify_email,
+    classify_email_with_trace,
+    strip_noise,
+)
 
 
 class StubClassifier:
@@ -108,9 +113,52 @@ def test_model_failure_uses_safe_general_fallback_and_is_flagged():
     decision = classify_email_with_trace(email, llm)
 
     assert decision.category == EmailCategory.GENERAL
-    assert decision.decided_by == "fallback"
+    assert decision.decided_by == "fallback_default"
     assert decision.low_confidence is True
     assert decision.model_failure is True
+
+
+def test_rules_only_never_calls_the_llm_for_unresolved_email():
+    llm = StubClassifier(category="SPAM")
+    email = {
+        "subject": "Booking question",
+        "body": "Could you help with the paperwork for this booking?",
+        "attachments": [],
+    }
+
+    decision = classify_email_with_trace(email, llm, rules_only=True)
+
+    assert decision.category == EmailCategory.GENERAL
+    assert decision.decided_by == "fallback_default"
+    assert decision.reason == "rules_only"
+    assert llm.calls == []
+
+
+def test_identical_unresolved_emails_share_one_llm_call():
+    llm = StubClassifier(category="GENERAL")
+    service = ClassificationService(llm)
+    emails = [
+        {
+            "email_id": "different-1",
+            "subject": "Booking question",
+            "body": "Could you help with the paperwork for this booking?",
+            "attachments": [],
+        },
+        {
+            "email_id": "different-2",
+            "subject": "Booking question",
+            "body": "Could you help with the paperwork for this booking?",
+            "attachments": [],
+        },
+    ]
+
+    decisions = service.classify_many(emails, max_workers=2)
+
+    assert [decision.category for decision in decisions] == [EmailCategory.GENERAL] * 2
+    assert len(llm.calls) == 1
+    assert service.metrics["llm_calls"] == 1
+    assert service.metrics["cache_hits"] == 1
+
 
 
 class _Response:
@@ -131,6 +179,22 @@ class _OpenAIStub:
         self.responses = _Responses()
 
 
+class _RetryingResponses:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def create(self, **kwargs: Any) -> _Response:
+        self.calls += 1
+        if self.calls < 3:
+            raise TimeoutError("synthetic transient timeout")
+        return _Response()
+
+
+class _RetryingOpenAIStub:
+    def __init__(self) -> None:
+        self.responses = _RetryingResponses()
+
+
 def test_openai_classification_requests_strict_structured_output():
     client = OpenAIClient("synthetic-key", "synthetic-model")
     stub = _OpenAIStub()
@@ -140,3 +204,18 @@ def test_openai_classification_requests_strict_structured_output():
     assert stub.responses.kwargs is not None
     assert stub.responses.kwargs["text"]["format"]["type"] == "json_schema"
     assert stub.responses.kwargs["text"]["format"]["strict"] is True
+
+
+def test_openai_retries_transient_failures_with_a_bound():
+    client = OpenAIClient(
+        "synthetic-key",
+        "synthetic-model",
+        max_retries=2,
+        retry_backoff_seconds=0,
+    )
+    stub = _RetryingOpenAIStub()
+    client.client = stub
+
+    assert client.propose_classification({"subject": "offer", "body": "", "attachments": []}) == "SPAM"
+    assert stub.responses.calls == 3
+    assert client.retry_count == 2

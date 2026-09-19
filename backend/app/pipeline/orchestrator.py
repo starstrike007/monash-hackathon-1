@@ -28,7 +28,7 @@ from app.api.schemas.common import (
 )
 from app.api.schemas.pipeline import PipelineStageProgress
 from app.services.submission_service import build_submission
-from app.pipeline.classify import ClassificationDecision, classify_email, classify_email_with_trace
+from app.pipeline.classify import ClassificationDecision, ClassificationService, classify_email
 from app.pipeline.compare import compare_documents
 from app.pipeline.decide import decide_result
 from app.pipeline.extract import extract_document
@@ -41,14 +41,26 @@ STAGES = ((1, "Classify"),)
 
 
 class PipelineOrchestrator:
-    def __init__(self, loader: DatasetLoader, store: LocalStore, llm: OpenAIClient | None = None) -> None:
+    def __init__(
+        self,
+        loader: DatasetLoader,
+        store: LocalStore,
+        llm: OpenAIClient | None = None,
+        max_workers: int = 4,
+        output_dir: str | Path | None = None,
+    ) -> None:
         self.loader = loader
         self.store = store
         self.llm = llm
+        self.max_workers = max(1, int(max_workers))
+        self.output_dir = Path(output_dir).resolve() if output_dir else None
+        self.last_classification_metrics: dict[str, int | bool] = {}
 
     def _default_output_dir(self) -> Path:
         """Keep fixture/custom-dataset exports from clobbering the submission."""
 
+        if self.output_dir is not None:
+            return self.output_dir
         project_root = Path(__file__).resolve().parents[3]
         primary_data_dir = (project_root / "data").resolve()
         if self.loader.data_dir == primary_data_dir:
@@ -60,7 +72,12 @@ class PipelineOrchestrator:
             return
         self.run()
 
-    def run(self, email_ids: list[str] | None = None, retry_failed_only: bool = False) -> dict[str, Any]:
+    def run(
+        self,
+        email_ids: list[str] | None = None,
+        retry_failed_only: bool = False,
+        rules_only: bool = False,
+    ) -> dict[str, Any]:
         run_full_dataset = email_ids is None and not retry_failed_only
         emails = self.loader.list_emails()
         if retry_failed_only and not email_ids:
@@ -94,10 +111,11 @@ class PipelineOrchestrator:
         failures: list[dict[str, Any]] = []
         stage_counts = {number: 0 for number, _ in STAGES}
         classification_report: dict[str, dict[str, Any]] = {}
-        for email in emails:
+        classifier = ClassificationService(self.llm, rules_only=rules_only)
+        decisions = classifier.classify_many(emails, max_workers=self.max_workers)
+        for email, decision in zip(emails, decisions):
             email_id = email["email_id"]
             try:
-                decision = classify_email_with_trace(email, self.llm)
                 result = ResultRecord(
                     email_id=email_id,
                     run_id=run_id,
@@ -141,6 +159,7 @@ class PipelineOrchestrator:
             error_summary={"failed_items": len(failures)} if failures else {},
         )
         self.store.save_failures(run_id, failures)
+        self.last_classification_metrics = classifier.metrics
         if run_full_dataset:
             self.export_outputs(classification_report)
         return self.store.get_run(run_id) or run
