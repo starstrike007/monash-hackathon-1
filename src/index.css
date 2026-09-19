@@ -1,15 +1,16 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,500;6..72,600;6..72,700&display=swap');
 @import 'tailwindcss';
 
 @theme inline {
-  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Newsreader', Georgia, serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 }
 
 :root {
-  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  color: #4a4a4a;
-  background: #fcfcfc;
+  font-family: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+  color: #16232b;
+  background: #f3f0e8;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -20,7 +21,7 @@
 
 html {
   min-width: 320px;
-  background: #fcfcfc;
+  background: #f3f0e8;
 }
 
 body {
@@ -30,12 +31,23 @@ body {
 }
 
 button,
+a,
+input,
 select {
   touch-action: manipulation;
 }
 
-button {
+button,
+a {
   cursor: pointer;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid rgb(14 90 102 / 28%);
+  outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,0 +1,1 @@
+"""External and filesystem adapters."""
