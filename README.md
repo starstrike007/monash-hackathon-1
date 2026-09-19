@@ -1,59 +1,62 @@
-# Monash Hackathon
+# ShipCheck
 
-Hackathon project workspace.
-
-## Project brief
-
-> Add the problem, target user, proposed solution, and success metric here.
+ShipCheck classifies a shipping inbox, compares Shipping Instructions with draft Bills of Lading, and routes uncertain cases to human review.
 
 ## Quick start
+
+Frontend:
 
 ```bash
 npm install
 npm run dev
 ```
 
-The app is a Vite + React dashboard using Tailwind CSS and shadcn-style UI components. It currently uses local demo data so the shell is ready while the hackathon problem statement is still being defined.
+The Vite frontend includes Dashboard, Inbox, mismatch detail, human-review detail, and pipeline-run views. If the API is unavailable, it uses a small local reference dataset so the UI remains navigable.
 
-### React Grab
+API and pipeline:
 
-React Grab is enabled in development builds only. Keep the Vite server running, then start its clipboard watcher from the project root:
-
-```bash
-npm run react-grab
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python -m uvicorn backend.app.main:app --reload --port 8000
 ```
 
-Hover an element in the browser and press `Cmd+C` (or `Ctrl+C`) to copy source-aware context. The watcher prints each grab so an agent can consume it. React Grab and the Wrangler Grab extension can both stay installed, but only activate one grab mode at a time: keep Wrangler Grab mode off while using React Grab, then toggle Wrangler Grab on when you need its component export actions.
+The API reads the 520 email fixtures and 250 attachments from `data/`. It uses `.runtime/shipcheck_store.json` for offline results unless `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are configured.
 
-To create a production build:
+## Architecture
 
-```bash
-npm run build
+The browser talks only to FastAPI. The API reads `data/`, runs the four pipeline stages, and writes results through the storage adapter. OpenAI is reserved for classification and extraction fallbacks; comparison and decision logic remain deterministic. The deployed storage adapter uses Supabase Postgres, while local development falls back to JSON.
+
+See [the architecture diagram](docs/architecture.png) and [the team Git workflow](docs/team-git-workflow.md).
+
+## Supabase
+
+Apply `supabase/migrations/001_initial_schema.sql` to the Supabase project before using the deployed storage adapter. The service-role key is backend-only; the browser does not connect to Supabase directly.
+
+The frontend calls FastAPI through `VITE_API_BASE_URL`:
+
+```js
+import { getDashboard } from '@/lib/api'
 ```
-
-## Formatting
-
-The repository uses Prettier with the shared settings in `.prettierrc`. Install the **Prettier - Code formatter** VS Code extension and enable format-on-save through the checked-in workspace settings. Run `npm run format:check` before committing, or `npm run format` to apply formatting.
 
 ## Environment
 
-Copy `.env.example` to `.env` and fill in local values. Never commit `.env` or real credentials.
+Copy `.env.example` to `.env` and fill in local values. Never commit `.env` or real credentials. Backend-only variables include `OPENAI_API_KEY`, `OPENAI_MODEL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `DATA_DIR`, `RUNTIME_DIR`, and `CORS_ORIGINS`.
+
+## Formatting and checks
+
+```bash
+npm run format:check
+npm run build
+python -m compileall -q backend
+pytest -q backend/tests
+```
 
 ## Working agreements
 
 - Read [`AGENTS.md`](AGENTS.md) before making changes.
-- Prefer the smallest working end-to-end slice.
-- Reuse existing project and platform capabilities before adding dependencies.
-- Keep the demo path reproducible for every teammate.
-- Follow the [team Git workflow](docs/team-git-workflow.md) for branches, pull requests, and conflict resolution.
-
-## Hackathon checklist
-
-- [ ] Problem and target user are written down
-- [ ] One end-to-end demo path works locally
-- [ ] Setup and environment variables are documented
-- [ ] Loading, empty, and error states are handled
-- [ ] Demo data and external-service fallbacks are defined
-- [ ] Final pitch, screenshots, and demo script are ready
-
-Git setup test - Gabriella
+- Keep feature work inside its owning folder under `src/features/`.
+- Keep shared routing, API contracts, UI primitives, and migrations coordinated by one owner.
+- Treat `data/` as read-only fixture input.
+- Never read, copy, or reference `ground_truth.json`.

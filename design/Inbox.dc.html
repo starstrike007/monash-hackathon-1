@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Inbox</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Newsreader:wght@500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3F0E8;font-family:'Instrument Sans',system-ui,sans-serif;color:#16232B}
+a{color:inherit;text-decoration:none}
+</style>
+</helmet>
+<div style="width:1440px;height:1040px;display:flex;background:#F3F0E8;font-family:'Instrument Sans',system-ui,sans-serif;color:#16232B;overflow:hidden;">
+
+<aside style="width:232px;flex:none;background:#16232B;color:#C9D3D8;display:flex;flex-direction:column;gap:28px;padding:24px 16px;box-sizing:border-box;">
+<div style="display:flex;align-items:center;gap:10px;padding:0 8px;">
+<div style="width:32px;height:32px;border-radius:8px;background:#0E5A66;display:flex;align-items:center;justify-content:center;">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4.5 4.5L19 7"></path></svg>
+</div>
+<div style="font-family:'Newsreader',Georgia,serif;font-size:21px;font-weight:600;color:#FFFFFF;">ShipCheck</div>
+</div>
+<nav aria-label="Main" style="display:flex;flex-direction:column;gap:4px;">
+<a href="Main.dc.html" style="display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:8px;box-sizing:border-box;color:#C9D3D8;font-size:14px;font-weight:500;">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg>
+Dashboard
+</a>
+<a href="Inbox.dc.html" style="display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:8px;box-sizing:border-box;background:#26404F;color:#FFFFFF;font-size:14px;font-weight:600;">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13l3-8h12l3 8"></path><path d="M3 13v6h18v-6h-5l-1.5 2h-5L8 13z"></path></svg>
+Inbox
+</a>
+<a href="Inbox.dc.html" style="display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:8px;box-sizing:border-box;color:#C9D3D8;font-size:14px;font-weight:500;">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 16H3z"></path><path d="M12 10v4"></path><path d="M12 17h.01"></path></svg>
+Review queue
+<span style="margin-left:auto;background:#FBEBCF;color:#6F4200;border-radius:999px;font-size:12px;font-weight:600;padding:2px 8px;">14</span>
+</a>
+</nav>
+<div style="flex-grow:1;"></div>
+<div style="padding:12px 14px;border-radius:10px;background:#1F3140;font-size:12px;line-height:1.5;color:#9FB0B8;">
+<div style="color:#FFFFFF;font-weight:600;font-size:13px;margin-bottom:2px;">Prototype</div>
+Sample data. Figures are illustrative.
+</div>
+</aside>
+
+<main style="flex-grow:1;min-width:0;padding:32px 40px;display:flex;flex-direction:column;gap:20px;box-sizing:border-box;">
+
+<header id="inbox-top" style="display:flex;justify-content:space-between;align-items:flex-end;gap:24px;">
+<div>
+<div style="font-size:13px;font-weight:500;color:#5B6770;margin-bottom:6px;">520 emails · last run complete</div>
+<h1 style="margin:0;font-family:'Newsreader',Georgia,serif;font-size:38px;font-weight:600;letter-spacing:-0.01em;line-height:1.1;">Inbox</h1>
+</div>
+<div style="position:relative;width:320px;">
+<label for="inbox-search" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;">Search emails</label>
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5B6770" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position:absolute;left:14px;top:13px;"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+<input id="inbox-search" type="text" placeholder="Search subject, sender or ID" style="width:100%;box-sizing:border-box;min-height:44px;padding:0 14px 0 40px;border-radius:10px;border:1px solid #C9C3B3;background:#FFFFFF;font-family:inherit;font-size:14px;color:#16232B;">
+</div>
+</header>
+
+<div role="group" aria-label="Filter by status" style="display:flex;gap:8px;">
+<sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+<sc-if value="{{ t.active }}" hint-placeholder-val="{{ false }}">
+<button type="button" onClick="{{ t.pick }}" aria-pressed="true" style="display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border-radius:999px;border:1px solid #16232B;background:#16232B;color:#FFFFFF;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;">
+{{ t.label }}
+<span style="font-family:'IBM Plex Mono',monospace;font-size:12px;background:#33495A;border-radius:999px;padding:2px 8px;">{{ t.count }}</span>
+</button>
+</sc-if>
+<sc-if value="{{ t.inactive }}" hint-placeholder-val="{{ true }}">
+<button type="button" onClick="{{ t.pick }}" aria-pressed="false" style="display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border-radius:999px;border:1px solid #C9C3B3;background:#FFFFFF;color:#16232B;font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;">
+{{ t.label }}
+<span style="font-family:'IBM Plex Mono',monospace;font-size:12px;background:#EAE6DA;border-radius:999px;padding:2px 8px;">{{ t.count }}</span>
+</button>
+</sc-if>
+</sc-for>
+</div>
+
+<div style="background:#FFFFFF;border:1px solid #DDD8CB;border-radius:14px;overflow:hidden;">
+<div style="display:grid;grid-template-columns:88px minmax(0,1.3fr) 150px 150px minmax(0,1fr) 24px;column-gap:16px;align-items:center;padding:12px 20px;background:#FAF8F2;font-size:12px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#5B6770;">
+<div>Email</div>
+<div>Subject</div>
+<div>Category</div>
+<div>Status</div>
+<div>What needs attention</div>
+<div></div>
+</div>
+<sc-for list="{{ rows }}" as="r" hint-placeholder-count="6">
+<a href="{{ r.href }}" style="display:grid;grid-template-columns:88px minmax(0,1.3fr) 150px 150px minmax(0,1fr) 24px;column-gap:16px;align-items:center;padding:12px 20px;border-top:1px solid #E8E3D6;background:#FFFFFF;min-height:64px;box-sizing:border-box;">
+<div style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#5B6770;">{{ r.id }}</div>
+<div style="min-width:0;">
+<div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ r.subject }}</div>
+<div style="font-size:12px;color:#5B6770;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ r.meta }}</div>
+</div>
+<div><span style="display:inline-block;padding:4px 10px;border-radius:999px;background:#EAE6DA;color:#3B4A53;font-size:12px;font-weight:500;">{{ r.category }}</span></div>
+<div>
+<sc-if value="{{ r.isMismatch }}" hint-placeholder-val="{{ false }}">
+<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:#F8E3E0;color:#A32720;font-size:12px;font-weight:600;"><span style="width:6px;height:6px;border-radius:50%;background:#A32720;"></span>Mismatch</span>
+</sc-if>
+<sc-if value="{{ r.isReview }}" hint-placeholder-val="{{ false }}">
+<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:#FBEBCF;color:#8A5300;font-size:12px;font-weight:600;"><span style="width:6px;height:6px;border-radius:50%;background:#8A5300;"></span>Needs review</span>
+</sc-if>
+<sc-if value="{{ r.isOk }}" hint-placeholder-val="{{ false }}">
+<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:#E2F1E8;color:#17693F;font-size:12px;font-weight:600;"><span style="width:6px;height:6px;border-radius:50%;background:#17693F;"></span>No mismatch</span>
+</sc-if>
+<sc-if value="{{ r.isNone }}" hint-placeholder-val="{{ false }}">
+<span style="font-size:13px;color:#5B6770;">Not applicable</span>
+</sc-if>
+</div>
+<div style="min-width:0;display:flex;align-items:center;gap:8px;font-size:13px;color:#3B4A53;">
+<sc-if value="{{ r.hasReason }}" hint-placeholder-val="{{ false }}">
+<span style="flex:none;padding:3px 8px;border-radius:999px;background:#FBEBCF;color:#8A5300;font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:500;">{{ r.reason }}</span>
+</sc-if>
+<span style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ r.attention }}</span>
+</div>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5B6770" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+</a>
+</sc-for>
+</div>
+
+<div style="font-size:13px;color:#5B6770;">Showing a sample of rows. Only document-comparison emails get a status; every other category is classified and set aside.</div>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+renderVals() {
+const tab = (this.state && this.state.tab) || 'all';
+const base = [
+{ id: 'EM-0417', subject: 'Please check draft BL against SI – MV Orient Star', meta: 'cs.desk@harbourline.example · SI txt · BL txt', category: 'Document comparison', status: 'mismatch', attention: 'Container count · SI 3 / BL 4', reason: '', href: 'CaseDetail.dc.html' },
+{ id: 'EM-0231', subject: 'BL draft for verification (vessel TBC)', meta: 'docs@harbourline.example · SI pdf · BL pdf (scan)', category: 'Document comparison', status: 'review', attention: 'Gross weight · scan unclear', reason: 'unreadable', href: 'CaseReview.dc.html' },
+{ id: 'EM-0308', subject: 'SI + draft BL – booking 88213', meta: 'ops@meridian.example · SI docx · BL xlsx', category: 'Document comparison', status: 'ok', attention: 'No mismatch detected', reason: '', href: '#inbox-top' },
+{ id: 'EM-0102', subject: 'Invoice query – payment terms', meta: 'accounts@harbourline.example · no attachments', category: 'Invoice query', status: 'none', attention: 'Classified only', reason: '', href: '#inbox-top' },
+{ id: 'EM-0199', subject: 'SI vs BL check', meta: 'cs.desk@harbourline.example · SI xlsx · BL xlsx', category: 'Document comparison', status: 'mismatch', attention: 'Gross weight, consignee', reason: '', href: 'CaseDetail.dc.html' },
+{ id: 'EM-0350', subject: 'Draft BL — please confirm', meta: 'docs@harbourline.example · SI pdf · BL missing', category: 'Document comparison', status: 'review', attention: 'No BL attached', reason: 'missing_attachment', href: 'CaseReview.dc.html' },
+{ id: 'EM-0455', subject: 'New SI request: 2 x 40HC to Rotterdam', meta: 'booking@meridian.example · no attachments', category: 'New SI request', status: 'none', attention: 'Classified only', reason: '', href: '#inbox-top' },
+{ id: 'EM-0364', subject: 'Check BL vs SI, urgent', meta: 'ops@meridian.example · SI txt · BL txt', category: 'Document comparison', status: 'ok', attention: 'No mismatch detected', reason: '', href: '#inbox-top' },
+{ id: 'EM-0089', subject: 'You have been selected for a reward', meta: 'noreply@promo.example · no attachments', category: 'Spam', status: 'none', attention: 'Classified only', reason: '', href: '#inbox-top' },
+{ id: 'EM-0276', subject: 'Weekly vessel schedule update', meta: 'schedules@harbourline.example · no attachments', category: 'General', status: 'none', attention: 'Classified only', reason: '', href: '#inbox-top' }
+];
+const rows = base
+.filter((r) => tab === 'all' || r.status === tab)
+.map((r) => ({
+...r,
+isMismatch: r.status === 'mismatch',
+isReview: r.status === 'review',
+isOk: r.status === 'ok',
+isNone: r.status === 'none',
+hasReason: r.reason !== ''
+}));
+const tabDefs = [
+{ key: 'all', label: 'All', count: '520' },
+{ key: 'review', label: 'Needs review', count: '14' },
+{ key: 'mismatch', label: 'Mismatch', count: '41' },
+{ key: 'ok', label: 'No mismatch', count: '71' }
+];
+const tabs = tabDefs.map((t) => ({
+label: t.label,
+count: t.count,
+active: tab === t.key,
+inactive: tab !== t.key,
+pick: () => this.setState({ tab: t.key })
+}));
+return { rows, tabs };
+}
+}
+</script>
+</body>
+</html>
