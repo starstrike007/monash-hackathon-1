@@ -1,0 +1,9 @@
+{
+  "email_id": "email_fixture_unreadable",
+  "from": "ops@example.test",
+  "subject": "Compare scanned documents",
+  "body": "Please compare the SI and draft BL. The attached PDF has no readable text.",
+  "attachments": [
+    "attachments/fixture_empty.pdf"
+  ]
+}

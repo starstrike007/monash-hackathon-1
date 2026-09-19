@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from backend.app.api.schemas.common import (
+from app.api.schemas.common import (
     CanonicalField,
     DocumentExtraction,
     ExtractionState,

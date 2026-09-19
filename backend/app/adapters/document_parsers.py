@@ -5,8 +5,8 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from backend.app.adapters.dataset_loader import DatasetLoader
-from backend.app.api.schemas.common import DocumentType
+from app.adapters.dataset_loader import DatasetLoader
+from app.api.schemas.common import DocumentType
 
 
 @dataclass

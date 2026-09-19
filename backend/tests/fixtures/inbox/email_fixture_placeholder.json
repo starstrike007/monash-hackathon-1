@@ -1,0 +1,10 @@
+{
+  "email_id": "email_fixture_placeholder",
+  "from": "ops@example.test",
+  "subject": "Compare documents with pending weight",
+  "body": "Please compare the SI and draft BL. The weight is still pending.",
+  "attachments": [
+    "attachments/fixture_placeholder_si.txt",
+    "attachments/fixture_placeholder_bl.txt"
+  ]
+}

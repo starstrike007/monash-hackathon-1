@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from backend.app.adapters.local_store import LocalStore
-from backend.app.api.schemas.common import SubmissionRow
+from app.adapters.local_store import LocalStore
+from app.api.schemas.common import SubmissionRow
 
 
 def build_submission(store: LocalStore, email_ids: list[str]) -> dict[str, dict]:

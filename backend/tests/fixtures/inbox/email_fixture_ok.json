@@ -1,0 +1,10 @@
+{
+  "email_id": "email_fixture_ok",
+  "from": "ops@example.test",
+  "subject": "Compare SI and draft BL",
+  "body": "Please compare the attached SI and draft BL and confirm the details.",
+  "attachments": [
+    "attachments/fixture_ok_si.txt",
+    "attachments/fixture_ok_bl.txt"
+  ]
+}

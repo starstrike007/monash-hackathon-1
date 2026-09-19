@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import re
 
-from backend.app.adapters.document_parsers import ParsedDocument
-from backend.app.api.schemas.common import (
+from app.adapters.document_parsers import ParsedDocument
+from app.api.schemas.common import (
     CanonicalField,
     Confidence,
     DocumentExtraction,
@@ -14,7 +14,7 @@ from backend.app.api.schemas.common import (
     FieldEvidence,
     FieldExtraction,
 )
-from backend.app.pipeline.normalize import normalize_extraction
+from app.pipeline.normalize import normalize_extraction
 
 
 FIELD_PATTERNS: dict[CanonicalField, tuple[str, ...]] = {

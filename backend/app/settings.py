@@ -14,11 +14,14 @@ class Settings:
         self.openai_timeout_seconds = float(os.getenv("OPENAI_TIMEOUT_SECONDS", "20"))
         self.supabase_url = os.getenv("SUPABASE_URL", "")
         self.supabase_service_role_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
-        self.cors_origins = [
+        allowed_origins = os.getenv("ALLOWED_ORIGINS", os.getenv("CORS_ORIGINS", "http://localhost:5173"))
+        self.allowed_origins = [
             origin.strip()
-            for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
+            for origin in allowed_origins.split(",")
             if origin.strip()
         ]
+        # Keep the existing attribute name available to the app and callers.
+        self.cors_origins = self.allowed_origins
 
 
 settings = Settings()

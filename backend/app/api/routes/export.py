@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from backend.app.services.submission_service import build_submission
+from app.services.submission_service import build_submission
 
 router = APIRouter(tags=["export"])
 

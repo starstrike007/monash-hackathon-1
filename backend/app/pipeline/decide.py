@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from backend.app.api.schemas.common import (
+from app.api.schemas.common import (
     ComparisonStatus,
     EmailCategory,
     ReviewReason,
