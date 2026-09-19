@@ -29,3 +29,6 @@ ground_truth.json
 .env*
 .runtime/
 !.env.example
+
+# Generated evaluator output
+backend/output/

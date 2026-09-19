@@ -258,6 +258,11 @@ def test_model_timeout_is_visible_as_retryable_failure_not_mismatch(fixture_load
 def api_client(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "data_dir", FIXTURE_DATA_DIR)
     monkeypatch.setattr(settings, "runtime_dir", tmp_path / "runtime")
+    monkeypatch.setattr(
+        PipelineOrchestrator,
+        "_default_output_dir",
+        lambda self: tmp_path / "output",
+    )
     monkeypatch.setattr(settings, "openai_api_key", "")
     monkeypatch.setattr(settings, "supabase_url", "")
     monkeypatch.setattr(settings, "supabase_service_role_key", "")

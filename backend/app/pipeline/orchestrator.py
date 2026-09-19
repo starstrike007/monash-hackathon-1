@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from collections import Counter
 from datetime import datetime, timezone
+import json
+import logging
 import re
+from pathlib import Path
 from typing import Any
 
 from app.adapters.dataset_loader import DatasetLoader
@@ -12,24 +15,29 @@ from app.adapters.openai_client import OpenAIClient
 from app.api.schemas.common import (
     AttachmentMeta,
     Confidence,
+    ComparisonStatus,
     DocumentRole,
     DocumentType,
     EmailCategory,
     ExtractionSource,
     ExtractionState,
     FieldEvidence,
+    ResultRecord,
     ReviewReason,
     dump_model,
 )
 from app.api.schemas.pipeline import PipelineStageProgress
-from app.pipeline.classify import classify_email
+from app.services.submission_service import build_submission
+from app.pipeline.classify import ClassificationDecision, classify_email, classify_email_with_trace
 from app.pipeline.compare import compare_documents
 from app.pipeline.decide import decide_result
 from app.pipeline.extract import extract_document
 from app.pipeline.normalize import normalize_field, normalize_text
 
 
-STAGES = ((1, "Classify"), (2, "Extract & normalize"), (3, "Compare"), (4, "Decide"))
+logger = logging.getLogger(__name__)
+
+STAGES = ((1, "Classify"),)
 
 
 class PipelineOrchestrator:
@@ -38,12 +46,22 @@ class PipelineOrchestrator:
         self.store = store
         self.llm = llm
 
+    def _default_output_dir(self) -> Path:
+        """Keep fixture/custom-dataset exports from clobbering the submission."""
+
+        project_root = Path(__file__).resolve().parents[3]
+        primary_data_dir = (project_root / "data").resolve()
+        if self.loader.data_dir == primary_data_dir:
+            return Path(__file__).resolve().parents[2] / "output"
+        return Path(self.store.runtime_dir) / "output"
+
     def ensure_seeded(self) -> None:
         if self.store.list_latest_results():
             return
         self.run()
 
     def run(self, email_ids: list[str] | None = None, retry_failed_only: bool = False) -> dict[str, Any]:
+        run_full_dataset = email_ids is None and not retry_failed_only
         emails = self.loader.list_emails()
         if retry_failed_only and not email_ids:
             latest_run = self.store.latest_run()
@@ -71,20 +89,33 @@ class PipelineOrchestrator:
                 ).model_dump(mode="json"),
             )
 
+        logger.warning("Stages 2 to 4 are not built yet; export rows use temporary placeholder values.")
         counters: Counter[str] = Counter()
         failures: list[dict[str, Any]] = []
         stage_counts = {number: 0 for number, _ in STAGES}
+        classification_report: dict[str, dict[str, Any]] = {}
         for email in emails:
             email_id = email["email_id"]
             try:
-                result = self.process_email(email, run_id)
+                decision = classify_email_with_trace(email, self.llm)
+                result = ResultRecord(
+                    email_id=email_id,
+                    run_id=run_id,
+                    category=decision.category,
+                    status=ComparisonStatus.OK,
+                    review_reason=None,
+                    has_defect=False,
+                    defect_fields=[],
+                    decision_notes=["Temporary Phase 6a result: Stages 2 to 4 are not built yet."],
+                    updated_at=datetime.now(timezone.utc),
+                )
                 self.store.save_result(dump_model(result))
                 counters[result.category.value] += 1
-                if result.status:
-                    counters[result.status.value] += 1
                 for stage_number in stage_counts:
                     stage_counts[stage_number] += 1
+                classification_report[email_id] = self._classification_report_row(email, decision)
             except Exception as exc:
+                logger.exception("Stage 1 failed for %s", email_id)
                 failures.append({"email_id": email_id, "message": str(exc), "retryable": True})
 
         for stage_number, stage_name in STAGES:
@@ -98,8 +129,8 @@ class PipelineOrchestrator:
                     status=status,
                     processed_count=stage_counts[stage_number],
                     total_count=len(emails),
-                    failed_count=len(failures) if stage_number in (1, 2) else 0,
-                    review_count=sum(1 for item in self.store.list_latest_results() if item.get("status") == "NEEDS_REVIEW"),
+                    failed_count=len(failures),
+                    review_count=0,
                 ).model_dump(mode="json"),
             )
         self.store.update_run(
@@ -110,7 +141,47 @@ class PipelineOrchestrator:
             error_summary={"failed_items": len(failures)} if failures else {},
         )
         self.store.save_failures(run_id, failures)
+        if run_full_dataset:
+            self.export_outputs(classification_report)
         return self.store.get_run(run_id) or run
+
+    def export_submission(self, output_path: str | Path | None = None) -> dict[str, dict[str, Any]]:
+        """Write the evaluator-shaped submission for every bundled email."""
+
+        email_ids = [email["email_id"] for email in self.loader.list_emails()]
+        submission = build_submission(self.store, email_ids)
+        path = Path(output_path) if output_path else self._default_output_dir() / "submission.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(submission, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        return submission
+
+    def export_outputs(
+        self,
+        classification_report: dict[str, dict[str, Any]],
+        output_dir: str | Path | None = None,
+    ) -> dict[str, dict[str, Any]]:
+        output_path = Path(output_dir) if output_dir else self._default_output_dir()
+        output_path.mkdir(parents=True, exist_ok=True)
+        submission = self.export_submission(output_path / "submission.json")
+        (output_path / "classification_report.json").write_text(
+            json.dumps(classification_report, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        return submission
+
+    @staticmethod
+    def _classification_report_row(
+        email: dict[str, Any],
+        decision: ClassificationDecision,
+    ) -> dict[str, Any]:
+        return {
+            "category": decision.category.value,
+            "decided_by": decision.decided_by,
+            "low_confidence": decision.low_confidence,
+            "model_failure": decision.model_failure,
+            "reason": decision.reason,
+            "subject": str(email.get("subject", "")),
+        }
 
     def process_email(self, email: dict[str, Any], run_id: str):
         email_id = email["email_id"]
@@ -186,23 +257,7 @@ class PipelineOrchestrator:
         )
 
     def classify_email(self, email: dict[str, Any]) -> EmailCategory:
-        category = classify_email(email)
-        if category != EmailCategory.GENERAL or not self.llm or not self.llm.available:
-            return category
-        context_text = f"{email.get('subject', '')}\n{email.get('body', '')}".lower()
-        if not re.search(r"\b(?:si|bl)\b|shipping instruction|bill of lading|invoice", context_text):
-            return category
-        candidate = self.llm.propose_classification(
-            {
-                "subject": str(email.get("subject", "")),
-                "body": str(email.get("body", ""))[:6000],
-                "attachments": email.get("attachments", []),
-            }
-        )
-        try:
-            return EmailCategory(candidate) if candidate else category
-        except ValueError:
-            return category
+        return classify_email(email, llm=self.llm)
 
     def extract_document(self, parsed, role: DocumentRole | None):
         document = extract_document(parsed, role)

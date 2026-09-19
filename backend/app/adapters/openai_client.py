@@ -4,22 +4,28 @@ import json
 import logging
 from typing import Any
 
+from pydantic import BaseModel, ConfigDict, ValidationError
+
+from app.api.schemas.common import EmailCategory
+
 logger = logging.getLogger(__name__)
 
 
-class OpenAIClient:
-    """Small, optional boundary for structured classification/extraction fallbacks.
+class ClassificationProposal(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
-    The deterministic pipeline remains usable when no API key is configured. A
-    failed or malformed model response returns None so callers can route the
-    record to review instead of inventing a value.
-    """
+    category: EmailCategory
+
+
+class OpenAIClient:
+    """Optional structured-output boundary for the Stage 1 fallback."""
 
     def __init__(self, api_key: str, model: str, timeout_seconds: float = 20.0) -> None:
         self.api_key = api_key
         self.model = model
         self.timeout_seconds = timeout_seconds
         self.client = None
+        self.last_call_failed = False
         if api_key:
             try:
                 from openai import OpenAI
@@ -33,6 +39,9 @@ class OpenAIClient:
         return self.client is not None
 
     def propose_classification(self, context: dict[str, Any]) -> str | None:
+        """Return a Pydantic-validated category, or None on any provider failure."""
+
+        self.last_call_failed = False
         if not self.client:
             return None
         try:
@@ -41,20 +50,33 @@ class OpenAIClient:
                 input=[
                     {
                         "role": "system",
-                        "content": "Return JSON with exactly one category: BL_COMPARISON, SI_REQUEST, INVOICE_QUERY, GENERAL, or SPAM.",
+                        "content": "Classify the email into exactly one allowed category. Use only the supplied email and attachment metadata.",
                     },
                     {"role": "user", "content": json.dumps(context, ensure_ascii=False)},
                 ],
-                temperature=0,
+                text={
+                    "format": {
+                        "type": "json_schema",
+                        "name": "email_classification",
+                        "strict": True,
+                        "schema": ClassificationProposal.model_json_schema(),
+                    }
+                },
             )
-            data = json.loads(response.output_text)
-            category = data.get("category")
-            return category if isinstance(category, str) else None
+            proposal = ClassificationProposal.model_validate_json(response.output_text)
+            return proposal.category.value
+        except ValidationError:
+            self.last_call_failed = True
+            logger.warning("OpenAI classification response failed schema validation")
+            return None
         except Exception as exc:
+            self.last_call_failed = True
             logger.warning("OpenAI classification fallback failed: %s", type(exc).__name__)
             return None
 
     def propose_fields(self, context: dict[str, Any]) -> dict[str, Any] | None:
+        """Retain the pre-Phase-6 adapter hook; Stage 2 does not call it yet."""
+
         if not self.client:
             return None
         try:
