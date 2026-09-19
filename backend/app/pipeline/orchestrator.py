@@ -13,16 +13,13 @@ from app.adapters.document_parsers import parse_attachment
 from app.adapters.local_store import LocalStore
 from app.adapters.openai_client import OpenAIClient
 from app.api.schemas.common import (
-    AttachmentMeta,
     Confidence,
-    ComparisonStatus,
     DocumentRole,
     DocumentType,
     EmailCategory,
     ExtractionSource,
     ExtractionState,
     FieldEvidence,
-    ResultRecord,
     ReviewReason,
     dump_model,
 )
@@ -37,7 +34,7 @@ from app.pipeline.normalize import normalize_field, normalize_text
 
 logger = logging.getLogger(__name__)
 
-STAGES = ((1, "Classify"),)
+STAGES = ((1, "Classify"), (2, "Extract & normalize"), (3, "Compare"), (4, "Decide"))
 
 
 class PipelineOrchestrator:
@@ -106,7 +103,6 @@ class PipelineOrchestrator:
                 ).model_dump(mode="json"),
             )
 
-        logger.warning("Stages 2 to 4 are not built yet; export rows use temporary placeholder values.")
         counters: Counter[str] = Counter()
         failures: list[dict[str, Any]] = []
         stage_counts = {number: 0 for number, _ in STAGES}
@@ -116,19 +112,11 @@ class PipelineOrchestrator:
         for email, decision in zip(emails, decisions):
             email_id = email["email_id"]
             try:
-                result = ResultRecord(
-                    email_id=email_id,
-                    run_id=run_id,
-                    category=decision.category,
-                    status=ComparisonStatus.OK,
-                    review_reason=None,
-                    has_defect=False,
-                    defect_fields=[],
-                    decision_notes=["Temporary Phase 6a result: Stages 2 to 4 are not built yet."],
-                    updated_at=datetime.now(timezone.utc),
-                )
+                result = self.process_email(email, run_id, category=decision.category)
                 self.store.save_result(dump_model(result))
                 counters[result.category.value] += 1
+                if result.status:
+                    counters[result.status.value] += 1
                 for stage_number in stage_counts:
                     stage_counts[stage_number] += 1
                 classification_report[email_id] = self._classification_report_row(email, decision)
@@ -147,8 +135,12 @@ class PipelineOrchestrator:
                     status=status,
                     processed_count=stage_counts[stage_number],
                     total_count=len(emails),
-                    failed_count=len(failures),
-                    review_count=0,
+                    failed_count=len(failures) if stage_number in (1, 2) else 0,
+                    review_count=sum(
+                        1
+                        for item in self.store.list_latest_results()
+                        if item.get("status") == "NEEDS_REVIEW"
+                    ),
                 ).model_dump(mode="json"),
             )
         self.store.update_run(
@@ -202,9 +194,14 @@ class PipelineOrchestrator:
             "subject": str(email.get("subject", "")),
         }
 
-    def process_email(self, email: dict[str, Any], run_id: str):
+    def process_email(
+        self,
+        email: dict[str, Any],
+        run_id: str,
+        category: EmailCategory | None = None,
+    ):
         email_id = email["email_id"]
-        category = self.classify_email(email)
+        category = category or self.classify_email(email)
         if category != EmailCategory.BL_COMPARISON:
             return decide_result(
                 email_id=email_id,

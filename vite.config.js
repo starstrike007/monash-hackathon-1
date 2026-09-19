@@ -6,6 +6,8 @@ import { fileURLToPath, URL } from 'node:url'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
+    port: 5173,
+    strictPort: true,
     proxy: {
       '/api': 'http://localhost:8000',
       '/health': 'http://localhost:8000',

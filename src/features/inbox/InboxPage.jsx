@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { ArrowRight, MagnifyingGlass } from '@phosphor-icons/react'
 
 import { CategoryBadge, StatusBadge } from '@/components/layout/StatusBadge'
-import { getDashboard, getEmails } from '@/lib/api'
+import { getAllEmails, getDashboard } from '@/lib/api'
 import { categoryLabel } from '@/lib/types'
 
 const filters = [
@@ -33,9 +33,14 @@ export function InboxPage({ navigate, initialStatus = '' }) {
   const [query, setQuery] = useState('')
   const [data, setData] = useState({ items: [], total: 0 })
   const [summary, setSummary] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    getEmails({ status: activeFilter, query }).then(setData)
+    setLoading(true)
+    getAllEmails({ status: activeFilter, query }).then((result) => {
+      setData(result)
+      setLoading(false)
+    })
   }, [activeFilter, query])
 
   useEffect(() => {
@@ -43,10 +48,10 @@ export function InboxPage({ navigate, initialStatus = '' }) {
   }, [])
 
   const counts = {
-    '': summary?.emails_processed || 520,
-    needs_review: summary?.needs_review || 14,
-    mismatch: summary?.mismatches_found || 41,
-    no_mismatch: summary?.outcomes?.OK || 71,
+    '': summary?.emails_processed ?? 0,
+    needs_review: summary?.needs_review ?? 0,
+    mismatch: summary?.mismatches_found ?? 0,
+    no_mismatch: summary?.outcomes?.OK ?? 0,
   }
 
   return (
@@ -54,7 +59,7 @@ export function InboxPage({ navigate, initialStatus = '' }) {
       <header className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
         <div>
           <p className="text-sm font-medium text-[#62757D]">
-            {summary?.emails_processed || 520} emails · last run complete
+            {summary?.emails_processed ?? 0} emails · last run complete
           </p>
           <h1 className="mt-1 font-serif text-5xl font-semibold tracking-tight text-[#16232B]">
             Inbox
@@ -93,50 +98,56 @@ export function InboxPage({ navigate, initialStatus = '' }) {
           <span>What needs attention</span>
           <span />
         </div>
-        {data.items.map((item) => (
-          <button
-            key={item.email_id}
-            onClick={() =>
-              navigate(
-                item.status === 'NEEDS_REVIEW'
-                  ? `/review/${item.email_id}`
-                  : `/inbox/${item.email_id}`,
-              )
-            }
-            className="grid w-full grid-cols-1 gap-3 border-t border-[#E9E5D9] px-6 py-5 text-left transition-colors hover:bg-[#FCFAF4] lg:grid-cols-[120px_minmax(260px,1.8fr)_190px_170px_minmax(220px,1fr)_32px] lg:items-center lg:gap-4"
-          >
-            <span className="font-mono text-sm text-[#71808A]">{item.display_id}</span>
-            <span className="min-w-0">
-              <strong className="block truncate text-[15px] text-[#26353D]">{item.subject}</strong>
-              <span className="mt-1 block truncate text-sm text-[#71808A]">
-                {item.sender} ·{' '}
-                {item.attachments?.length
-                  ? `${item.attachments.length} attachments`
-                  : 'no attachments'}
+        {loading && (
+          <div className="px-6 py-14 text-center text-sm text-[#71808A]">Loading emails…</div>
+        )}
+        {!loading &&
+          data.items.map((item) => (
+            <button
+              key={item.email_id}
+              onClick={() =>
+                navigate(
+                  item.status === 'NEEDS_REVIEW'
+                    ? `/review/${item.email_id}`
+                    : `/inbox/${item.email_id}`,
+                )
+              }
+              className="grid w-full grid-cols-1 gap-3 border-t border-[#E9E5D9] px-6 py-5 text-left transition-colors hover:bg-[#FCFAF4] lg:grid-cols-[120px_minmax(260px,1.8fr)_190px_170px_minmax(220px,1fr)_32px] lg:items-center lg:gap-4"
+            >
+              <span className="font-mono text-sm text-[#71808A]">{item.display_id}</span>
+              <span className="min-w-0">
+                <strong className="block truncate text-[15px] text-[#26353D]">
+                  {item.subject}
+                </strong>
+                <span className="mt-1 block truncate text-sm text-[#71808A]">
+                  {item.sender} ·{' '}
+                  {item.attachments?.length
+                    ? `${item.attachments.length} attachments`
+                    : 'no attachments'}
+                </span>
               </span>
-            </span>
-            <CategoryBadge category={item.category} className="w-fit" />
-            <span>
-              <StatusBadge status={item.status} />
-            </span>
-            <span className="truncate text-sm text-[#5E6D75]">
-              <span className="mr-2 rounded-full bg-[#FBEBCF] px-2 py-1 font-mono text-xs text-[#8A5300]">
-                {item.review_reason || ''}
+              <CategoryBadge category={item.category} className="w-fit" />
+              <span>
+                <StatusBadge status={item.status} />
               </span>
-              {item.attention || (item.status ? categoryLabel(item.category) : 'Classified only')}
-            </span>
-            <ArrowRight size={18} className="hidden text-[#71808A] lg:block" />
-          </button>
-        ))}
-        {!data.items.length && (
+              <span className="truncate text-sm text-[#5E6D75]">
+                <span className="mr-2 rounded-full bg-[#FBEBCF] px-2 py-1 font-mono text-xs text-[#8A5300]">
+                  {item.review_reason || ''}
+                </span>
+                {item.attention || (item.status ? categoryLabel(item.category) : 'Classified only')}
+              </span>
+              <ArrowRight size={18} className="hidden text-[#71808A] lg:block" />
+            </button>
+          ))}
+        {!loading && !data.items.length && (
           <div className="px-6 py-14 text-center text-sm text-[#71808A]">
             No emails match this filter.
           </div>
         )}
       </div>
       <p className="mt-5 text-sm text-[#71808A]">
-        Showing a sample of rows. Only document-comparison emails get a status; every other category
-        is classified and set aside.
+        Showing {data.items.length} of {data.total} emails. Only document-comparison emails get a
+        comparison status; every other category is classified and set aside.
       </p>
     </div>
   )

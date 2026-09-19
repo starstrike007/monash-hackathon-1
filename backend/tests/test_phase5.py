@@ -117,6 +117,22 @@ def test_synthetic_mismatch_case_only_defects_container_count(fixture_loader, tm
     assert [field.value for field in result.defect_fields] == ["container_count"]
 
 
+def test_pipeline_run_persists_document_comparison_result(fixture_loader, tmp_path):
+    email = load_fixture_email("email_fixture_mismatch")
+    store = LocalStore(tmp_path / "pipeline-run")
+    orchestrator = PipelineOrchestrator(fixture_loader, store)
+
+    run = orchestrator.run([email["email_id"]], rules_only=True)
+    result = store.get_result(email["email_id"])
+
+    assert run["status"] == "complete"
+    assert result is not None
+    assert result["category"] == EmailCategory.BL_COMPARISON.value
+    assert result["status"] == ComparisonStatus.MISMATCH.value
+    assert result["defect_fields"] == [CanonicalField.CONTAINER_COUNT.value]
+    assert [stage["stage_number"] for stage in store.get_stages(run["run_id"])] == [1, 2, 3, 4]
+
+
 @pytest.mark.xfail(
     reason="stub: one-sided missing attachments currently use wrong_doc_type instead of missing_attachment",
     strict=False,
