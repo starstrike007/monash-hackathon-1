@@ -32,3 +32,4 @@ ground_truth.json
 
 # Generated evaluator output
 backend/output/
+.gstack/

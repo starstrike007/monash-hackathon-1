@@ -231,6 +231,7 @@ export const mockDashboard = {
   },
   attention: mockEmails.filter((item) => item.status === STATUS.NEEDS_REVIEW),
   latest_run_id: 'mock-run',
+  last_run_at: new Date(Date.now() - 59 * 60 * 1000).toISOString(),
 }
 
 export const mockDetails = {
@@ -249,6 +250,7 @@ export const mockDetails = {
 export const mockRun = {
   run_id: 'mock-run',
   status: 'complete',
+  finished_at: new Date(Date.now() - 59 * 60 * 1000).toISOString(),
   total_emails: 520,
   summary: { BL_COMPARISON: 126, OK: 71, MISMATCH: 41, NEEDS_REVIEW: 14 },
   stages: [

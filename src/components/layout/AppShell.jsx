@@ -37,7 +37,7 @@ export function AppShell({ pathname, navigate, children, reviewCount = 14 }) {
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-[272px] -translate-x-full flex-col bg-[#13232C] px-5 py-7 text-white transition-transform lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex w-[272px] -translate-x-full flex-col bg-[#C2410C] px-5 py-7 text-white transition-transform lg:translate-x-0',
           open && 'translate-x-0',
         )}
       >
@@ -47,7 +47,7 @@ export function AppShell({ pathname, navigate, children, reviewCount = 14 }) {
             onClick={() => go('/dashboard')}
             aria-label="ShipCheck home"
           >
-            <span className="grid h-10 w-10 place-items-center rounded-lg bg-[#0E5A66] text-xl">
+            <span className="grid h-10 w-10 place-items-center rounded-lg bg-[#7C2D12] text-xl">
               ✓
             </span>
             <span className="font-serif text-2xl font-semibold tracking-tight">ShipCheck</span>
@@ -73,7 +73,7 @@ export function AppShell({ pathname, navigate, children, reviewCount = 14 }) {
                 onClick={() => go(path)}
                 className={cn(
                   'flex w-full items-center gap-4 rounded-xl px-4 py-3 text-left text-[15px] font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white',
-                  active && 'bg-[#294A5C] text-white',
+                  active && 'bg-[#9A3412] text-white',
                 )}
               >
                 <Icon size={21} weight={active ? 'fill' : 'regular'} />
@@ -88,7 +88,7 @@ export function AppShell({ pathname, navigate, children, reviewCount = 14 }) {
           })}
         </nav>
 
-        <div className="mt-auto rounded-xl bg-[#20394A] p-4 text-white/70">
+        <div className="mt-auto rounded-xl bg-[#9A3412] p-4 text-white/70">
           <p className="font-semibold text-white">Prototype</p>
           <p className="mt-1 text-sm leading-5">Sample data. Figures are illustrative.</p>
         </div>
