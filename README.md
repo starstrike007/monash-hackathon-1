@@ -40,6 +40,30 @@ The frontend calls FastAPI through `VITE_API_BASE_URL`:
 import { getDashboard } from '@/lib/api'
 ```
 
+## Production API deployment
+
+The Vercel project hosts the React frontend. Deploy the FastAPI service separately
+(Cloud Run matches the architecture diagram) using the repository `Dockerfile`.
+The container listens on the platform-provided `PORT` and includes the read-only
+`data/` fixtures used by the pipeline.
+
+Build and run it locally:
+
+```bash
+docker build -t shipcheck-api .
+docker run --rm -p 8000:8080 -e CORS_ORIGINS=http://localhost:5173 shipcheck-api
+```
+
+For the hosted service, configure `SUPABASE_URL`,
+`SUPABASE_SERVICE_ROLE_KEY`, `CORS_ORIGINS` (the Vercel origin),
+`RUNTIME_DIR=/tmp/.runtime`, and `OPENAI_API_KEY` when the fallback is enabled.
+Apply `supabase/migrations/001_initial_schema.sql` before enabling the Supabase
+store. Keep the service-role key and OpenAI key in the backend host's secret
+manager; never add them to Vercel or the repository.
+
+After the API has a public HTTPS URL, set Vercel's production
+`VITE_API_BASE_URL` to that URL and redeploy the frontend.
+
 ## Environment
 
 Copy `.env.example` to `.env` and fill in local values. Never commit `.env` or real credentials. Backend-only variables include `OPENAI_API_KEY`, `OPENAI_MODEL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `DATA_DIR`, `RUNTIME_DIR`, and `CORS_ORIGINS`.
