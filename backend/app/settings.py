@@ -14,12 +14,19 @@ class Settings:
         self.openai_timeout_seconds = float(os.getenv("OPENAI_TIMEOUT_SECONDS", "20"))
         self.supabase_url = os.getenv("SUPABASE_URL", "")
         self.supabase_service_role_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
-        allowed_origins = os.getenv("ALLOWED_ORIGINS", os.getenv("CORS_ORIGINS", "http://localhost:5173"))
+        allowed_origins = os.getenv("ALLOWED_ORIGINS") or os.getenv("CORS_ORIGINS")
         self.allowed_origins = [
             origin.strip()
-            for origin in allowed_origins.split(",")
+            for origin in (allowed_origins or "").split(",")
             if origin.strip()
         ]
+        # During local development Vite may select any free port. Production
+        # deployments must set ALLOWED_ORIGINS or CORS_ORIGINS explicitly.
+        self.cors_origin_regex = (
+            None
+            if self.allowed_origins
+            else r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
+        )
         # Keep the existing attribute name available to the app and callers.
         self.cors_origins = self.allowed_origins
 
