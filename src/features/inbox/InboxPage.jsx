@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { ArrowRight, MagnifyingGlass } from '@phosphor-icons/react'
+import { useEffect, useMemo, useState } from 'react'
+import { ArrowDown, ArrowRight, ArrowUp, MagnifyingGlass } from '@phosphor-icons/react'
 
 import { CategoryBadge, StatusBadge } from '@/components/layout/StatusBadge'
 import { getAllEmails, getDashboard } from '@/lib/api'
@@ -57,12 +57,18 @@ function FilterButton({ filter, active, count, onClick }) {
   )
 }
 
+function emailNumber(item) {
+  const match = String(item.email_id || item.display_id || '').match(/\d+/)
+  return match ? Number(match[0]) : 0
+}
+
 export function InboxPage({ navigate, initialStatus = '' }) {
   const [activeFilter, setActiveFilter] = useState(initialStatus || '')
   const [query, setQuery] = useState('')
   const [data, setData] = useState({ items: [], total: 0 })
   const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [sortDirection, setSortDirection] = useState('asc')
 
   useEffect(() => {
     setLoading(true)
@@ -75,6 +81,13 @@ export function InboxPage({ navigate, initialStatus = '' }) {
   useEffect(() => {
     getDashboard().then(setSummary)
   }, [])
+
+  const sortedItems = useMemo(() => {
+    const direction = sortDirection === 'asc' ? 1 : -1
+    return [...data.items].sort((a, b) => (emailNumber(a) - emailNumber(b)) * direction)
+  }, [data.items, sortDirection])
+
+  const SortIcon = sortDirection === 'asc' ? ArrowUp : ArrowDown
 
   const counts = {
     '': summary?.emails_processed ?? 0,
@@ -116,6 +129,15 @@ export function InboxPage({ navigate, initialStatus = '' }) {
             onClick={() => setActiveFilter(filter.key)}
           />
         ))}
+        <button
+          type="button"
+          onClick={() => setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'))}
+          aria-label={`Sort by email ID, ${sortDirection === 'asc' ? 'ascending' : 'descending'}. Click to reverse.`}
+          className="ml-auto inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-white px-4 text-sm font-semibold leading-none text-[#26353D] shadow-sm transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100"
+        >
+          <SortIcon size={16} weight="bold" className="shrink-0" />
+          Email ID · {sortDirection === 'asc' ? 'Ascending' : 'Descending'}
+        </button>
       </div>
 
       <div className="mt-6 overflow-hidden rounded-2xl bg-white shadow-[0_2px_10px_rgba(22,35,43,0.05)]">
@@ -131,7 +153,7 @@ export function InboxPage({ navigate, initialStatus = '' }) {
           <div className="px-6 py-14 text-center text-sm text-[#71808A]">Loading emails…</div>
         )}
         {!loading &&
-          data.items.map((item) => (
+          sortedItems.map((item) => (
             <button
               key={item.email_id}
               onClick={() =>
