@@ -321,20 +321,20 @@ export function CaseDetailPage({ navigate, emailId }) {
                 'attachments loaded from fixture data'}
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-2.5">
             <button
-              className="inline-flex h-12 items-center gap-2 rounded-xl border border-[#D5D0C2] bg-white px-5 font-semibold text-[#26353D]"
+              className="inline-flex h-11 items-center gap-2 rounded-lg bg-[#F6F3EC] px-4 font-semibold text-[#26353D] transition-transform duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100"
               onClick={() => navigator.clipboard?.writeText(JSON.stringify(result))}
             >
-              <Clipboard size={18} />
+              <Clipboard size={16} />
               Copy report
             </button>
             {!isReview && (
               <button
-                className="inline-flex h-12 items-center gap-2 rounded-xl bg-[#0E5A66] px-5 font-semibold text-white"
+                className="inline-flex h-11 items-center gap-2 rounded-lg bg-[#0E5A66] px-4 font-semibold text-white transition-transform duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100"
                 onClick={() => navigate('/inbox')}
               >
-                <Check size={18} />
+                <Check size={16} />
                 Mark as reviewed
               </button>
             )}
