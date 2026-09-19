@@ -24,7 +24,7 @@ function ValueCell({ value, side }) {
 
 function ComparisonTable({ comparisons }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-[#E3DED1] bg-white">
+    <div className="overflow-hidden rounded-2xl bg-white shadow-[0_2px_10px_rgba(22,35,43,0.05)]">
       <div className="grid grid-cols-[1.05fr_1.35fr_1.35fr_130px] gap-4 bg-[#FBF9F4] px-6 py-4 text-xs font-semibold uppercase tracking-[0.08em] text-[#71808A]">
         <span>Field</span>
         <span>Shipping instruction</span>
@@ -79,12 +79,92 @@ function ComparisonTable({ comparisons }) {
   )
 }
 
+const SNIPPET_CONTEXT = 2
+
+function DocumentSnippet({ document, comparison, comparisons }) {
+  const side = document.role === 'BL' ? 'bl' : 'si'
+  const value = comparison?.[side]?.raw_value
+  const flagged = comparison?.result === 'mismatch' || comparison?.result === 'skipped'
+  const tone =
+    comparison?.result === 'skipped'
+      ? { box: 'border-[#C47A00] bg-[#C47A00]/10', tag: 'bg-[#C47A00]', label: 'Uncertain' }
+      : { box: 'border-[#CF3B32] bg-[#CF3B32]/10', tag: 'bg-[#CF3B32]', label: 'Mismatch' }
+
+  const lines = document.text_preview
+    ? document.text_preview.split('\n')
+    : (comparisons || []).map(
+        (item) =>
+          `${fieldLabels[item.field_name]?.label || item.field_name}: ${item[side]?.raw_value ?? 'Not found'}`,
+      )
+  const matchIndex =
+    flagged && value
+      ? lines.findIndex((line) => line.toLowerCase().includes(value.toLowerCase()))
+      : -1
+  const start = matchIndex >= 0 ? Math.max(0, matchIndex - SNIPPET_CONTEXT) : 0
+  const end = matchIndex >= 0 ? matchIndex + SNIPPET_CONTEXT + 1 : 6
+  const visible = lines.slice(start, end)
+
+  return (
+    <figure className="mt-3">
+      <div className="overflow-hidden rounded-md border border-[#E3DED1] bg-white font-mono text-xs leading-6 text-[#46555E] shadow-sm">
+        {start > 0 && <p className="bg-[#F6F3EC] px-3 text-[#9AA4A8]">⋯</p>}
+        {visible.map((line, offset) => {
+          const index = start + offset
+          const position =
+            index === matchIndex ? line.toLowerCase().indexOf(value.toLowerCase()) : -1
+          return (
+            <div className="flex" key={index}>
+              <span className="w-8 shrink-0 select-none bg-[#F6F3EC] pr-2 text-right text-[#9AA4A8]">
+                {index + 1}
+              </span>
+              <span className="min-w-0 flex-1 whitespace-pre-wrap break-words px-3">
+                {position >= 0 ? (
+                  <>
+                    {line.slice(0, position)}
+                    <mark
+                      className={cn(
+                        'relative rounded-sm border-2 px-1 py-0.5 font-semibold text-[#16232B]',
+                        tone.box,
+                      )}
+                    >
+                      {line.slice(position, position + value.length)}
+                      <span
+                        className={cn(
+                          'absolute -top-3.5 right-[-2px] rounded-sm px-1 font-sans text-[9px] font-semibold uppercase leading-3 text-white',
+                          tone.tag,
+                        )}
+                      >
+                        {tone.label}
+                      </span>
+                    </mark>
+                    {line.slice(position + value.length)}
+                  </>
+                ) : (
+                  line || '\u00a0'
+                )}
+              </span>
+            </div>
+          )
+        })}
+        {end < lines.length && <p className="bg-[#F6F3EC] px-3 text-[#9AA4A8]">⋯</p>}
+      </div>
+      <figcaption className="mt-2 text-xs text-[#71808A]">
+        {matchIndex >= 0
+          ? `${document.role || 'Document'} · line ${matchIndex + 1} — highlighted value differs from the other document`
+          : flagged
+            ? 'Highlighted value is outside the stored preview. Use Open to see the full document.'
+            : 'No mismatch to highlight in this document.'}
+      </figcaption>
+    </figure>
+  )
+}
+
 function EvidencePanel({ result }) {
   const evidence =
     result?.comparisons?.find((item) => item.result === 'mismatch' || item.result === 'skipped') ||
     result?.comparisons?.[0]
   return (
-    <section className="rounded-2xl border border-[#E3DED1] bg-white p-6">
+    <section className="rounded-2xl bg-white shadow-[0_2px_10px_rgba(22,35,43,0.05)] p-6">
       <h2 className="text-xl font-semibold text-[#26353D]">Source evidence</h2>
       <p className="mt-1 text-sm text-[#71808A]">
         {evidence?.field_name
@@ -99,7 +179,7 @@ function EvidencePanel({ result }) {
                 {document.role || 'Document'} · {document.path.split('/').pop()}
               </p>
               <a
-                className="text-xs font-semibold text-[#0E5A66] hover:underline"
+                className="inline-block rounded-md px-2 py-1 text-xs font-semibold text-[#0E5A66] hover:bg-[#E6F0F1] transition-transform duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100"
                 href={attachmentUrl(document.path)}
                 target="_blank"
                 rel="noreferrer"
@@ -107,12 +187,15 @@ function EvidencePanel({ result }) {
                 Open
               </a>
             </div>
-            <p className="mt-3 whitespace-pre-wrap font-mono text-xs leading-5 text-[#46555E]">
-              {document.text_preview ||
-                (document.readable
-                  ? 'Readable document; field evidence is shown in the comparison table.'
-                  : 'Unreadable document. Review required.')}
-            </p>
+            {document.readable === false ? (
+              <p className="mt-3 text-sm text-[#71808A]">Unreadable document. Review required.</p>
+            ) : (
+              <DocumentSnippet
+                document={document}
+                comparison={evidence}
+                comparisons={result.comparisons}
+              />
+            )}
           </div>
         ))}
       </div>
@@ -144,7 +227,7 @@ function DecisionTimeline({ result }) {
     ],
   ]
   return (
-    <section className="rounded-2xl border border-[#E3DED1] bg-white p-6">
+    <section className="rounded-2xl bg-white shadow-[0_2px_10px_rgba(22,35,43,0.05)] p-6">
       <h2 className="text-xl font-semibold text-[#26353D]">How this was decided</h2>
       <div className="mt-5 grid gap-5 sm:grid-cols-2">
         {steps.map(([label, detail, good]) => (
@@ -191,7 +274,7 @@ function ReviewPanel({ emailId, result, onSaved }) {
   }
 
   return (
-    <section className="rounded-2xl border border-[#E3DED1] bg-white p-6">
+    <section className="rounded-2xl bg-white shadow-[0_2px_10px_rgba(22,35,43,0.05)] p-6">
       <h2 className="text-xl font-semibold text-[#26353D]">
         Resolve {fieldLabels[fieldName]?.label || fieldName}
       </h2>
@@ -251,7 +334,7 @@ function ReviewPanel({ emailId, result, onSaved }) {
         </div>
       )}
       <button
-        className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0E5A66] font-semibold text-white hover:bg-[#0B4B55] disabled:opacity-60"
+        className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0E5A66] font-semibold text-white hover:bg-[#0B4B55] disabled:opacity-60 transition-transform duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100"
         onClick={save}
         disabled={saving || (action === 'correct' && !correctedValue)}
       >
@@ -323,7 +406,7 @@ export function CaseDetailPage({ navigate, emailId }) {
           </div>
           <div className="flex gap-3">
             <button
-              className="inline-flex h-12 items-center gap-2 rounded-xl border border-[#D5D0C2] bg-white px-5 font-semibold text-[#26353D]"
+              className="inline-flex h-12 items-center gap-2 rounded-xl border border-[#D5D0C2] bg-white px-5 font-semibold text-[#26353D] transition-transform duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100"
               onClick={() => navigator.clipboard?.writeText(JSON.stringify(result))}
             >
               <Clipboard size={18} />
@@ -331,7 +414,7 @@ export function CaseDetailPage({ navigate, emailId }) {
             </button>
             {!isReview && (
               <button
-                className="inline-flex h-12 items-center gap-2 rounded-xl bg-[#0E5A66] px-5 font-semibold text-white"
+                className="inline-flex h-12 items-center gap-2 rounded-xl bg-[#0E5A66] px-5 font-semibold text-white transition-transform duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100"
                 onClick={() => navigate('/inbox')}
               >
                 <Check size={18} />
@@ -343,7 +426,7 @@ export function CaseDetailPage({ navigate, emailId }) {
       </header>
 
       {isReview ? (
-        <div className="mt-7 rounded-2xl border border-[#EBCB83] bg-[#FBEBCF] p-7">
+        <div className="mt-7 rounded-2xl bg-[#FBEBCF] shadow-[0_2px_10px_rgba(22,35,43,0.05)] p-7">
           <div className="flex gap-4">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white text-[#8A5300]">
               <Warning size={24} />
@@ -360,7 +443,7 @@ export function CaseDetailPage({ navigate, emailId }) {
           </div>
         </div>
       ) : (
-        <div className="mt-7 flex flex-col justify-between gap-4 rounded-2xl border border-[#F2C2BC] bg-[#F8E3E0] p-7 lg:flex-row lg:items-center">
+        <div className="mt-7 flex flex-col justify-between gap-4 rounded-2xl bg-[#F8E3E0] shadow-[0_2px_10px_rgba(22,35,43,0.05)] p-7 lg:flex-row lg:items-center">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.08em] text-[#A32720]">
               {mismatches} of 7 fields differ
@@ -385,14 +468,14 @@ export function CaseDetailPage({ navigate, emailId }) {
           {isReview ? (
             <ReviewPanel emailId={emailId} result={result} onSaved={updateResult} />
           ) : (
-            <section className="rounded-2xl border border-[#E3DED1] bg-white p-6">
+            <section className="rounded-2xl bg-white shadow-[0_2px_10px_rgba(22,35,43,0.05)] p-6">
               <h2 className="text-xl font-semibold text-[#26353D]">Next action</h2>
               <p className="mt-2 text-sm leading-6 text-[#71808A]">
                 This case has a deterministic mismatch. Copy the report or return to the inbox to
                 continue triage.
               </p>
               <button
-                className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#D5D0C2] font-semibold text-[#26353D]"
+                className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#D5D0C2] font-semibold text-[#26353D] transition-transform duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100"
                 onClick={retry}
               >
                 <X size={17} />

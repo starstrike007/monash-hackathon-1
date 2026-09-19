@@ -15,7 +15,7 @@ const filters = [
 function FilterButton({ filter, active, count, onClick }) {
   return (
     <button
-      className={`rounded-full border px-6 py-3 text-sm font-semibold transition-colors ${active ? 'border-[#16232B] bg-[#16232B] text-white' : 'border-[#D5D0C2] bg-white text-[#46555E] hover:bg-[#FCFAF4]'}`}
+      className={`rounded-full border px-6 py-3 text-sm font-semibold transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100 ${active ? 'border-[#16232B] bg-[#16232B] text-white' : 'border-[#D5D0C2] bg-white text-[#46555E] hover:bg-[#FCFAF4]'}`}
       onClick={onClick}
     >
       {filter.label}
@@ -89,7 +89,7 @@ export function InboxPage({ navigate, initialStatus = '' }) {
         ))}
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-2xl border border-[#E3DED1] bg-white">
+      <div className="mt-6 overflow-hidden rounded-2xl bg-white shadow-[0_2px_10px_rgba(22,35,43,0.05)]">
         <div className="hidden grid-cols-[120px_minmax(260px,1.8fr)_190px_170px_minmax(220px,1fr)_32px] gap-4 bg-[#FBF9F4] px-6 py-4 text-xs font-semibold uppercase tracking-[0.08em] text-[#71808A] lg:grid">
           <span>Email</span>
           <span>Subject</span>

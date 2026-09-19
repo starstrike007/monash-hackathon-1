@@ -37,7 +37,7 @@ export function AppShell({ pathname, navigate, children, reviewCount = 14 }) {
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-[272px] -translate-x-full flex-col bg-[#13232C] px-5 py-7 text-white transition-transform lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex w-[220px] -translate-x-full flex-col bg-[#13232C] px-5 py-7 text-white transition-transform lg:translate-x-0',
           open && 'translate-x-0',
         )}
       >
@@ -94,7 +94,7 @@ export function AppShell({ pathname, navigate, children, reviewCount = 14 }) {
         </div>
       </aside>
 
-      <main className="min-h-screen lg:pl-[272px]">{children}</main>
+      <main className="min-h-screen lg:pl-[220px]">{children}</main>
     </div>
   )
 }

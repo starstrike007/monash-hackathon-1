@@ -13,11 +13,11 @@ function StageCard({ stage }) {
       ? 100
       : 0
   return (
-    <section className="rounded-2xl border border-[#E3DED1] bg-white p-6">
-      <div className="flex items-center gap-4">
+    <section className="rounded-lg border border-[#E3DED1] bg-white px-3 py-2">
+      <div className="flex items-center gap-2">
         <span
           className={cn(
-            'grid h-12 w-12 shrink-0 place-items-center rounded-full',
+            'grid h-8 w-8 shrink-0 place-items-center rounded-full',
             complete
               ? 'bg-[#E2F1E8] text-[#17693F]'
               : failed
@@ -26,27 +26,27 @@ function StageCard({ stage }) {
           )}
         >
           {complete ? (
-            <CheckCircle size={25} weight="fill" />
+            <CheckCircle size={18} weight="fill" />
           ) : failed ? (
-            <Warning size={24} weight="fill" />
+            <Warning size={17} weight="fill" />
           ) : (
-            <CircleNotch size={24} className="animate-spin" />
+            <CircleNotch size={17} className="animate-spin" />
           )}
         </span>
-        <h2 className="text-xl font-semibold text-[#26353D]">
+        <h2 className="text-sm font-semibold text-[#26353D]">
           {stage.stage_number} · {stage.stage_name}
         </h2>
-        <span className="ml-auto rounded-full bg-[#E9E5D9] px-3 py-1 text-sm text-[#46555E]">
+        <span className="ml-auto rounded-full bg-[#E9E5D9] px-2 py-0.5 text-[11px] text-[#46555E]">
           {stage.stage_number <= 2 ? 'Rules + OpenAI' : 'Rule-based'}
         </span>
       </div>
-      <div className="mt-5 h-3 rounded-full bg-[#E9E5D9]">
+      <div className="mt-1.5 h-1.5 rounded-full bg-[#E9E5D9]">
         <div
-          className="h-3 rounded-full bg-[#0E5A66] transition-all"
+          className="h-1.5 rounded-full bg-[#0E5A66] transition-all"
           style={{ width: `${progress}%` }}
         />
       </div>
-      <div className="mt-4 flex justify-between gap-6 text-sm text-[#62757D]">
+      <div className="mt-1.5 flex justify-between gap-3 text-xs text-[#62757D]">
         <span>
           {stage.processed_count} of {stage.total_count}{' '}
           {stage.stage_number === 1
@@ -63,11 +63,9 @@ function StageCard({ stage }) {
         </span>
       </div>
       {stage.details?.failure && (
-        <div className="mt-5 flex items-center justify-between gap-4 rounded-xl border border-[#F2C2BC] bg-[#F8E3E0] p-4">
-          <div>
-            <p className="font-semibold text-[#A32720]">Item failed</p>
-            <p className="mt-1 text-sm text-[#8C2A24]">{stage.details.failure}</p>
-          </div>
+        <div className="mt-1.5 rounded-md border border-[#F2C2BC] bg-[#F8E3E0] p-1.5">
+          <p className="text-xs font-semibold text-[#A32720]">Item failed</p>
+          <p className="line-clamp-2 text-xs text-[#8C2A24]">{stage.details.failure}</p>
         </div>
       )}
     </section>
@@ -109,50 +107,50 @@ export function PipelineRunDrawer({ runId, onClose }) {
         onClick={onClose}
         aria-label="Close pipeline run"
       />
-      <aside className="relative h-full w-full max-w-[720px] overflow-y-auto bg-[#FBF9F4] px-6 py-8 shadow-2xl sm:px-10">
+      <aside className="relative flex h-full w-full max-w-[440px] flex-col bg-[#FBF9F4] px-4 py-4 shadow-2xl sm:px-5">
         <button
-          className="absolute right-6 top-6 grid h-12 w-12 place-items-center rounded-xl border border-[#D5D0C2] bg-white text-[#26353D]"
+          className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-lg border border-[#D5D0C2] bg-white text-[#26353D]"
           onClick={onClose}
           aria-label="Close"
         >
-          <X size={24} />
+          <X size={16} />
         </button>
-        <p className="text-lg text-[#62757D]">Started 09:41 · {run?.total_emails || 520} emails</p>
-        <h1 className="mt-1 font-serif text-5xl font-semibold tracking-tight text-[#16232B]">
+        <p className="text-xs text-[#62757D]">Started 09:41 · {run?.total_emails || 520} emails</p>
+        <h1 className="mt-0.5 font-serif text-2xl font-semibold tracking-tight text-[#16232B]">
           Pipeline run
         </h1>
         {run?.status === 'failed' && (
-          <div className="mt-8 flex items-center gap-3 rounded-2xl border border-[#EBCB83] bg-[#FBEBCF] p-5 text-[#5A3A08]">
-            <Warning size={25} />
+          <div className="mt-2 flex items-center gap-2 rounded-lg border border-[#EBCB83] bg-[#FBEBCF] p-2 text-xs text-[#5A3A08]">
+            <Warning size={16} />
             <p>
               <strong>Run complete.</strong> Some items failed and can be retried.
             </p>
           </div>
         )}
-        <div className="mt-8 space-y-6">
+        <div className="mt-3 flex-1 space-y-2 overflow-y-auto">
           {run?.stages?.map((stage) => <StageCard key={stage.stage_number} stage={stage} />) || (
-            <div className="h-72 animate-pulse rounded-2xl bg-white" />
+            <div className="h-40 animate-pulse rounded-lg bg-white" />
           )}
         </div>
         {run?.failures?.length ? (
-          <div className="mt-6 rounded-2xl border border-[#F2C2BC] bg-[#F8E3E0] p-5">
-            <p className="font-semibold text-[#A32720]">
+          <div className="mt-1.5 rounded-lg border border-[#F2C2BC] bg-[#F8E3E0] p-2">
+            <p className="text-xs font-semibold text-[#A32720]">
               {run.failures[0].email_id.toUpperCase()} failed
             </p>
-            <p className="mt-1 text-sm text-[#8C2A24]">{run.failures[0].message}</p>
+            <p className="line-clamp-2 text-xs text-[#8C2A24]">{run.failures[0].message}</p>
           </div>
         ) : null}
-        <div className="sticky bottom-0 mt-8 flex gap-3 bg-[#FBF9F4] py-3">
+        <div className="mt-2 flex gap-2">
           <button
-            className="inline-flex h-14 flex-1 items-center justify-center gap-2 rounded-xl bg-[#0E5A66] font-semibold text-white disabled:opacity-60"
+            className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#0E5A66] text-sm font-semibold text-white disabled:opacity-60"
             onClick={retry}
             disabled={retrying || !run?.failures?.length}
           >
-            <ArrowClockwise size={20} />
+            <ArrowClockwise size={16} />
             {retrying ? 'Retrying…' : `Retry failed (${run?.failures?.length || 0})`}
           </button>
           <button
-            className="h-14 rounded-xl border border-[#D5D0C2] bg-white px-7 font-semibold text-[#26353D]"
+            className="h-9 rounded-lg border border-[#D5D0C2] bg-white px-5 text-sm font-semibold text-[#26353D]"
             onClick={onClose}
           >
             Close
