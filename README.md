@@ -16,10 +16,11 @@ python -m venv .venv
 python -m pip install -r backend/requirements.txt
 ```
 
-Start the API from the repository root:
+Start the API from the `backend/` directory:
 
 ```powershell
-python -m uvicorn backend.app.main:app --reload --port 8000
+Set-Location backend
+python -m uvicorn app.main:app --reload --port 8000
 ```
 
 In a second terminal, install and start the frontend:
@@ -29,10 +30,11 @@ npm install
 npm run dev
 ```
 
-Run the regression suite from the repository root:
+Run the regression suite from the `backend/` directory:
 
 ```powershell
-pytest -q backend/tests
+Set-Location backend
+pytest -q
 ```
 
 The API reads the bundled email and attachment fixtures. Without Supabase it
@@ -73,7 +75,7 @@ runtime. Do not add Docker or Cloud Run configuration.
 
 - Root directory: `backend`
 - Build command: `pip install -r requirements.txt`
-- Start command: `PYTHONPATH=.. uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT`
+- Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 - Health check path: `/health`
 - Python version: `3.12` (set `PYTHON_VERSION=3.12.0` if the service does not
   inherit the repository's configured runtime)
@@ -122,8 +124,10 @@ Never commit `.env` files, service-role keys, OpenAI keys, or other secrets.
 ## Checks
 
 ```powershell
-pytest -q backend/tests
-python -m compileall -q backend
+Set-Location backend
+pytest -q
+python -m compileall -q app
+Set-Location ..
 npm run build
 ```
 

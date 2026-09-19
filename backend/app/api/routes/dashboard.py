@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request
 
-from backend.app.api.schemas.dashboard import DashboardSummary
-from backend.app.services.dashboard_service import build_dashboard
+from app.api.schemas.dashboard import DashboardSummary
+from app.services.dashboard_service import build_dashboard
 
 router = APIRouter(tags=["dashboard"])
 

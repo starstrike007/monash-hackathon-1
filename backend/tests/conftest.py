@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from backend.app.adapters.dataset_loader import DatasetLoader
+from app.adapters.dataset_loader import DatasetLoader
 
 
 FIXTURE_DATA_DIR = Path(__file__).resolve().parent / "fixtures"

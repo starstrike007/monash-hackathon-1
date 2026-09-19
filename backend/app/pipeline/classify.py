@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from backend.app.api.schemas.common import EmailCategory
+from app.api.schemas.common import EmailCategory
 
 
 def strip_noise(body: str) -> str:

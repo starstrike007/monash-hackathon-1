@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from backend.app.adapters.local_store import LocalStore
-from backend.app.api.schemas.common import ComparisonStatus, ReviewAction, dump_model
-from backend.app.api.schemas.review import ResolveRequest
+from app.adapters.local_store import LocalStore
+from app.api.schemas.common import ComparisonStatus, ReviewAction, dump_model
+from app.api.schemas.review import ResolveRequest
 
 
 def resolve_result(store: LocalStore, email_id: str, request: ResolveRequest) -> dict:

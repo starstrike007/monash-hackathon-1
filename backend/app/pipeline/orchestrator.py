@@ -5,11 +5,11 @@ from datetime import datetime, timezone
 import re
 from typing import Any
 
-from backend.app.adapters.dataset_loader import DatasetLoader
-from backend.app.adapters.document_parsers import parse_attachment
-from backend.app.adapters.local_store import LocalStore
-from backend.app.adapters.openai_client import OpenAIClient
-from backend.app.api.schemas.common import (
+from app.adapters.dataset_loader import DatasetLoader
+from app.adapters.document_parsers import parse_attachment
+from app.adapters.local_store import LocalStore
+from app.adapters.openai_client import OpenAIClient
+from app.api.schemas.common import (
     AttachmentMeta,
     Confidence,
     DocumentRole,
@@ -21,12 +21,12 @@ from backend.app.api.schemas.common import (
     ReviewReason,
     dump_model,
 )
-from backend.app.api.schemas.pipeline import PipelineStageProgress
-from backend.app.pipeline.classify import classify_email
-from backend.app.pipeline.compare import compare_documents
-from backend.app.pipeline.decide import decide_result
-from backend.app.pipeline.extract import extract_document
-from backend.app.pipeline.normalize import normalize_field, normalize_text
+from app.api.schemas.pipeline import PipelineStageProgress
+from app.pipeline.classify import classify_email
+from app.pipeline.compare import compare_documents
+from app.pipeline.decide import decide_result
+from app.pipeline.extract import extract_document
+from app.pipeline.normalize import normalize_field, normalize_text
 
 
 STAGES = ((1, "Classify"), (2, "Extract & normalize"), (3, "Compare"), (4, "Decide"))

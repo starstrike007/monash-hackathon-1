@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Request
 
-from backend.app.api.schemas.pipeline import (
+from app.api.schemas.pipeline import (
     PipelineRun,
     PipelineRunDetail,
     PipelineRunRequest,

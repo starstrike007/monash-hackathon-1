@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
-from backend.app.api.schemas.common import EmailCategory
-from backend.app.api.schemas.emails import EmailDetail, EmailListResponse
-from backend.app.api.schemas.review import ResolveRequest, ResolveResponse, RetryRequest
-from backend.app.services.dashboard_service import get_email_detail, to_email_item
-from backend.app.services.review_service import resolve_result
+from app.api.schemas.common import EmailCategory
+from app.api.schemas.emails import EmailDetail, EmailListResponse
+from app.api.schemas.review import ResolveRequest, ResolveResponse, RetryRequest
+from app.services.dashboard_service import get_email_detail, to_email_item
+from app.services.review_service import resolve_result
 
 router = APIRouter(tags=["emails"])
 

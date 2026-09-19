@@ -6,10 +6,10 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.app.adapters.document_parsers import parse_attachment
-from backend.app.adapters.local_store import LocalStore
-from backend.app.adapters.openai_client import OpenAIClient
-from backend.app.api.schemas.common import (
+from app.adapters.document_parsers import parse_attachment
+from app.adapters.local_store import LocalStore
+from app.adapters.openai_client import OpenAIClient
+from app.api.schemas.common import (
     CanonicalField,
     ComparisonStatus,
     Confidence,
@@ -23,13 +23,13 @@ from backend.app.api.schemas.common import (
     FieldExtraction,
     ReviewReason,
 )
-from backend.app.main import app
-from backend.app.pipeline.classify import classify_email
-from backend.app.pipeline.compare import compare_documents
-from backend.app.pipeline.decide import decide_result
-from backend.app.pipeline.extract import extract_document
-from backend.app.pipeline.orchestrator import PipelineOrchestrator
-from backend.app.settings import settings
+from app.main import app
+from app.pipeline.classify import classify_email
+from app.pipeline.compare import compare_documents
+from app.pipeline.decide import decide_result
+from app.pipeline.extract import extract_document
+from app.pipeline.orchestrator import PipelineOrchestrator
+from app.settings import settings
 
 from .conftest import FIXTURE_DATA_DIR
 

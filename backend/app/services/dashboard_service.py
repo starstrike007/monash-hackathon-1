@@ -3,11 +3,11 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any
 
-from backend.app.adapters.dataset_loader import DatasetLoader
-from backend.app.adapters.local_store import LocalStore
-from backend.app.api.schemas.common import ComparisonStatus, EmailCategory, dump_model
-from backend.app.api.schemas.dashboard import DashboardSummary
-from backend.app.api.schemas.emails import EmailDetail, EmailListItem
+from app.adapters.dataset_loader import DatasetLoader
+from app.adapters.local_store import LocalStore
+from app.api.schemas.common import ComparisonStatus, EmailCategory, dump_model
+from app.api.schemas.dashboard import DashboardSummary
+from app.api.schemas.emails import EmailDetail, EmailListItem
 
 
 def display_id(email_id: str) -> str:
