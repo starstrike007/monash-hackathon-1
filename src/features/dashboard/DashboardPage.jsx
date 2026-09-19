@@ -1,29 +1,26 @@
 import { useEffect, useState } from 'react'
-import {
-  ArrowDown,
-  ArrowRight,
-  CaretDown,
-  ChartBar,
-  Clock,
-  Play,
-  WarningCircle,
-} from '@phosphor-icons/react'
+import { ArrowDown, ArrowRight, Clock, Play, WarningCircle } from '@phosphor-icons/react'
 
 import { CategoryPie } from '@/components/charts/CategoryPie'
-import { DefectsByField, defectTotal } from '@/components/charts/DefectsByField'
 import { PipelineRunDrawer } from '@/features/pipeline-run/PipelineRunDrawer'
-import { getDashboard, getPipelineRun, runPipeline, submissionUrl } from '@/lib/api'
+import { getDashboard, getEmail, getEmails, getPipelineRun, runPipeline, submissionUrl } from '@/lib/api'
 import { relativeTime } from '@/lib/time'
 import { FIELDS, STATUS } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-function SummaryCard({ label, value, caption, warning = false, compact = false }) {
+function SummaryCard({ label, value, caption, warning = false, compact = false, onClick }) {
+  const Tag = onClick ? 'button' : 'div'
   return (
-    <div
+    <Tag
+      type={onClick ? 'button' : undefined}
+      onClick={onClick}
       className={cn(
-        'rounded-2xl border border-[#E3DED1] bg-white shadow-[0_1px_1px_rgba(22,35,43,0.03)]',
+        'relative rounded-2xl bg-white text-left shadow-[0_2px_10px_rgba(22,35,43,0.05)]',
+        'transition-all duration-200 ease-out hover:z-10 hover:scale-[1.03] hover:shadow-[0_12px_32px_rgba(22,35,43,0.12)] motion-reduce:transition-none motion-reduce:hover:scale-100',
         compact ? 'p-5' : 'p-6',
-        warning && 'border-[#EBCB83] bg-[#FBEBCF]',
+        warning && 'bg-[#FBEBCF]',
+        onClick &&
+          'cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0E5A66]',
       )}
     >
       <p className={cn('text-sm font-medium text-[#687780]', warning && 'text-[#8A5300]')}>
@@ -47,8 +44,17 @@ function SummaryCard({ label, value, caption, warning = false, compact = false }
       >
         {caption}
       </p>
-    </div>
+    </Tag>
   )
+}
+
+function formatLastUpdated(timestamp, now) {
+  const minutes = Math.floor((now - timestamp) / 60000)
+  if (minutes < 1) return 'just now'
+  if (minutes === 1) return '1 min ago'
+  if (minutes < 60) return `${minutes} mins ago`
+  const hours = Math.floor(minutes / 60)
+  return hours === 1 ? '1 hour ago' : `${hours} hours ago`
 }
 
 function useRelativeTime(value, intervalMs = 30000) {
@@ -217,7 +223,9 @@ function SummaryBrief({ data, navigate, lastRunAt }) {
 
 function SectionCard({ title, subtitle, children, className }) {
   return (
-    <section className={cn('rounded-2xl border border-[#E3DED1] bg-white p-7', className)}>
+    <section
+      className={cn('rounded-2xl bg-white p-7 shadow-[0_2px_10px_rgba(22,35,43,0.05)]', className)}
+    >
       <h2 className="text-xl font-semibold tracking-tight text-[#16232B]">{title}</h2>
       {subtitle && <p className="mt-1 text-sm text-[#71808A]">{subtitle}</p>}
       {children}
@@ -297,48 +305,31 @@ function AttentionList({ items, navigate }) {
   )
 }
 
-function MismatchesByField({ defects, navigate }) {
-  const [open, setOpen] = useState(false)
-  const total = defectTotal(defects)
-  const fieldCount = Object.values(defects || {}).filter(Boolean).length
-
+function DefectsByFieldSelectable({ defects, onSelect }) {
+  const rows = FIELDS.map((field) => ({ ...field, value: defects?.[field.key] || 0 })).sort(
+    (a, b) => b.value - a.value,
+  )
+  const maximum = Math.max(...rows.map((row) => row.value), 1)
   return (
-    <div className="mt-6 border-t border-[#E9E5D9] pt-5">
-      <button
-        type="button"
-        className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-[#FCFAF4]"
-        onClick={() => setOpen((value) => !value)}
-        aria-expanded={open}
-        aria-controls="mismatches-by-field"
-      >
-        <ChartBar size={18} className="shrink-0 text-[#0E5A66]" />
-        <span className="min-w-0 flex-1">
-          <strong className="block text-sm font-semibold text-[#26353D]">
-            Mismatches by field
-          </strong>
-          <span className="block text-sm text-[#71808A]">
-            {total} defects across {fieldCount} fields · where mismatches happen most
-          </span>
-        </span>
-        <CaretDown
-          size={18}
-          className={cn('shrink-0 text-[#71808A] transition-transform', open && 'rotate-180')}
-        />
-      </button>
-
-      {open && (
-        <div id="mismatches-by-field">
-          <DefectsByField defects={defects} className="mt-5" />
-          <button
-            type="button"
-            className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[#0E5A66] hover:underline"
-            onClick={() => navigate('/review')}
-          >
-            Open these in the review queue
-            <ArrowRight size={16} />
-          </button>
-        </div>
-      )}
+    <div className="mt-6 space-y-1">
+      {rows.map((row) => (
+        <button
+          type="button"
+          key={row.key}
+          onClick={() => onSelect(row.key)}
+          aria-label={`${row.label}: ${row.value} defects. Open a case with this defect`}
+          className="group flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left text-sm hover:bg-[#FCFAF4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0E5A66]"
+        >
+          <span className="w-32 shrink-0 text-[#46555E]">{row.label}</span>
+          <div className="flex h-3 flex-1 items-center rounded-full bg-[#E9E5D9]">
+            <div
+              className="h-2 rounded-full bg-[#CF3B32] transition-all duration-200 ease-out group-hover:h-3 group-hover:bg-[#B02A22] motion-reduce:transition-none"
+              style={{ width: `${(row.value / maximum) * 100}%` }}
+            />
+          </div>
+          <span className="w-7 text-right font-mono text-[#46555E]">{row.value}</span>
+        </button>
+      ))}
     </div>
   )
 }
@@ -348,10 +339,13 @@ export function DashboardPage({ navigate, initialRunId = null }) {
   const [lastRunAt, setLastRunAt] = useState(null)
   const [runId, setRunId] = useState(initialRunId)
   const [running, setRunning] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState(Date.now)
+  const [now, setNow] = useState(Date.now)
 
   async function loadDashboard() {
     const summary = await getDashboard()
     setData(summary)
+    setLastUpdated(Date.now())
 
     // The summary endpoint only carries the run id, so the finish time comes
     // from the run record itself.
@@ -367,12 +361,37 @@ export function DashboardPage({ navigate, initialRunId = null }) {
     loadDashboard()
   }, [])
 
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30000)
+    return () => window.clearInterval(timer)
+  }, [])
+
   async function startPipeline() {
     setRunning(true)
     const run = await runPipeline()
     setRunId(run.run_id)
     setRunning(false)
     loadDashboard()
+    setNow(Date.now())
+  }
+
+  async function openFirst(filter, fallback) {
+    const { items } = await getEmails(filter.params)
+    const first = items.find(filter.match)
+    navigate(first ? `/inbox/${first.email_id}` : fallback)
+  }
+
+  async function openDefect(fieldKey) {
+    const { items } = await getEmails({ status: 'mismatch' })
+    const mismatches = items.filter((item) => item.status === STATUS.MISMATCH).slice(0, 25)
+    const details = await Promise.all(mismatches.map((item) => getEmail(item.email_id)))
+    const index = details.findIndex((detail) =>
+      detail?.result?.comparisons?.some(
+        (comparison) => comparison.field_name === fieldKey && comparison.result === 'mismatch',
+      ),
+    )
+    const target = mismatches[index] || mismatches[0]
+    navigate(target ? `/inbox/${target.email_id}` : '/inbox?status=mismatch')
   }
 
   if (!data)
@@ -398,17 +417,17 @@ export function DashboardPage({ navigate, initialRunId = null }) {
               href={submissionUrl()}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex h-12 items-center gap-3 rounded-xl border border-[#D5D0C2] bg-white px-5 text-sm font-semibold text-[#26353D] hover:bg-[#FCFAF4]"
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 text-sm font-semibold leading-none transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100 bg-white text-[#26353D] shadow-sm"
             >
-              <ArrowDown size={19} />
+              <ArrowDown size={16} className="shrink-0" />
               Export submission JSON
             </a>
             <button
-              className="inline-flex h-12 items-center gap-3 rounded-xl bg-[#0E5A66] px-5 text-sm font-semibold text-white hover:bg-[#0B4B55] disabled:opacity-60"
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 text-sm font-semibold leading-none transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100 bg-[#0E5A66] text-white hover:bg-[#0B4B55] disabled:opacity-60 disabled:hover:scale-100 disabled:hover:shadow-none"
               onClick={startPipeline}
               disabled={running}
             >
-              <Play size={18} weight="fill" />
+              <Play size={16} weight="fill" className="shrink-0" />
               {running ? 'Running pipeline…' : 'Run pipeline'}
             </button>
           </div>
@@ -418,14 +437,45 @@ export function DashboardPage({ navigate, initialRunId = null }) {
           <SummaryBrief data={data} navigate={navigate} lastRunAt={lastRunAt} />
         </div>
 
-        <SectionCard
-          className="mt-7"
-          title="Needs your attention"
-          subtitle="Escalated with the reason and source evidence"
-        >
-          <AttentionList items={data.attention} navigate={navigate} />
-          <MismatchesByField defects={data.defects_by_field} navigate={navigate} />
-        </SectionCard>
+        <section className="mt-7 grid gap-4 xl:grid-cols-4">
+          <SummaryCard
+            label="Emails processed"
+            value={data.emails_processed}
+            caption={`Last updated: ${formatLastUpdated(lastUpdated, now)}`}
+          />
+          <SummaryCard
+            label="Comparison requests"
+            value={data.comparison_requests}
+            caption={`${data.comparison_requests - 2} SI/BL pairs · 2 missing attachment`}
+            onClick={() =>
+              openFirst(
+                { params: {}, match: (item) => item.category === 'BL_COMPARISON' },
+                '/inbox',
+              )
+            }
+          />
+          <SummaryCard
+            label="Mismatches found"
+            value={data.mismatches_found}
+            caption={`Across ${data.comparison_requests - data.needs_review} fully compared pairs`}
+            onClick={() =>
+              openFirst(
+                {
+                  params: { status: 'mismatch' },
+                  match: (item) => item.status === STATUS.MISMATCH,
+                },
+                '/inbox?status=mismatch',
+              )
+            }
+          />
+          <SummaryCard
+            label="Needs review"
+            value={data.needs_review}
+            caption="Awaiting a person's decision"
+            warning
+            onClick={() => navigate('/review')}
+          />
+        </section>
 
         <section className="mt-7 grid gap-6 xl:grid-cols-2">
           <SectionCard
@@ -439,6 +489,18 @@ export function DashboardPage({ navigate, initialRunId = null }) {
             subtitle={`Of ${data.comparison_requests} comparison requests`}
           >
             <OutcomeBreakdown outcomes={data.outcomes} />
+          </SectionCard>
+        </section>
+
+        <section className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.85fr)]">
+          <SectionCard
+            title="Needs your attention"
+            subtitle="Escalated with the reason and source evidence"
+          >
+            <AttentionList items={data.attention} navigate={navigate} />
+          </SectionCard>
+          <SectionCard title="Defects by field" subtitle="Where mismatches happen most">
+            <DefectsByFieldSelectable defects={data.defects_by_field} onSelect={openDefect} />
           </SectionCard>
         </section>
 
