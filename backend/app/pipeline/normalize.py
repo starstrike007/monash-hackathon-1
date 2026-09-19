@@ -4,7 +4,7 @@ import re
 import unicodedata
 from decimal import Decimal, InvalidOperation
 
-from backend.app.api.schemas.common import CanonicalField, FieldExtraction
+from app.api.schemas.common import CanonicalField, FieldExtraction
 
 
 PORT_ALIASES = {

@@ -109,7 +109,7 @@ export function PipelineRunDrawer({ runId, onClose }) {
       />
       <aside className="relative flex h-full w-full max-w-[440px] flex-col bg-[#FBF9F4] px-4 py-4 shadow-2xl sm:px-5">
         <button
-          className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-lg border border-[#D5D0C2] bg-white text-[#26353D]"
+          className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-lg bg-white text-[#26353D] shadow-sm transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100"
           onClick={onClose}
           aria-label="Close"
         >
@@ -142,15 +142,15 @@ export function PipelineRunDrawer({ runId, onClose }) {
         ) : null}
         <div className="mt-2 flex gap-2">
           <button
-            className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#0E5A66] text-sm font-semibold text-white disabled:opacity-60"
+            className="inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 text-sm font-semibold leading-none transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100 flex-1 bg-[#0E5A66] text-white hover:bg-[#0B4B55] disabled:opacity-60 disabled:hover:scale-100 disabled:hover:shadow-none"
             onClick={retry}
             disabled={retrying || !run?.failures?.length}
           >
-            <ArrowClockwise size={16} />
+            <ArrowClockwise size={16} className="shrink-0" />
             {retrying ? 'Retrying…' : `Retry failed (${run?.failures?.length || 0})`}
           </button>
           <button
-            className="h-9 rounded-lg border border-[#D5D0C2] bg-white px-5 text-sm font-semibold text-[#26353D]"
+            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 text-sm font-semibold leading-none transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100 bg-white text-[#26353D] shadow-sm"
             onClick={onClose}
           >
             Close

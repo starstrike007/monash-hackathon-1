@@ -1,4 +1,4 @@
-from backend.app.api.schemas.common import (
+from app.api.schemas.common import (
     CanonicalField,
     ComparisonStatus,
     DocumentRole,
@@ -9,11 +9,11 @@ from backend.app.api.schemas.common import (
     FieldEvidence,
     FieldExtraction,
 )
-from backend.app.adapters.document_parsers import ParsedDocument, detect_document_type
-from backend.app.pipeline.classify import classify_email
-from backend.app.pipeline.compare import compare_documents
-from backend.app.pipeline.decide import decide_result
-from backend.app.pipeline.extract import extract_document
+from app.adapters.document_parsers import ParsedDocument, detect_document_type
+from app.pipeline.classify import classify_email
+from app.pipeline.compare import compare_documents
+from app.pipeline.decide import decide_result
+from app.pipeline.extract import extract_document
 
 
 def test_classifier_keeps_a_draft_bl_request_without_compare_intent_general():

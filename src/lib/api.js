@@ -1,6 +1,7 @@
 import { mockDashboard, mockDetails, mockEmails, mockRun } from '@/lib/mockData'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+const API_BASE =
+  import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
 async function request(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, {
@@ -22,30 +23,65 @@ async function withFallback(operation, fallback) {
   }
 }
 
+function queryString(params = {}) {
+  const query = new URLSearchParams()
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') query.set(key, value)
+  })
+  return query.toString()
+}
+
+function fallbackEmails(params = {}) {
+  let items = [...mockEmails]
+  if (params.status) {
+    const status =
+      params.status.toUpperCase() === 'NO_MISMATCH' ? 'OK' : params.status.toUpperCase()
+    items = items.filter((item) => item.status === status)
+  }
+  if (params.query) {
+    const text = params.query.toLowerCase()
+    items = items.filter((item) =>
+      `${item.subject} ${item.sender} ${item.email_id}`.toLowerCase().includes(text),
+    )
+  }
+  return { items, total: items.length, page: 1, page_size: items.length }
+}
+
 export function getDashboard() {
   return withFallback(() => request('/api/dashboard/summary'), mockDashboard)
 }
 
 export function getEmails(params = {}) {
-  const query = new URLSearchParams()
-  Object.entries(params).forEach(([key, value]) => value && query.set(key, value))
   return withFallback(
-    () => request(`/api/emails?${query.toString()}`),
-    () => {
-      let items = [...mockEmails]
-      if (params.status) {
-        const status =
-          params.status.toUpperCase() === 'NO_MISMATCH' ? 'OK' : params.status.toUpperCase()
-        items = items.filter((item) => item.status === status)
-      }
-      if (params.query) {
-        const text = params.query.toLowerCase()
-        items = items.filter((item) =>
-          `${item.subject} ${item.sender} ${item.email_id}`.toLowerCase().includes(text),
+    () => request(`/api/emails?${queryString(params)}`),
+    () => fallbackEmails(params),
+  )
+}
+
+export function getAllEmails(params = {}) {
+  return withFallback(
+    async () => {
+      // The API caps a page at 200 items, so collect every page for the inbox.
+      const pageSize = 200
+      const items = []
+      let page = 1
+      let total = 0
+
+      while (page <= 100) {
+        const response = await request(
+          `/api/emails?${queryString({ ...params, page, page_size: pageSize })}`,
         )
+        const pageItems = Array.isArray(response.items) ? response.items : []
+        items.push(...pageItems)
+        total = Number.isFinite(response.total) ? response.total : items.length
+
+        if (!pageItems.length || items.length >= total || pageItems.length < pageSize) break
+        page += 1
       }
-      return { items, total: items.length, page: 1, page_size: 50 }
+
+      return { items, total, page: 1, page_size: items.length }
     },
+    () => fallbackEmails(params),
   )
 }
 

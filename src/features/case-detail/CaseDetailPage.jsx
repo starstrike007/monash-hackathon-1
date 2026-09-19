@@ -334,11 +334,11 @@ function ReviewPanel({ emailId, result, onSaved }) {
         </div>
       )}
       <button
-        className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0E5A66] font-semibold text-white hover:bg-[#0B4B55] disabled:opacity-60 transition-transform duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100"
+        className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 text-sm font-semibold leading-none transition-all duration-200 ease-out hover:scale-[1.02] hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100 bg-[#0E5A66] text-white hover:bg-[#0B4B55] disabled:opacity-60 disabled:hover:scale-100 disabled:hover:shadow-none"
         onClick={save}
         disabled={saving || (action === 'correct' && !correctedValue)}
       >
-        <FloppyDisk size={18} />
+        <FloppyDisk size={16} className="shrink-0" />
         {saving ? 'Saving…' : 'Save decision'}
       </button>
     </section>
@@ -382,10 +382,10 @@ export function CaseDetailPage({ navigate, emailId }) {
       <header>
         <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-[#0E5A66]">
           <button
-            className="inline-flex items-center gap-2 hover:underline"
+            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-white px-4 text-sm font-semibold leading-none text-[#26353D] shadow-sm transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100"
             onClick={() => navigate(isReview ? '/review' : '/inbox')}
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={16} className="shrink-0" />
             {isReview ? 'Review queue' : 'Inbox'}
           </button>
           <span>/</span>
@@ -404,20 +404,20 @@ export function CaseDetailPage({ navigate, emailId }) {
                 'attachments loaded from fixture data'}
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex shrink-0 items-center gap-2">
             <button
-              className="inline-flex h-12 items-center gap-2 rounded-xl border border-[#D5D0C2] bg-white px-5 font-semibold text-[#26353D] transition-transform duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100"
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 text-sm font-semibold leading-none transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100 bg-white text-[#26353D] shadow-sm"
               onClick={() => navigator.clipboard?.writeText(JSON.stringify(result))}
             >
-              <Clipboard size={18} />
+              <Clipboard size={16} className="shrink-0" />
               Copy report
             </button>
             {!isReview && (
               <button
-                className="inline-flex h-12 items-center gap-2 rounded-xl bg-[#0E5A66] px-5 font-semibold text-white transition-transform duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100"
+                className="inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 text-sm font-semibold leading-none transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100 bg-[#0E5A66] text-white"
                 onClick={() => navigate('/inbox')}
               >
-                <Check size={18} />
+                <Check size={16} weight="bold" className="shrink-0" />
                 Mark as reviewed
               </button>
             )}
@@ -475,10 +475,10 @@ export function CaseDetailPage({ navigate, emailId }) {
                 continue triage.
               </p>
               <button
-                className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#D5D0C2] font-semibold text-[#26353D] transition-transform duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100"
+                className="mt-5 inline-flex h-10 w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 text-sm font-semibold leading-none transition-all duration-200 ease-out hover:scale-[1.02] hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100 bg-white text-[#26353D] shadow-sm"
                 onClick={retry}
               >
-                <X size={17} />
+                <X size={16} className="shrink-0" />
                 Retry processing
               </button>
             </section>

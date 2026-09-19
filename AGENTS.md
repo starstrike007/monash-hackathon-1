@@ -14,6 +14,8 @@ Build the smallest coherent product that proves the hackathon idea: an inbox pip
 
 `docs/architecture.png` is the source of truth for the shape of the system. Keep code, docs, and this file aligned with it. If a change would depart from the diagram, say so and update the diagram and this file in the same change.
 
+**Deployment decision:** the diagram still labels the pipeline host as Google Cloud Run with Docker Compose. The team has decided to host the backend on Render instead. This file takes precedence on hosting until the diagram is updated. Do not add Docker or Cloud Run configuration.
+
 ### Data flow
 
 User -> Frontend -> API -> Input sources -> Pipeline (Stage 1 -> 2 -> 3 -> 4) -> Results store -> Submission JSON. The dashboard reads results back through the API.
@@ -23,7 +25,7 @@ User -> Frontend -> API -> Input sources -> Pipeline (Stage 1 -> 2 -> 3 -> 4) ->
 - **Client:** React + Vite + Tailwind/shadcn, hosted on Vercel. The browser talks only to the FastAPI API. It never holds a database service key or an OpenAI key.
 - **API layer:** FastAPI + Pydantic. It is the typed boundary between the UI and the pipeline.
 - **Input sources:** the email corpus (520 JSON records) and its attachments (txt, pdf, docx, xlsx), read from `data/` through `data/loader.py`.
-- **Pipeline service:** Python, four stages, containerized. Docker Compose for the reproducible local run, deployed on Google Cloud Run.
+- **Pipeline service:** Python, four stages, hosted as a Render web service using Render's native Python runtime. No Docker is required.
 - **External AI service:** OpenAI API, a single model (default GPT-5.6 Luna) that handles both text and vision fallbacks.
 - **Results store:** Supabase Postgres, per-email records. It is the system of record for results, field extractions, review decisions, and pipeline runs.
 - **Submission JSON:** scored output generated from the results store in the exact shape of `data/sample_submission.json`.
@@ -49,7 +51,7 @@ User -> Frontend -> API -> Input sources -> Pipeline (Stage 1 -> 2 -> 3 -> 4) ->
 - **Validation:** Pydantic for API, model output, and pipeline data.
 - **Tests:** `pytest`.
 - **Storage:** Supabase Postgres as the system of record. Local JSON files are acceptable for the first working slice and for offline development, but only behind the storage adapter, so switching to Supabase changes no pipeline code.
-- **Runtime:** Docker Compose locally, Cloud Run deployed. Vercel for the frontend.
+- **Runtime:** run the API locally with `uvicorn` and the frontend with `npm run dev`. Deployed: Render (API and pipeline), Vercel (frontend), Supabase (database).
 
 ## Repository layout
 
@@ -344,8 +346,10 @@ Run the pipeline against the supplied dataset, submit the evaluator output, insp
 
 ## Deployment and demo readiness
 
-- Frontend on Vercel. API and pipeline on Google Cloud Run from a backend `Dockerfile`. Results in Supabase.
-- Docker Compose provides the reproducible local run. Running the API and the frontend directly is fine during development.
+- Frontend on Vercel. API and pipeline on Render as a web service (native Python runtime; document the build and start commands in `README.md`, and listen on the port Render provides in `PORT`). Results in Supabase.
+- Render's free tier spins the service down when idle and loses local file changes, so keep all durable state (results, run status, review decisions) in Supabase, and keep `data/` inside the deployed code so it is available after a restart.
+- Do not add a Dockerfile, Docker Compose, or Cloud Run configuration.
+- The API must allow the Vercel frontend origin through CORS.
 - Keep setup instructions and required environment variables in `README.md`. Put secrets in a local `.env` and document only placeholder names in `.env.example`. Expected variables include `OPENAI_API_KEY`, `OPENAI_MODEL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `DATA_DIR`.
 - The primary demo flow must work from a fresh start without manual database editing or hidden setup steps.
 - Provide graceful degradation if a non-critical integration is unavailable.
