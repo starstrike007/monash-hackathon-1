@@ -162,9 +162,9 @@ function DefectsByField({ defects }) {
   )
 }
 
-export function DashboardPage({ navigate }) {
+export function DashboardPage({ navigate, initialRunId = null }) {
   const [data, setData] = useState(null)
-  const [runId, setRunId] = useState(null)
+  const [runId, setRunId] = useState(initialRunId)
   const [running, setRunning] = useState(false)
 
   useEffect(() => {

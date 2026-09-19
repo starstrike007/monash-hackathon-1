@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, Check, Clipboard, FloppyDisk, Warning, X } from '@phosphor-icons/react'
 
 import { CategoryBadge, StatusBadge } from '@/components/layout/StatusBadge'
-import { getEmail, resolveEmail, retryEmail } from '@/lib/api'
+import { attachmentUrl, getEmail, resolveEmail, retryEmail } from '@/lib/api'
 import { FIELDS, STATUS } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -100,7 +100,7 @@ function EvidencePanel({ result }) {
               </p>
               <a
                 className="text-xs font-semibold text-[#0E5A66] hover:underline"
-                href={`/api/attachments/${document.path.replace(/^attachments\//, '')}`}
+                href={attachmentUrl(document.path)}
                 target="_blank"
                 rel="noreferrer"
               >
@@ -281,9 +281,8 @@ export function CaseDetailPage({ navigate, emailId }) {
   const result = detail.result
   const isReview = result?.status === STATUS.NEEDS_REVIEW
   const mismatches = result?.defect_fields?.length || 0
-  const headline = isReview
-    ? 'BL draft for verification (vessel TBC)'
-    : 'Please check draft BL against SI — MV Orient Star'
+  const headline =
+    detail.subject || (isReview ? 'BL draft for verification' : 'Document comparison')
 
   async function retry() {
     await retryEmail(emailId)

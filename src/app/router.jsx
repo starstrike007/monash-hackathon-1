@@ -53,7 +53,8 @@ export function Router() {
   }
 
   let content
-  if (route.name === 'dashboard') content = <DashboardPage navigate={navigate} />
+  if (route.name === 'dashboard')
+    content = <DashboardPage navigate={navigate} initialRunId={route.search.get('runId')} />
   else if (route.name === 'inbox')
     content = <InboxPage navigate={navigate} initialStatus={route.search.get('status')} />
   else if (route.name === 'case')

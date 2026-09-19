@@ -2,16 +2,22 @@ from __future__ import annotations
 
 from collections import Counter
 from datetime import datetime, timezone
+import re
 from typing import Any
 
 from backend.app.adapters.dataset_loader import DatasetLoader
 from backend.app.adapters.document_parsers import parse_attachment
 from backend.app.adapters.local_store import LocalStore
+from backend.app.adapters.openai_client import OpenAIClient
 from backend.app.api.schemas.common import (
     AttachmentMeta,
+    Confidence,
     DocumentRole,
     DocumentType,
     EmailCategory,
+    ExtractionSource,
+    ExtractionState,
+    FieldEvidence,
     ReviewReason,
     dump_model,
 )
@@ -20,15 +26,17 @@ from backend.app.pipeline.classify import classify_email
 from backend.app.pipeline.compare import compare_documents
 from backend.app.pipeline.decide import decide_result
 from backend.app.pipeline.extract import extract_document
+from backend.app.pipeline.normalize import normalize_field, normalize_text
 
 
 STAGES = ((1, "Classify"), (2, "Extract & normalize"), (3, "Compare"), (4, "Decide"))
 
 
 class PipelineOrchestrator:
-    def __init__(self, loader: DatasetLoader, store: LocalStore) -> None:
+    def __init__(self, loader: DatasetLoader, store: LocalStore, llm: OpenAIClient | None = None) -> None:
         self.loader = loader
         self.store = store
+        self.llm = llm
 
     def ensure_seeded(self) -> None:
         if self.store.list_latest_results():
@@ -37,6 +45,14 @@ class PipelineOrchestrator:
 
     def run(self, email_ids: list[str] | None = None, retry_failed_only: bool = False) -> dict[str, Any]:
         emails = self.loader.list_emails()
+        if retry_failed_only and not email_ids:
+            latest_run = self.store.latest_run()
+            if latest_run:
+                email_ids = [
+                    failure.get("email_id")
+                    for failure in self.store.get_failures(latest_run["run_id"])
+                    if failure.get("email_id")
+                ]
         if email_ids:
             wanted = set(email_ids)
             emails = [email for email in emails if email.get("email_id") in wanted]
@@ -98,7 +114,7 @@ class PipelineOrchestrator:
 
     def process_email(self, email: dict[str, Any], run_id: str):
         email_id = email["email_id"]
-        category = classify_email(email)
+        category = self.classify_email(email)
         if category != EmailCategory.BL_COMPARISON:
             return decide_result(
                 email_id=email_id,
@@ -128,7 +144,7 @@ class PipelineOrchestrator:
                 role = DocumentRole.SI
             elif parsed.document_type == DocumentType.BILL_OF_LADING:
                 role = DocumentRole.BL
-            documents.append(extract_document(parsed, role))
+            documents.append(self.extract_document(parsed, role))
 
         si_documents = [document for document in documents if document.role == DocumentRole.SI]
         bl_documents = [document for document in documents if document.role == DocumentRole.BL]
@@ -168,3 +184,67 @@ class PipelineOrchestrator:
             documents=documents,
             notes=notes,
         )
+
+    def classify_email(self, email: dict[str, Any]) -> EmailCategory:
+        category = classify_email(email)
+        if category != EmailCategory.GENERAL or not self.llm or not self.llm.available:
+            return category
+        context_text = f"{email.get('subject', '')}\n{email.get('body', '')}".lower()
+        if not re.search(r"\b(?:si|bl)\b|shipping instruction|bill of lading|invoice", context_text):
+            return category
+        candidate = self.llm.propose_classification(
+            {
+                "subject": str(email.get("subject", "")),
+                "body": str(email.get("body", ""))[:6000],
+                "attachments": email.get("attachments", []),
+            }
+        )
+        try:
+            return EmailCategory(candidate) if candidate else category
+        except ValueError:
+            return category
+
+    def extract_document(self, parsed, role: DocumentRole | None):
+        document = extract_document(parsed, role)
+        if not self.llm or not self.llm.available or not parsed.readable:
+            return document
+        unresolved = [
+            field.field_name.value
+            for field in document.fields
+            if field.state in {ExtractionState.MISSING, ExtractionState.AMBIGUOUS}
+        ]
+        if not unresolved:
+            return document
+        proposal = self.llm.propose_fields(
+            {
+                "document_path": parsed.path,
+                "document_type": parsed.document_type.value,
+                "fields": unresolved,
+                "source_text": parsed.text[:15000],
+            }
+        )
+        if not proposal:
+            return document
+        source_text = re.sub(r"[^a-z0-9]+", "", normalize_text(parsed.text).lower())
+        for field in document.fields:
+            proposed = proposal.get(field.field_name.value)
+            if isinstance(proposed, dict):
+                proposed = proposed.get("value")
+            if not isinstance(proposed, str) or not proposed.strip():
+                continue
+            candidate_text = re.sub(r"[^a-z0-9]+", "", normalize_text(proposed).lower())
+            if not candidate_text or candidate_text not in source_text:
+                continue
+            normalized = normalize_field(field.field_name, proposed)
+            if normalized is None:
+                continue
+            field.raw_value = proposed
+            field.normalized_value = normalized
+            field.state = ExtractionState.FOUND
+            field.source = ExtractionSource.LLM
+            field.confidence = Confidence.MEDIUM
+            field.evidence = FieldEvidence(
+                snippet=f"Validated model value: {proposed}",
+                source_path=parsed.path,
+            )
+        return document

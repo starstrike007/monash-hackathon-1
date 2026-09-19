@@ -33,14 +33,15 @@ def create_store():
 async def lifespan(app: FastAPI):
     loader = DatasetLoader(settings.data_dir)
     store = create_store()
-    app.state.loader = loader
-    app.state.store = store
-    app.state.openai = OpenAIClient(
+    openai = OpenAIClient(
         settings.openai_api_key,
         settings.openai_model,
         settings.openai_timeout_seconds,
     )
-    app.state.orchestrator = PipelineOrchestrator(loader, store)
+    app.state.loader = loader
+    app.state.store = store
+    app.state.openai = openai
+    app.state.orchestrator = PipelineOrchestrator(loader, store, openai)
     yield
 
 

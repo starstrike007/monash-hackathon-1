@@ -96,8 +96,8 @@ export function PipelineRunDrawer({ runId, onClose }) {
     const failure = run?.failures?.[0]
     if (!failure) return
     setRetrying(true)
-    await retryEmail(failure.email_id)
-    const updated = await getPipelineRun(runId)
+    const retried = await retryEmail(failure.email_id)
+    const updated = await getPipelineRun(retried.run_id || runId)
     setRun(updated)
     setRetrying(false)
   }

@@ -6,46 +6,55 @@ from backend.app.adapters.document_parsers import ParsedDocument
 from backend.app.api.schemas.common import (
     CanonicalField,
     Confidence,
+    DocumentExtraction,
     DocumentRole,
     DocumentType,
     ExtractionSource,
     ExtractionState,
     FieldEvidence,
     FieldExtraction,
-    DocumentExtraction,
 )
 from backend.app.pipeline.normalize import normalize_extraction
 
 
 FIELD_PATTERNS: dict[CanonicalField, tuple[str, ...]] = {
-    CanonicalField.SHIPPER: (r"shipper(?:\s*/\s*exporter)?", r"shipper name", r"发货人"),
-    CanonicalField.CONSIGNEE: (r"consignee(?:\s*\([^)]*\))?", r"收货人"),
-    CanonicalField.NOTIFY_PARTY: (r"notify(?:\s+party)?", r"通知方"),
+    CanonicalField.SHIPPER: (
+        r"shipper(?:\s*/\s*exporter)?",
+        r"shipper name",
+        "\u53d1\u8d27\u4eba",
+    ),
+    CanonicalField.CONSIGNEE: (
+        r"consignee(?:\s*\([^)]*\))?",
+        r"to\s+the\s+order\s+of",
+        "\u6536\u8d27\u4eba",
+    ),
+    CanonicalField.NOTIFY_PARTY: (
+        r"notify(?:\s+party)?(?:\s*/\s*intermediate\s+consignee)?",
+        "\u901a\u77e5\u65b9",
+    ),
     CanonicalField.PORT_OF_LOADING: (
         r"port\s+of\s+loading(?:\s*\(\s*pol\s*\))?",
         r"load\s+port",
         r"\bpol\b",
-        r"装货港",
+        "\u88c5\u8d27\u6e2f",
     ),
     CanonicalField.PORT_OF_DISCHARGE: (
         r"port\s+of\s+discharge",
         r"discharge\s+port",
         r"\bpod\b",
         r"destination\s+port",
-        r"卸货港",
+        "\u5378\u8d27\u6e2f",
     ),
     CanonicalField.CONTAINER_COUNT: (
         r"container\s+count",
         r"total\s+containers?",
         r"no\.?\s+of\s+containers?(?:\s+or\s+packages)?",
-        r"containers?",
-        r"集装箱",
+        r"containers?(?=\s*[:=|\-])",
+        "\u96c6\u88c5\u7bb1",
     ),
     CanonicalField.GROSS_WEIGHT_KG: (
-        r"gross\s+weight",
-        r"gross\s+wt",
-        r"gross\s+wt\.?\s*\(kgs?\)",
-        r"毛重",
+        r"(?:total\s+)?gross\s+(?:weight|wt)[^|:=\-\d]*",
+        "\u6bdb\u91cd",
     ),
 }
 
@@ -58,15 +67,19 @@ def _find_value(text: str, patterns: tuple[str, ...]) -> tuple[str | None, str |
         stripped = line.strip().strip("|").strip()
         for pattern in patterns:
             match = re.search(
-                rf"(?:^|\|)\s*{pattern}\s*(?:\([^)]*\))?\s*(?:[:：=\-]\s*)?(.*)$",
+                rf"(?:^|\|)\s*{pattern}\s*(?:\([^)]*\)\s*)*(?:[:\uFF1A=\-]\s*)?(.*)$",
                 stripped,
                 flags=re.IGNORECASE,
             )
             if not match:
                 continue
             value = match.group(1).strip(" .|;\t")
+            if "|" in value:
+                value = next((part.strip(" .;\t") for part in value.split("|") if part.strip()), "")
             if not value and index + 1 < len(lines):
                 value = lines[index + 1].strip(" .|;\t")
+            if value and pattern.lower().startswith(r"to\s+the\s+order\s+of"):
+                value = f"To the Order of {value}"
             return (value or None), stripped
     return None, None
 
@@ -83,6 +96,7 @@ def extract_document(parsed: ParsedDocument, role: DocumentRole | None = None) -
                 )
             )
             continue
+
         raw_value, snippet = _find_value(parsed.text, patterns)
         if raw_value is None:
             extraction = FieldExtraction(
@@ -118,5 +132,7 @@ def extract_document(parsed: ParsedDocument, role: DocumentRole | None = None) -
         document_type=parsed.document_type,
         readable=parsed.readable,
         text_preview=parsed.text[:500],
+        table_rows=parsed.table_rows,
+        locations=parsed.locations,
         fields=fields,
     )

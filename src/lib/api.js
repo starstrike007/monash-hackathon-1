@@ -94,3 +94,8 @@ export function resolveEmail(emailId, payload) {
 export function submissionUrl() {
   return `${API_BASE}/api/export/submission`
 }
+
+export function attachmentUrl(path) {
+  const relativePath = path.replace(/^attachments\//, '')
+  return `${API_BASE}/api/attachments/${relativePath}`
+}

@@ -5,8 +5,8 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from backend.app.api.schemas.common import DocumentType
 from backend.app.adapters.dataset_loader import DatasetLoader
+from backend.app.api.schemas.common import DocumentType
 
 
 @dataclass
@@ -22,9 +22,14 @@ class ParsedDocument:
 
 def detect_document_type(text: str) -> DocumentType:
     upper = text.upper()
+    if re.search(
+        r"BILL\s+OF\s+LADING\s+INSTRUCTION|\bBL\s+INSTRUCTION\b|\bSI\s+INSTRUCTION\b|SHIPPING\s+INSTRUCTION",
+        upper,
+    ):
+        return DocumentType.SHIPPING_INSTRUCTION
     if re.search(r"BILL\s+OF\s+LADING|\bB/L\b|DRAFT\s+BL", upper):
         return DocumentType.BILL_OF_LADING
-    if re.search(r"SHIPPING\s+INSTRUCTION|SHIPPER/EXPORTER|NOTIFY\s+PARTY", upper):
+    if re.search(r"SHIPPER/EXPORTER|NOTIFY\s+PARTY", upper):
         return DocumentType.SHIPPING_INSTRUCTION
     if "COMMERCIAL INVOICE" in upper or re.search(r"\bINVOICE\b", upper):
         return DocumentType.COMMERCIAL_INVOICE
@@ -61,8 +66,8 @@ def _parse_docx(raw: bytes) -> tuple[str, list[list[str]], list[dict]]:
     document = Document(io.BytesIO(raw))
     paragraphs = [paragraph.text for paragraph in document.paragraphs if paragraph.text.strip()]
     rows: list[list[str]] = []
-    for table_index, table in enumerate(document.tables):
-        for row_index, row in enumerate(table.rows):
+    for table in document.tables:
+        for row in table.rows:
             cells = [cell.text.strip() for cell in row.cells]
             rows.append(cells)
     text = "\n".join(paragraphs + [" | ".join(row) for row in rows])
@@ -94,16 +99,10 @@ def parse_attachment(loader: DatasetLoader, relative_path: str) -> ParsedDocumen
         raw = loader.read_attachment_bytes(relative_path)
         if extension == ".txt":
             text = raw.decode("utf-8", errors="replace")
-            readable = bool(text.strip())
-            parsed = ParsedDocument(path=relative_path, text=text, readable=readable)
+            parsed = ParsedDocument(path=relative_path, text=text, readable=bool(text.strip()))
         elif extension == ".pdf":
             text, locations = _parse_pdf(raw)
-            parsed = ParsedDocument(
-                path=relative_path,
-                text=text,
-                locations=locations,
-                readable=bool(text.strip()),
-            )
+            parsed = ParsedDocument(path=relative_path, text=text, locations=locations, readable=bool(text.strip()))
         elif extension == ".docx":
             text, rows, locations = _parse_docx(raw)
             parsed = ParsedDocument(path=relative_path, text=text, table_rows=rows, locations=locations)
@@ -111,11 +110,7 @@ def parse_attachment(loader: DatasetLoader, relative_path: str) -> ParsedDocumen
             text, rows, locations = _parse_xlsx(raw)
             parsed = ParsedDocument(path=relative_path, text=text, table_rows=rows, locations=locations)
         else:
-            parsed = ParsedDocument(
-                path=relative_path,
-                readable=False,
-                error=f"Unsupported extension: {extension}",
-            )
+            parsed = ParsedDocument(path=relative_path, readable=False, error=f"Unsupported extension: {extension}")
     except Exception as exc:  # parser failures are expected operational errors
         parsed = ParsedDocument(path=relative_path, readable=False, error=str(exc))
 

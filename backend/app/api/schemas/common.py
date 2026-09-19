@@ -129,6 +129,8 @@ class DocumentExtraction(BaseModel):
     document_type: DocumentType
     readable: bool
     text_preview: str = ""
+    table_rows: list[list[str]] = Field(default_factory=list)
+    locations: list[dict[str, Any]] = Field(default_factory=list)
     fields: list[FieldExtraction] = Field(default_factory=list)
 
 
@@ -150,10 +152,21 @@ class ResultRecord(BaseModel):
     has_defect: bool | None = None
     defect_fields: list[CanonicalField] = Field(default_factory=list)
     skipped_fields: list[CanonicalField] = Field(default_factory=list)
+    selected_si_path: str | None = None
+    selected_bl_path: str | None = None
+    version: int = 1
     comparisons: list[FieldComparison] = Field(default_factory=list)
     documents: list[DocumentExtraction] = Field(default_factory=list)
     decision_notes: list[str] = Field(default_factory=list)
     updated_at: datetime | None = None
+
+
+class SubmissionRow(BaseModel):
+    category: EmailCategory
+    status: ComparisonStatus
+    review_reason: ReviewReason | None = None
+    defect_fields: list[CanonicalField] = Field(default_factory=list)
+    has_defect: bool = False
 
 
 def dump_model(value: BaseModel | Any) -> dict[str, Any]:

@@ -12,11 +12,17 @@ def strip_noise(body: str) -> str:
     return cleaned.strip()
 
 
+def _has_any(text: str, signals: tuple[str, ...]) -> bool:
+    return any(signal in text for signal in signals)
+
+
 def classify_email(email: dict[str, Any]) -> EmailCategory:
     subject = str(email.get("subject", ""))
     body = strip_noise(str(email.get("body", "")))
     text = f"{subject}\n{body}".lower()
-    attachments = " ".join(str(path).lower() for path in email.get("attachments", []))
+    attachments = [str(path).lower() for path in (email.get("attachments") or [])]
+    attachment_names = " ".join(attachments)
+    has_attachments = bool(attachments)
 
     spam_signals = (
         "congratulations",
@@ -28,13 +34,27 @@ def classify_email(email: dict[str, Any]) -> EmailCategory:
         "prize",
         "click here",
     )
-    if any(signal in text for signal in spam_signals):
+    if _has_any(text, spam_signals):
         return EmailCategory.SPAM
 
-    invoice_signals = ("invoice", "payment terms", "remittance", "billing", "payable")
-    if any(signal in text for signal in invoice_signals):
-        return EmailCategory.INVOICE_QUERY
+    # Filenames are only a supporting signal. They become useful here because the
+    # email body/subject must also express a checking or document intent.
+    attachment_doc_context = bool(re.search(r"(?:^|[_/ .-])(si|bl)(?:[._ -]|$)", attachment_names))
+    has_shipping_context = _has_any(
+        text,
+        (
+            "shipping instruction",
+            "draft bl",
+            "bill of lading",
+            "si and bl",
+            "si/bl",
+            "bl against the si",
+            "si against the bl",
+        ),
+    ) or bool(re.search(r"\b(?:si|bl)\b", text)) or attachment_doc_context
 
+    # Comparison intent is deliberately checked before invoice language. Some
+    # document requests mention an invoice as part of the shipment context.
     compare_signals = (
         "compare",
         "against",
@@ -42,18 +62,54 @@ def classify_email(email: dict[str, Any]) -> EmailCategory:
         "verification",
         "check the details",
         "check details",
+        "check the draft",
         "please confirm",
         "confirm the",
+        "to confirm docs",
         "review the draft",
+        "for checking",
+        "checking asap",
+        "discrepancy",
     )
-    document_signals = ("shipping instruction", "draft bl", "bill of lading", r"\bsi\b", r"\bbl\b")
-    has_compare_intent = any(signal in text for signal in compare_signals)
-    has_documents = any(re.search(signal, text) for signal in document_signals) or bool(attachments)
-    if has_compare_intent and has_documents:
+    explicit_pair_language = _has_any(
+        text,
+        (
+            "si and draft bl",
+            "compare the si",
+            "compare si",
+            "si against the bl",
+            "bl against the si",
+        ),
+    )
+    if _has_any(text, compare_signals) and (
+        (has_attachments and has_shipping_context) or explicit_pair_language
+    ):
         return EmailCategory.BL_COMPARISON
 
-    si_request_signals = ("shipping instruction", "send si", "si request", "please find si")
-    if any(signal in text for signal in si_request_signals):
+    invoice_signals = (
+        "invoice query",
+        "query on invoice",
+        "payment terms",
+        "remittance",
+        "billing",
+        "payable",
+    )
+    invoice_word_is_query = "invoice" in text and _has_any(
+        text,
+        ("query", "question", "clarify", "breakdown", "charge", "payment"),
+    )
+    if (_has_any(text, invoice_signals) or invoice_word_is_query) and not has_shipping_context:
+        return EmailCategory.INVOICE_QUERY
+
+    si_request_signals = (
+        "shipping instruction",
+        "send si",
+        "si request",
+        "please find si",
+        "request si",
+        "si needed",
+    )
+    if _has_any(text, si_request_signals):
         return EmailCategory.SI_REQUEST
 
     return EmailCategory.GENERAL

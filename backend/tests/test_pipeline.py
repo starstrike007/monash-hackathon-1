@@ -9,7 +9,7 @@ from backend.app.api.schemas.common import (
     FieldEvidence,
     FieldExtraction,
 )
-from backend.app.adapters.document_parsers import ParsedDocument
+from backend.app.adapters.document_parsers import ParsedDocument, detect_document_type
 from backend.app.pipeline.classify import classify_email
 from backend.app.pipeline.compare import compare_documents
 from backend.app.pipeline.decide import decide_result
@@ -30,6 +30,34 @@ def test_classifier_handles_spam_and_invoice():
     assert classify_email({"subject": "Invoice query", "body": "Please confirm payment terms", "attachments": []}) == EmailCategory.INVOICE_QUERY
 
 
+def test_classifier_requires_comparison_language_for_draft_bl_without_attachments():
+    assert classify_email(
+        {
+            "subject": "Draft BL MMSS 2507",
+            "body": "Please assist to send the draft BL when ready.",
+            "attachments": [],
+        }
+    ) == EmailCategory.GENERAL
+    assert classify_email(
+        {
+            "subject": "To confirm docs",
+            "body": "Please compare the SI and draft BL and confirm. Attachments were dropped.",
+            "attachments": [],
+        }
+    ) == EmailCategory.BL_COMPARISON
+
+
+def test_classifier_identifies_si_requests_and_document_instruction_labels():
+    assert classify_email(
+        {
+            "subject": "Request SI",
+            "body": "Please send the shipping instruction for this booking.",
+            "attachments": [],
+        }
+    ) == EmailCategory.SI_REQUEST
+    assert detect_document_type("BILL OF LADING INSTRUCTION\nShipper: Example") == DocumentType.SHIPPING_INSTRUCTION
+
+
 def test_text_extraction_normalizes_equivalent_values():
     si = ParsedDocument(
         path="attachments/si.txt",
@@ -45,6 +73,29 @@ def test_text_extraction_normalizes_equivalent_values():
     bl_extracted = extract_document(bl, DocumentRole.BL)
     comparisons = compare_documents(si_extracted, bl_extracted)
     assert all(comparison.result == "match" for comparison in comparisons)
+
+
+def test_order_mode_consignee_is_explicit_and_comparable():
+    si = extract_document(
+        ParsedDocument(
+            path="si.txt",
+            text="SHIPPING INSTRUCTION\nTo the Order of: Harbour Line Trading Ltd",
+            document_type=DocumentType.SHIPPING_INSTRUCTION,
+        ),
+        DocumentRole.SI,
+    )
+    bl = extract_document(
+        ParsedDocument(
+            path="bl.txt",
+            text="BILL OF LADING\nTo the Order of (??): Harbour Line Trading Ltd",
+            document_type=DocumentType.BILL_OF_LADING,
+        ),
+        DocumentRole.BL,
+    )
+    consignee = next(field for field in si.fields if field.field_name == CanonicalField.CONSIGNEE)
+    assert consignee.raw_value.startswith("To the Order of")
+    comparison = next(item for item in compare_documents(si, bl) if item.field_name == CanonicalField.CONSIGNEE)
+    assert comparison.result == "match"
 
 
 def test_one_field_difference_is_a_mismatch():

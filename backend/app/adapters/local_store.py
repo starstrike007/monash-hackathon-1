@@ -131,17 +131,68 @@ class SupabaseStore(LocalStore):
             # The local cache remains authoritative for offline demo continuity.
             return
 
+    def create_run(self, total_emails: int) -> dict[str, Any]:
+        run = super().create_run(total_emails)
+        self._mirror(
+            "pipeline_runs",
+            {
+                "id": run["run_id"],
+                "status": run["status"],
+                "started_at": run["started_at"],
+                "finished_at": run["finished_at"],
+                "total_emails": run["total_emails"],
+                "summary": run["summary"],
+                "error_summary": run["error_summary"],
+            },
+            "id",
+        )
+        return run
+
+    def upsert_stage(self, run_id: str, stage_number: int, payload: dict[str, Any]) -> dict[str, Any]:
+        stage = super().upsert_stage(run_id, stage_number, payload)
+        self._mirror(
+            "pipeline_run_stages",
+            {
+                "run_id": run_id,
+                "stage_number": stage_number,
+                "stage_name": stage.get("stage_name"),
+                "status": stage.get("status"),
+                "processed_count": stage.get("processed_count", 0),
+                "total_count": stage.get("total_count", 0),
+                "failed_count": stage.get("failed_count", 0),
+                "review_count": stage.get("review_count", 0),
+                "details": stage.get("details", {}),
+            },
+            "run_id,stage_number",
+        )
+        return stage
+
     def update_run(self, run_id: str, **changes: Any) -> dict[str, Any]:
         result = super().update_run(run_id, **changes)
-        self._mirror("pipeline_runs", result, "id")
+        self._mirror(
+            "pipeline_runs",
+            {
+                "id": run_id,
+                "status": result.get("status"),
+                "started_at": result.get("started_at"),
+                "finished_at": result.get("finished_at"),
+                "total_emails": result.get("total_emails", 0),
+                "summary": result.get("summary", {}),
+                "error_summary": result.get("error_summary", {}),
+            },
+            "id",
+        )
         return result
 
     def save_result(self, result: dict[str, Any]) -> None:
         super().save_result(result)
+        result_id = result.get("id") or str(
+            uuid.uuid5(uuid.NAMESPACE_URL, f"shipcheck:{result.get('run_id')}:{result.get('email_id')}")
+        )
         self._mirror(
             "results",
             {
-                "id": result.get("id") or str(uuid.uuid4()),
+                "id": result_id,
                 "run_id": result.get("run_id"),
                 "email_id": result.get("email_id"),
                 "category": result.get("category"),
@@ -150,7 +201,49 @@ class SupabaseStore(LocalStore):
                 "has_defect": result.get("has_defect"),
                 "defect_fields": result.get("defect_fields", []),
                 "skipped_fields": result.get("skipped_fields", []),
+                "si_path": result.get("selected_si_path"),
+                "bl_path": result.get("selected_bl_path"),
+                "version": result.get("version", 1),
                 "updated_at": result.get("updated_at"),
             },
             "run_id,email_id",
+        )
+        for document in result.get("documents", []):
+            role = document.get("role")
+            if not role:
+                continue
+            for field in document.get("fields", []):
+                self._mirror(
+                    "field_extractions",
+                    {
+                        "result_id": result_id,
+                        "document_role": role,
+                        "field_name": field.get("field_name"),
+                        "state": field.get("state"),
+                        "raw_value": field.get("raw_value"),
+                        "normalized_value": field.get("normalized_value"),
+                        "source": field.get("source"),
+                        "confidence": field.get("confidence"),
+                        "evidence": field.get("evidence"),
+                    },
+                    "result_id,document_role,field_name",
+                )
+
+    def add_review(self, review: dict[str, Any]) -> None:
+        super().add_review(review)
+        current = self.get_result(review.get("email_id", "")) or {}
+        result_id = current.get("id") or str(
+            uuid.uuid5(uuid.NAMESPACE_URL, f"shipcheck:{current.get('run_id')}:{current.get('email_id')}")
+        )
+        self._mirror(
+            "review_decisions",
+            {
+                "result_id": result_id,
+                "field_name": review.get("field_name"),
+                "action": review.get("action"),
+                "original_value": review.get("original_value"),
+                "corrected_value": review.get("corrected_value"),
+                "reviewer_id": review.get("reviewer_id"),
+                "created_at": review.get("created_at"),
+            },
         )

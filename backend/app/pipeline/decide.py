@@ -20,6 +20,14 @@ def decide_result(
     document_reason: ReviewReason | None = None,
     notes: list[str] | None = None,
 ) -> ResultRecord:
+    selected_si_path = next(
+        (document.path for document in documents if document.role and document.role.value == "SI"),
+        None,
+    )
+    selected_bl_path = next(
+        (document.path for document in documents if document.role and document.role.value == "BL"),
+        None,
+    )
     if category != EmailCategory.BL_COMPARISON:
         return ResultRecord(
             email_id=email_id,
@@ -27,6 +35,8 @@ def decide_result(
             category=category,
             status=None,
             has_defect=None,
+            selected_si_path=selected_si_path,
+            selected_bl_path=selected_bl_path,
             comparisons=comparisons,
             documents=documents,
             decision_notes=notes or [],
@@ -62,6 +72,8 @@ def decide_result(
         has_defect=has_defect,
         defect_fields=defect_fields,
         skipped_fields=skipped_fields,
+        selected_si_path=selected_si_path,
+        selected_bl_path=selected_bl_path,
         comparisons=comparisons,
         documents=documents,
         decision_notes=notes or [],
