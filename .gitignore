@@ -14,6 +14,8 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+*.zip
+ground_truth.json
 
 # Local tooling and operating-system files
 .DS_Store
@@ -26,3 +28,4 @@ venv/
 .vercel
 .env*
 .runtime/
+!.env.example

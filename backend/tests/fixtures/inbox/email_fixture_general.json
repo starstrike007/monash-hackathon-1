@@ -1,0 +1,7 @@
+{
+  "email_id": "email_fixture_general",
+  "from": "ops@example.test",
+  "subject": "Draft BL timing",
+  "body": "Could you review the draft BL timing? No comparison is needed; please tell me the planned release date.",
+  "attachments": []
+}

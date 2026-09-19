@@ -1,0 +1,9 @@
+{
+  "email_id": "email_fixture_missing_bl",
+  "from": "ops@example.test",
+  "subject": "Comparison requested",
+  "body": "Please compare the attached SI against the draft BL and confirm the shipping details.",
+  "attachments": [
+    "attachments/fixture_missing_bl_si.txt"
+  ]
+}

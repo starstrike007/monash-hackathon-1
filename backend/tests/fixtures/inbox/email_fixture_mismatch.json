@@ -1,0 +1,10 @@
+{
+  "email_id": "email_fixture_mismatch",
+  "from": "ops@example.test",
+  "subject": "Verify shipping documents",
+  "body": "Please compare the SI against the draft BL and confirm.",
+  "attachments": [
+    "attachments/fixture_mismatch_si.txt",
+    "attachments/fixture_mismatch_bl.txt"
+  ]
+}
