@@ -162,7 +162,7 @@ def test_identical_unresolved_emails_share_one_llm_call():
 
 
 class _Response:
-    output_text = '{"category":"SPAM"}'
+    output_text = '{"category":"SPAM","confidence":"high","reason":"Promotional message"}'
 
 
 class _Responses:
@@ -204,6 +204,7 @@ def test_openai_classification_requests_strict_structured_output():
     assert stub.responses.kwargs is not None
     assert stub.responses.kwargs["text"]["format"]["type"] == "json_schema"
     assert stub.responses.kwargs["text"]["format"]["strict"] is True
+    assert stub.responses.kwargs["timeout"] == 20.0
 
 
 def test_openai_retries_transient_failures_with_a_bound():

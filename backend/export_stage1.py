@@ -30,6 +30,7 @@ def main() -> None:
             settings.openai_api_key,
             settings.openai_model,
             settings.openai_timeout_seconds,
+            reasoning_effort=settings.openai_reasoning_effort_classify,
         )
     orchestrator = PipelineOrchestrator(
         loader,

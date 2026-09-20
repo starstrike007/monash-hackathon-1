@@ -37,6 +37,7 @@ async def lifespan(app: FastAPI):
         settings.openai_api_key,
         settings.openai_model,
         settings.openai_timeout_seconds,
+        reasoning_effort=settings.openai_reasoning_effort_classify,
     )
     app.state.loader = loader
     app.state.store = store
