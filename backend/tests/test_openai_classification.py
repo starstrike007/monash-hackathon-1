@@ -3,10 +3,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 from typing import Any
 
-import pytest
-from pydantic import ValidationError
-
 from app.adapters.openai_client import (
+    ClassificationOutputError,
     ClassificationProposal,
     OpenAIClient,
 )
@@ -61,6 +59,10 @@ class BadRequestError(Exception):
     status_code = 400
 
 
+class RetryableProviderError(Exception):
+    retryable = True
+
+
 def test_classification_schema_is_strict_and_all_fields_are_required():
     schema = ClassificationProposal.model_json_schema()
 
@@ -71,10 +73,10 @@ def test_classification_schema_is_strict_and_all_fields_are_required():
         "confidence",
         "reason",
     }
-    with pytest.raises(ValidationError):
-        ClassificationProposal.model_validate(
-            {"category": "GENERAL", "confidence": "low", "reason": "one two three " * 8}
-        )
+    proposal = ClassificationProposal.model_validate(
+        {"category": "GENERAL", "confidence": "low", "reason": "one two three " * 8}
+    )
+    assert len(proposal.reason.split()) == 20
 
 
 def test_responses_parse_uses_prompt_version_model_and_reasoning(monkeypatch):
@@ -114,6 +116,40 @@ def test_rate_limit_retry_after_then_success(monkeypatch):
     assert client.retry_count == 1
     assert sleeps == [1.5]
     assert client.last_failure_reason_code is None
+
+
+def test_provider_retryable_marker_triggers_retry():
+    client = OpenAIClient(
+        "synthetic-key",
+        "synthetic-model",
+        max_retries=1,
+        retry_backoff_seconds=0,
+    )
+    mock = MockClient([RetryableProviderError("temporary provider failure"), _parsed_response()])
+    client.client = mock
+
+    result = client.propose_classification_result({"subject": "test", "body": "", "attachments": []})
+
+    assert result.proposal is not None
+    assert result.attempts == 2
+    assert client.retry_count == 1
+
+
+def test_empty_structured_response_retries():
+    client = OpenAIClient(
+        "synthetic-key",
+        "synthetic-model",
+        max_retries=1,
+        retry_backoff_seconds=0,
+    )
+    mock = MockClient([ClassificationOutputError("no parsed output"), _parsed_response()])
+    client.client = mock
+
+    result = client.propose_classification_result({"subject": "test", "body": "", "attachments": []})
+
+    assert result.proposal is not None
+    assert result.attempts == 2
+    assert client.retry_count == 1
 
 
 def test_permanent_bad_request_does_not_retry():
@@ -188,3 +224,29 @@ def test_report_row_records_classification_trace_and_failure_code():
         "output_tokens": 4,
         "reasoning_tokens": 1,
     }
+
+
+def test_report_row_records_safe_failure_diagnostics():
+    class TracedFailure:
+        available = True
+        model = "synthetic-model"
+
+        def propose_classification_result(self, context: dict[str, Any]) -> Any:
+            return SimpleNamespace(
+                proposal=None,
+                failure_reason_code="llm_error",
+                attempts=3,
+                exception_class="APIConnectionError",
+                exception_message="OpenAI API connection failed",
+            )
+
+    email = {"email_id": "email-failure", "subject": "Question", "body": "secret body"}
+    service = ClassificationService(TracedFailure())
+    decision = service.classify(email)
+    row = PipelineOrchestrator._classification_report_row(email, decision)
+
+    assert row["failure_reason_code"] == "llm_error"
+    assert row["attempts"] == 3
+    assert row["exception_class"] == "APIConnectionError"
+    assert row["exception_message"] == "OpenAI API connection failed"
+    assert "secret body" not in row["exception_message"]

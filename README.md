@@ -44,6 +44,16 @@ Set-Location backend
 python smoke_classify.py --limit 5
 ```
 
+Run the full Stage 1 export from `backend/`:
+
+```powershell
+Set-Location backend
+python export_stage1.py
+```
+
+The export loads the optional `backend/.env` file automatically. Variables
+already present in the process environment take precedence over that file.
+
 The API reads the bundled email and attachment fixtures. Without Supabase it
 uses `.runtime/shipcheck_store.json` for local results. Set the variables in
 `backend/.env.example` in the environment before starting the API; the

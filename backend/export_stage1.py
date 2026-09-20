@@ -62,6 +62,7 @@ def main() -> None:
                 "decided_by_counts": dict(Counter(row["decided_by"] for row in report.values())),
                 "run_status": run["status"],
                 "openai_key_found": bool(settings.openai_api_key),
+                "openai_key_source": settings.openai_key_source,
                 **orchestrator.last_classification_metrics,
             },
             ensure_ascii=False,

@@ -48,10 +48,10 @@ class ClassificationProposal(BaseModel):
     def validate_reason(cls, value: str) -> str:
         words = value.split()
         if not words:
-            raise ValueError("reason must not be empty")
-        if len(words) > 20:
-            raise ValueError("reason must contain at most 20 words")
-        return " ".join(words)
+            return "Model returned a classification without an explanation."
+        # The explanation is diagnostic only; do not discard a valid category
+        # because the model returned a verbose reason.
+        return " ".join(words[:20])
 
 
 @dataclass(frozen=True)
@@ -131,8 +131,58 @@ def failure_reason_code(error: Exception) -> str:
     return "llm_error"
 
 
+def safe_exception_message(error: Exception) -> str:
+    """Return a short diagnostic without provider payloads or request content."""
+
+    name = type(error).__name__
+    reason = failure_reason_code(error)
+    if isinstance(error, MissingAPIKeyError):
+        return "OPENAI_API_KEY is not configured"
+    if reason == "llm_rate_limited":
+        return "OpenAI API rate limit"
+    if reason == "llm_timeout":
+        return "OpenAI API request timed out"
+    if reason == "llm_bad_request":
+        return "OpenAI API rejected the request"
+    if name == "ClassificationOutputError":
+        return "Structured classification response was empty or unusable"
+    if name in {"ValidationError", "JSONDecodeError", "APIResponseValidationError"}:
+        return "Structured classification response failed validation"
+    if isinstance(error, (ConnectionError, OSError)) or name in {
+        "APIConnectionError",
+        "InternalServerError",
+        "ServiceUnavailableError",
+    }:
+        return "OpenAI API connection failed"
+    status_code = _status_code(error)
+    if status_code is not None:
+        return f"OpenAI API request failed (HTTP {status_code})"
+    return "OpenAI classification request failed"
+
+
+def _api_retryable_marker(error: Exception) -> bool | None:
+    """Read retryability markers exposed by provider SDK exceptions."""
+
+    for attribute in ("retryable", "is_retryable", "should_retry"):
+        marker = getattr(error, attribute, None)
+        if callable(marker):
+            try:
+                marker = marker()
+            except TypeError:
+                continue
+        if isinstance(marker, bool):
+            return marker
+    return None
+
+
 def _is_transient_error(error: Exception) -> bool:
+    if _api_retryable_marker(error) is True:
+        return True
     if failure_reason_code(error) in {"llm_rate_limited", "llm_timeout"}:
+        return True
+    if isinstance(error, (ClassificationOutputError, json.JSONDecodeError)):
+        return True
+    if type(error).__name__ in {"ValidationError", "APIResponseValidationError"}:
         return True
     if isinstance(error, (ConnectionError, OSError)):
         return True
@@ -210,6 +260,7 @@ class OpenAIClient:
         self.last_failure_reason_code: str | None = None
         self.last_exception_class: str | None = None
         self.last_exception_message: str | None = None
+        self.last_attempts = 0
         self.request_attempts = 0
         self.retry_count = 0
         self._metrics_lock = threading.Lock()
@@ -217,7 +268,7 @@ class OpenAIClient:
             error = MissingAPIKeyError("OPENAI_API_KEY is not configured")
             self.unavailable_failure_reason_code = "llm_no_key"
             self.unavailable_exception_class = type(error).__name__
-            self.unavailable_exception_message = str(error)
+            self.unavailable_exception_message = safe_exception_message(error)
             return
         try:
             from openai import OpenAI
@@ -226,7 +277,7 @@ class OpenAIClient:
         except ImportError as exc:
             self.unavailable_failure_reason_code = "llm_error"
             self.unavailable_exception_class = type(exc).__name__
-            self.unavailable_exception_message = str(exc)
+            self.unavailable_exception_message = safe_exception_message(exc)
             logger.warning("OpenAI fallback unavailable because the openai package is not installed")
 
     @property
@@ -287,6 +338,7 @@ class OpenAIClient:
         self.last_failure_reason_code = result.failure_reason_code
         self.last_exception_class = result.exception_class
         self.last_exception_message = result.exception_message
+        self.last_attempts = result.attempts
         return result
 
     def propose_classification_result(self, context: dict[str, Any]) -> ClassificationCallResult:
@@ -303,7 +355,7 @@ class OpenAIClient:
                     latency_seconds=0.0,
                     failure_reason_code=self.unavailable_failure_reason_code or "llm_error",
                     exception_class=self.unavailable_exception_class or type(error).__name__,
-                    exception_message=str(error),
+                    exception_message=safe_exception_message(error),
                 )
             )
 
@@ -339,7 +391,7 @@ class OpenAIClient:
                         attempts=attempts,
                         failure_reason_code=failure_reason_code(exc),
                         exception_class=type(exc).__name__,
-                        exception_message=str(exc),
+                        exception_message=safe_exception_message(exc),
                     )
                 )
 
@@ -351,7 +403,7 @@ class OpenAIClient:
                 attempts=attempts,
                 failure_reason_code="llm_error",
                 exception_class="RuntimeError",
-                exception_message="classification attempt limit reached",
+                exception_message="Classification retry limit reached",
             )
         )
 
