@@ -56,7 +56,13 @@ export function Router() {
   if (route.name === 'dashboard')
     content = <DashboardPage navigate={navigate} initialRunId={route.search.get('runId')} />
   else if (route.name === 'inbox')
-    content = <InboxPage navigate={navigate} initialStatus={route.search.get('status')} />
+    content = (
+      <InboxPage
+        navigate={navigate}
+        initialStatus={route.search.get('status')}
+        from={route.search.get('from')}
+      />
+    )
   else if (route.name === 'case')
     content = <CaseDetailPage navigate={navigate} emailId={route.emailId} mode={route.mode} />
   else

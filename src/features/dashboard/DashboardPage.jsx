@@ -3,7 +3,14 @@ import { ArrowDown, ArrowRight, Clock, Play, WarningCircle } from '@phosphor-ico
 
 import { CategoryPie } from '@/components/charts/CategoryPie'
 import { PipelineRunDrawer } from '@/features/pipeline-run/PipelineRunDrawer'
-import { getDashboard, getEmail, getEmails, getPipelineRun, runPipeline, submissionUrl } from '@/lib/api'
+import {
+  getDashboard,
+  getEmail,
+  getEmails,
+  getPipelineRun,
+  runPipeline,
+  submissionUrl,
+} from '@/lib/api'
 import { relativeTime } from '@/lib/time'
 import { FIELDS, STATUS } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -221,9 +228,10 @@ function SummaryBrief({ data, navigate, lastRunAt }) {
   )
 }
 
-function SectionCard({ title, subtitle, children, className }) {
+function SectionCard({ id, title, subtitle, children, className }) {
   return (
     <section
+      id={id}
       className={cn('rounded-2xl bg-white p-7 shadow-[0_2px_10px_rgba(22,35,43,0.05)]', className)}
     >
       <h2 className="text-xl font-semibold tracking-tight text-[#16232B]">{title}</h2>
@@ -233,32 +241,110 @@ function SectionCard({ title, subtitle, children, className }) {
   )
 }
 
-function OutcomeBreakdown({ outcomes }) {
+const OUTCOME_INBOX_FILTER = {
+  OK: 'no_mismatch',
+  MISMATCH: 'mismatch',
+  NEEDS_REVIEW: 'needs_review',
+}
+
+function OutcomeBreakdown({ outcomes, navigate }) {
+  const [activeKey, setActiveKey] = useState(null)
   const rows = [
     ['OK', 'No mismatch', '#2B965C', 'all 7 fields agree'],
     ['MISMATCH', 'Mismatch', '#CF3B32', 'at least one field differs'],
     ['NEEDS_REVIEW', 'Needs review', '#C47A00', 'a person decides'],
   ]
   const total = rows.reduce((sum, [key]) => sum + (outcomes?.[key] || 0), 0) || 1
+  const openInbox = (key) => navigate(`/inbox?status=${OUTCOME_INBOX_FILTER[key]}&from=outcomes`)
+  const dimmed = (key) => activeKey !== null && activeKey !== key
+  const highlight = (key) => ({
+    onMouseEnter: () => setActiveKey(key),
+    onMouseLeave: () => setActiveKey(null),
+    onFocus: () => setActiveKey(key),
+    onBlur: () => setActiveKey(null),
+  })
   return (
     <div className="mt-6">
-      <div className="flex h-8 overflow-hidden rounded-lg">
-        {rows.map(([key, , color]) => (
-          <div
-            key={key}
-            style={{ width: `${((outcomes?.[key] || 0) / total) * 100}%`, backgroundColor: color }}
-          />
-        ))}
+      <div className="mt-2 flex h-8 gap-0.5">
+        {rows.map(([key, label, color], index) => {
+          const value = outcomes?.[key] || 0
+          const percent = Math.round((value / total) * 100)
+          const active = activeKey === key
+          const edge =
+            index === 0
+              ? 'left-0'
+              : index === rows.length - 1
+                ? 'right-0'
+                : 'left-1/2 -translate-x-1/2'
+          return (
+            <div
+              key={key}
+              className="relative h-full"
+              style={{ width: `${(value / total) * 100}%` }}
+              {...highlight(key)}
+            >
+              <button
+                type="button"
+                onClick={() => openInbox(key)}
+                aria-label={`${label}: ${value} of ${total} (${percent}%). Open in inbox`}
+                className={cn(
+                  'block h-full w-full cursor-pointer outline-none',
+                  index === 0 && 'rounded-l-lg',
+                  index === rows.length - 1 && 'rounded-r-lg',
+                  'origin-center transition-all duration-200 ease-out motion-reduce:transition-none',
+                  active && 'scale-y-125 shadow-lg',
+                  dimmed(key) && 'opacity-40',
+                )}
+                style={{ backgroundColor: color }}
+              />
+              <span
+                role="tooltip"
+                className={cn(
+                  'pointer-events-none absolute -top-11 z-20 whitespace-nowrap rounded-lg bg-[#16232B] px-3 py-2 text-xs font-semibold leading-none text-white shadow-lg transition-all duration-200 motion-reduce:transition-none',
+                  edge,
+                  active ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0',
+                )}
+              >
+                {label}
+                <span className="ml-2 font-mono font-medium text-white/70">
+                  {value} · {percent}%
+                </span>
+              </span>
+            </div>
+          )
+        })}
       </div>
-      <div className="mt-6 space-y-4">
-        {rows.map(([key, label, color, description]) => (
-          <div className="flex items-center gap-3 text-sm" key={key}>
-            <span className="h-3 w-3 rounded bg-current" style={{ color }} />
-            <span className="font-semibold text-[#26353D]">{label}</span>
-            <span className="text-[#71808A]">· {description}</span>
-            <span className="ml-auto font-mono text-[#26353D]">{outcomes?.[key] || 0}</span>
-          </div>
-        ))}
+      <div className="mt-6 space-y-1">
+        {rows.map(([key, label, color, description]) => {
+          const active = activeKey === key
+          return (
+            <button
+              type="button"
+              onClick={() => openInbox(key)}
+              className={cn(
+                'flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm outline-none transition-all duration-200 ease-out motion-reduce:transition-none',
+                active && 'scale-[1.02] shadow-sm',
+                dimmed(key) && 'opacity-40',
+              )}
+              style={active ? { backgroundColor: `${color}1A` } : undefined}
+              key={key}
+              {...highlight(key)}
+            >
+              <span
+                className={cn(
+                  'h-3 w-3 rounded bg-current transition-transform duration-200',
+                  active && 'scale-125',
+                )}
+                style={{ color }}
+              />
+              <span className="font-semibold text-[#26353D]">{label}</span>
+              <span className={cn('text-[#71808A]', active && 'font-medium text-[#26353D]')}>
+                · {description}
+              </span>
+              <span className="ml-auto font-mono text-[#26353D]">{outcomes?.[key] || 0}</span>
+            </button>
+          )
+        })}
       </div>
       <p className="mt-6 rounded-xl bg-[#F6F3EC] px-4 py-3 text-sm text-[#71808A]">
         Uncertain results are never counted as “No mismatch”. They wait for a person.
@@ -360,6 +446,13 @@ export function DashboardPage({ navigate, initialRunId = null }) {
   useEffect(() => {
     loadDashboard()
   }, [])
+
+  useEffect(() => {
+    if (!data || window.location.hash !== '#comparison-outcomes') return
+    window.requestAnimationFrame(() =>
+      document.getElementById('comparison-outcomes')?.scrollIntoView({ block: 'center' }),
+    )
+  }, [data])
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30000)
@@ -485,10 +578,11 @@ export function DashboardPage({ navigate, initialRunId = null }) {
             <CategoryPie categories={data.categories} />
           </SectionCard>
           <SectionCard
+            id="comparison-outcomes"
             title="Comparison outcomes"
             subtitle={`Of ${data.comparison_requests} comparison requests`}
           >
-            <OutcomeBreakdown outcomes={data.outcomes} />
+            <OutcomeBreakdown outcomes={data.outcomes} navigate={navigate} />
           </SectionCard>
         </section>
 

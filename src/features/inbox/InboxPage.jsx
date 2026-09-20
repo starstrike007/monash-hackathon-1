@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDown, ArrowRight, ArrowUp, MagnifyingGlass } from '@phosphor-icons/react'
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, MagnifyingGlass } from '@phosphor-icons/react'
 
 import { DefectsByField, defectTotal } from '@/components/charts/DefectsByField'
 import { CategoryBadge, StatusBadge } from '@/components/layout/StatusBadge'
@@ -63,7 +63,8 @@ function emailNumber(item) {
   return match ? Number(match[0]) : 0
 }
 
-export function InboxPage({ navigate, initialStatus = '' }) {
+export function InboxPage({ navigate, initialStatus = '', from = null }) {
+  const backToOutcomes = from === 'outcomes'
   const isReviewQueue = initialStatus === 'needs_review'
   const [activeFilter, setActiveFilter] = useState(initialStatus || '')
   const [query, setQuery] = useState('')
@@ -100,6 +101,14 @@ export function InboxPage({ navigate, initialStatus = '' }) {
 
   return (
     <div className="mx-auto max-w-[1540px] px-5 py-10 lg:px-14">
+      <button
+        type="button"
+        onClick={() => navigate(backToOutcomes ? '/dashboard#comparison-outcomes' : '/dashboard')}
+        className="mb-6 inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-white px-4 text-sm font-semibold leading-none text-[#26353D] shadow-sm transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100"
+      >
+        <ArrowLeft size={16} className="shrink-0" />
+        {backToOutcomes ? 'Back to comparison outcomes' : 'Back to home'}
+      </button>
       <header className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
         <div>
           <p className="text-sm font-medium text-[#62757D]">
