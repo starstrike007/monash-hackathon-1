@@ -133,10 +133,6 @@ def test_pipeline_run_persists_document_comparison_result(fixture_loader, tmp_pa
     assert [stage["stage_number"] for stage in store.get_stages(run["run_id"])] == [1, 2, 3, 4]
 
 
-@pytest.mark.xfail(
-    reason="stub: one-sided missing attachments currently use wrong_doc_type instead of missing_attachment",
-    strict=False,
-)
 def test_comparison_without_a_bl_attachment_is_missing_attachment_review(fixture_loader, tmp_path):
     result = process_fixture_email("email_fixture_missing_bl", fixture_loader, tmp_path)
 
@@ -166,10 +162,6 @@ def test_empty_pdf_is_unreadable(fixture_loader):
     assert parsed.document_type == DocumentType.UNREADABLE
 
 
-@pytest.mark.xfail(
-    reason="stub: an unreadable-only attachment currently falls through to missing_attachment",
-    strict=False,
-)
 def test_unreadable_only_attachment_routes_to_unreadable_review(fixture_loader, tmp_path):
     result = process_fixture_email("email_fixture_unreadable", fixture_loader, tmp_path)
 

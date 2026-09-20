@@ -8,80 +8,113 @@ from app.api.schemas.common import (
     Confidence,
     DocumentExtraction,
     DocumentRole,
-    DocumentType,
     ExtractionSource,
     ExtractionState,
     FieldEvidence,
     FieldExtraction,
 )
+from app.pipeline.field_aliases import FIELD_LABEL_ALIASES
 from app.pipeline.normalize import normalize_extraction
 
 
-FIELD_PATTERNS: dict[CanonicalField, tuple[str, ...]] = {
-    CanonicalField.SHIPPER: (
-        r"shipper(?:\s*/\s*exporter)?",
-        r"shipper name",
-        "\u53d1\u8d27\u4eba",
-    ),
-    CanonicalField.CONSIGNEE: (
-        r"consignee(?:\s*\([^)]*\))?",
-        r"to\s+the\s+order\s+of",
-        "\u6536\u8d27\u4eba",
-    ),
-    CanonicalField.NOTIFY_PARTY: (
-        r"notify(?:\s+party)?(?:\s*/\s*intermediate\s+consignee)?",
-        "\u901a\u77e5\u65b9",
-    ),
-    CanonicalField.PORT_OF_LOADING: (
-        r"port\s+of\s+loading(?:\s*\(\s*pol\s*\))?",
-        r"load\s+port",
-        r"\bpol\b",
-        "\u88c5\u8d27\u6e2f",
-    ),
-    CanonicalField.PORT_OF_DISCHARGE: (
-        r"port\s+of\s+discharge",
-        r"discharge\s+port",
-        r"\bpod\b",
-        r"destination\s+port",
-        "\u5378\u8d27\u6e2f",
-    ),
-    CanonicalField.CONTAINER_COUNT: (
-        r"container\s+count",
-        r"total\s+containers?",
-        r"no\.?\s+of\s+containers?(?:\s+or\s+packages)?",
-        r"containers?(?=\s*[:=|\-])",
-        "\u96c6\u88c5\u7bb1",
-    ),
-    CanonicalField.GROSS_WEIGHT_KG: (
-        r"(?:total\s+)?gross\s+(?:weight|wt)[^|:=\-\d]*",
-        "\u6bdb\u91cd",
-    ),
-}
+FIELD_PATTERNS = FIELD_LABEL_ALIASES
 
 PLACEHOLDERS = {"", "TBA", "TBC", "N/A", "NA", "-", "_", "UNKNOWN", "TO BE ADVISED"}
 
 
-def _find_value(text: str, patterns: tuple[str, ...]) -> tuple[str | None, str | None]:
-    lines = text.replace("\r", "").split("\n")
+def _match_label(label: str, patterns: tuple[str, ...]) -> re.Match[str] | None:
+    for pattern in patterns:
+        match = re.search(pattern, label, flags=re.IGNORECASE)
+        if match:
+            return match
+    return None
+
+
+def _tail_after_label(label: str, match: re.Match[str]) -> str:
+    tail = label[match.end() :].strip()
+    # Tables often put a descriptive label in one or more parentheses after
+    # the English alias, for example ``Shipper (Principal or Seller)``.
+    tail = re.sub(r"^(?:\([^)]*\)\s*)+", "", tail)
+    return tail.lstrip(":：=–- ").strip()
+
+
+def _location_for_line(parsed: ParsedDocument, line_number: int, part_number: int) -> dict:
+    if line_number >= len(parsed.locations):
+        return {}
+    location = dict(parsed.locations[line_number])
+    cells = location.get("cells")
+    if isinstance(cells, list) and 0 <= part_number < len(cells):
+        cell = cells[part_number]
+        if isinstance(cell, dict) and cell.get("cell") is not None:
+            location["cell"] = str(cell["cell"])
+    location.pop("cells", None)
+    return location
+
+
+def _clean_value(value: str | None) -> str:
+    if value is None:
+        return ""
+    return value.strip(" .|;\t\r\n")
+
+
+def _find_value(
+    parsed: ParsedDocument,
+    patterns: tuple[str, ...],
+) -> tuple[str | None, str | None, dict | None]:
+    lines = parsed.text.replace("\r", "").split("\n")
     for index, line in enumerate(lines):
-        stripped = line.strip().strip("|").strip()
-        for pattern in patterns:
-            match = re.search(
-                rf"(?:^|\|)\s*{pattern}\s*(?:\([^)]*\)\s*)*(?:[:\uFF1A=\-]\s*)?(.*)$",
-                stripped,
-                flags=re.IGNORECASE,
+        stripped = line.strip()
+        if not stripped:
+            continue
+        parts = [part.strip() for part in stripped.split("|")]
+        candidates: list[tuple[str, str | None, int]] = []
+
+        # Explicit separators are preferred so a colon in a value cannot be
+        # mistaken for a second label.
+        separator = re.search(r"[:：=]", stripped)
+        if separator:
+            candidates.append((stripped[: separator.start()].strip(), stripped[separator.end() :].strip(), 0))
+
+        # Spreadsheet and Word table rows use pipe-separated cells after the
+        # parser turns them into the shared text representation.
+        if len(parts) > 1:
+            candidates.extend(
+                (part, parts[part_number + 1] if part_number + 1 < len(parts) else None, part_number)
+                for part_number, part in enumerate(parts)
             )
+        candidates.append((stripped, None, 0))
+
+        for label, explicit_value, part_number in candidates:
+            match = _match_label(label, patterns)
             if not match:
                 continue
-            value = match.group(1).strip(" .|;\t")
-            if "|" in value:
-                value = next((part.strip(" .;\t") for part in value.split("|") if part.strip()), "")
+            value = _clean_value(explicit_value)
+            if not value and part_number + 1 < len(parts):
+                value = _clean_value(parts[part_number + 1])
+            if not value:
+                value = _clean_value(_tail_after_label(label, match))
             if not value and index + 1 < len(lines):
-                value = lines[index + 1].strip(" .|;\t")
-            if value and pattern.lower().startswith(r"to\s+the\s+order\s+of"):
-                value = f"To the Order of {value}"
-            return (value or None), stripped
-    return None, None
+                value = _clean_value(lines[index + 1])
+            location = _location_for_line(parsed, index, part_number)
+            if value:
+                return value, stripped, location
+            return None, stripped, location
+    return None, None, None
+
+
+def _field_evidence(
+    parsed: ParsedDocument,
+    snippet: str,
+    location: dict | None,
+) -> FieldEvidence:
+    location = location or {}
+    return FieldEvidence(
+        snippet=snippet,
+        page=location.get("page"),
+        sheet=location.get("sheet"),
+        cell=location.get("cell"),
+        source_path=parsed.path,
+    )
 
 
 def extract_document(parsed: ParsedDocument, role: DocumentRole | None = None) -> DocumentExtraction:
@@ -92,19 +125,28 @@ def extract_document(parsed: ParsedDocument, role: DocumentRole | None = None) -
                 FieldExtraction(
                     field_name=field_name,
                     state=ExtractionState.UNREADABLE,
-                    evidence=FieldEvidence(source_path=parsed.path),
+                    evidence=FieldEvidence(snippet=parsed.error or "", source_path=parsed.path),
                 )
             )
             continue
 
-        raw_value, snippet = _find_value(parsed.text, patterns)
+        raw_value, snippet, location = _find_value(parsed, patterns)
+        if (
+            field_name == CanonicalField.CONSIGNEE
+            and raw_value
+            and snippet
+            and re.search(r"to\s+the\s+order\s+of", snippet, flags=re.IGNORECASE)
+            and not raw_value.upper().startswith("TO THE ORDER OF")
+        ):
+            raw_value = f"To the Order of {raw_value}"
+        evidence = _field_evidence(parsed, snippet or raw_value or "", location)
         if raw_value is None:
             extraction = FieldExtraction(
                 field_name=field_name,
                 state=ExtractionState.MISSING,
                 source=ExtractionSource.RULE,
                 confidence=Confidence.HIGH,
-                evidence=FieldEvidence(snippet=snippet or "", source_path=parsed.path),
+                evidence=evidence,
             )
         elif raw_value.strip().upper() in PLACEHOLDERS:
             extraction = FieldExtraction(
@@ -113,7 +155,7 @@ def extract_document(parsed: ParsedDocument, role: DocumentRole | None = None) -
                 raw_value=raw_value,
                 source=ExtractionSource.RULE,
                 confidence=Confidence.HIGH,
-                evidence=FieldEvidence(snippet=snippet or raw_value, source_path=parsed.path),
+                evidence=evidence,
             )
         else:
             extraction = FieldExtraction(
@@ -122,7 +164,7 @@ def extract_document(parsed: ParsedDocument, role: DocumentRole | None = None) -
                 raw_value=raw_value,
                 source=ExtractionSource.RULE,
                 confidence=Confidence.HIGH,
-                evidence=FieldEvidence(snippet=snippet or raw_value, source_path=parsed.path),
+                evidence=evidence,
             )
         fields.append(normalize_extraction(extraction))
 

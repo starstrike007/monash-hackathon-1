@@ -244,10 +244,36 @@ class PipelineOrchestrator:
         bl_documents = [document for document in documents if document.role == DocumentRole.BL]
         reason: ReviewReason | None = None
         notes: list[str] = []
+        if any(document.missing for document in parsed_documents):
+            return decide_result(
+                email_id=email_id,
+                run_id=run_id,
+                category=category,
+                comparisons=[],
+                documents=documents,
+                document_reason=ReviewReason.MISSING_ATTACHMENT,
+                notes=["At least one referenced attachment was not available."],
+            )
+        if any(not document.readable for document in parsed_documents):
+            return decide_result(
+                email_id=email_id,
+                run_id=run_id,
+                category=category,
+                comparisons=[],
+                documents=documents,
+                document_reason=ReviewReason.UNREADABLE,
+                notes=["At least one referenced attachment could not be read safely."],
+            )
         if len(si_documents) == 0 or len(bl_documents) == 0:
-            reason = ReviewReason.WRONG_DOC_TYPE if all(document.readable for document in documents) else ReviewReason.UNREADABLE
-            if len(si_documents) == 0 and len(bl_documents) == 0:
+            # A single supported document is evidence that the other required
+            # document was not attached. A readable non-SI/BL candidate is a
+            # wrong-type resolution instead of an invented selection.
+            if len(documents) == 1 and (si_documents or bl_documents):
                 reason = ReviewReason.MISSING_ATTACHMENT
+            elif len(si_documents) == 0 and len(bl_documents) == 0 and not documents:
+                reason = ReviewReason.MISSING_ATTACHMENT
+            else:
+                reason = ReviewReason.WRONG_DOC_TYPE
             notes.append("The SI and BL could not be resolved unambiguously from the attachments.")
             return decide_result(
                 email_id=email_id,
