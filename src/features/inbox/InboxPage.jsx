@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, MagnifyingGlass } from '@phosphor-icons/react'
 
 import { CategoryBadge, StatusBadge } from '@/components/layout/StatusBadge'
+import { CategoryFilter } from '@/features/inbox/CategoryFilter'
 import { InboxSidePanel } from '@/features/inbox/InboxSidePanel'
 import { getAllEmails, getDashboard } from '@/lib/api'
-import { categoryLabel } from '@/lib/types'
+import { CATEGORY_LABELS, categoryLabel } from '@/lib/types'
 
 const filters = [
   {
@@ -72,6 +73,7 @@ export function InboxPage({ navigate, initialStatus = '', from = null }) {
   const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
   const [sortDirection, setSortDirection] = useState('asc')
+  const [hiddenCategories, setHiddenCategories] = useState([])
 
   useEffect(() => {
     setLoading(true)
@@ -85,10 +87,30 @@ export function InboxPage({ navigate, initialStatus = '', from = null }) {
     getDashboard().then(setSummary)
   }, [])
 
+  const categoryCounts = useMemo(
+    () =>
+      data.items.reduce((counts, item) => {
+        counts[item.category] = (counts[item.category] || 0) + 1
+        return counts
+      }, {}),
+    [data.items],
+  )
+
+  const visibleItems = useMemo(
+    () => data.items.filter((item) => !hiddenCategories.includes(item.category)),
+    [data.items, hiddenCategories],
+  )
+
   const sortedItems = useMemo(() => {
     const direction = sortDirection === 'asc' ? 1 : -1
-    return [...data.items].sort((a, b) => (emailNumber(a) - emailNumber(b)) * direction)
-  }, [data.items, sortDirection])
+    return [...visibleItems].sort((a, b) => (emailNumber(a) - emailNumber(b)) * direction)
+  }, [visibleItems, sortDirection])
+
+  function toggleCategory(key) {
+    setHiddenCategories((current) =>
+      current.includes(key) ? current.filter((item) => item !== key) : [...current, key],
+    )
+  }
 
   const SortIcon = sortDirection === 'asc' ? ArrowUp : ArrowDown
 
@@ -140,15 +162,24 @@ export function InboxPage({ navigate, initialStatus = '', from = null }) {
             onClick={() => setActiveFilter(filter.key)}
           />
         ))}
-        <button
-          type="button"
-          onClick={() => setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'))}
-          aria-label={`Sort by email ID, ${sortDirection === 'asc' ? 'ascending' : 'descending'}. Click to reverse.`}
-          className="ml-auto inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-white px-4 text-sm font-semibold leading-none text-[#26353D] shadow-sm transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100"
-        >
-          <SortIcon size={16} weight="bold" className="shrink-0" />
-          Email ID · {sortDirection === 'asc' ? 'Ascending' : 'Descending'}
-        </button>
+        <div className="ml-auto flex flex-wrap gap-3">
+          <CategoryFilter
+            hidden={hiddenCategories}
+            counts={categoryCounts}
+            onToggle={toggleCategory}
+            onShowAll={() => setHiddenCategories([])}
+            onHideAll={() => setHiddenCategories(Object.keys(CATEGORY_LABELS))}
+          />
+          <button
+            type="button"
+            onClick={() => setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'))}
+            aria-label={`Sort by email ID, ${sortDirection === 'asc' ? 'ascending' : 'descending'}. Click to reverse.`}
+            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-white px-4 text-sm font-semibold leading-none text-[#26353D] shadow-sm transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100"
+          >
+            <SortIcon size={16} weight="bold" className="shrink-0" />
+            Email ID · {sortDirection === 'asc' ? 'Ascending' : 'Descending'}
+          </button>
+        </div>
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.32fr)] xl:items-start">
@@ -203,9 +234,11 @@ export function InboxPage({ navigate, initialStatus = '', from = null }) {
                 <ArrowRight size={18} className="hidden text-[#71808A] lg:block" />
               </button>
             ))}
-          {!loading && !data.items.length && (
+          {!loading && !sortedItems.length && (
             <div className="px-6 py-14 text-center text-sm text-[#71808A]">
-              No emails match this filter.
+              {data.items.length
+                ? 'Every matching email is in a hidden category. Use Categories to show them.'
+                : 'No emails match this filter.'}
             </div>
           )}
         </div>
@@ -214,7 +247,7 @@ export function InboxPage({ navigate, initialStatus = '', from = null }) {
       </div>
 
       <p className="mt-5 text-sm text-[#71808A]">
-        Showing {data.items.length} of {data.total} emails. Only document-comparison emails get a
+        Showing {sortedItems.length} of {data.total} emails. Only document-comparison emails get a
         comparison status; every other category is classified and set aside.
       </p>
     </div>
