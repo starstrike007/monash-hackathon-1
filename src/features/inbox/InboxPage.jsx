@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, MagnifyingGlass } from '@phosphor-icons/react'
 
-import { DefectsByField, defectTotal } from '@/components/charts/DefectsByField'
 import { CategoryBadge, StatusBadge } from '@/components/layout/StatusBadge'
+import { InboxSidePanel } from '@/features/inbox/InboxSidePanel'
 import { getAllEmails, getDashboard } from '@/lib/api'
 import { categoryLabel } from '@/lib/types'
 
@@ -151,13 +151,7 @@ export function InboxPage({ navigate, initialStatus = '', from = null }) {
         </button>
       </div>
 
-      <div
-        className={
-          isReviewQueue
-            ? 'mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.32fr)] xl:items-start'
-            : 'mt-6'
-        }
-      >
+      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.32fr)] xl:items-start">
         <div className="overflow-hidden rounded-2xl border border-[#E3DED1] bg-white">
           <div className="hidden grid-cols-[120px_minmax(260px,1.8fr)_190px_170px_minmax(220px,1fr)_32px] gap-4 bg-[#FBF9F4] px-6 py-4 text-xs font-semibold uppercase tracking-[0.08em] text-[#71808A] lg:grid">
             <span>Email</span>
@@ -216,22 +210,7 @@ export function InboxPage({ navigate, initialStatus = '', from = null }) {
           )}
         </div>
 
-        {isReviewQueue && (
-          <section className="rounded-2xl border border-[#E3DED1] bg-white p-6 xl:sticky xl:top-6">
-            <h2 className="text-lg font-semibold tracking-tight text-[#16232B]">
-              Defects by field
-            </h2>
-            <p className="mt-1 text-sm text-[#71808A]">
-              {defectTotal(summary?.defects_by_field)} mismatches across the seven checked fields —
-              where drafts go wrong most.
-            </p>
-            <DefectsByField defects={summary?.defects_by_field} className="mt-6" />
-            <p className="mt-6 rounded-xl bg-[#F6F3EC] px-4 py-3 text-sm text-[#71808A]">
-              Counted from mismatched pairs. Cases in this queue are escalated for unreadable or
-              missing documents and are not counted here.
-            </p>
-          </section>
-        )}
+        <InboxSidePanel filter={activeFilter} summary={summary} items={data.items} />
       </div>
 
       <p className="mt-5 text-sm text-[#71808A]">
