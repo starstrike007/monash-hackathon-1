@@ -12,6 +12,9 @@ class Settings:
         self.openai_api_key = os.getenv("OPENAI_API_KEY", "")
         self.openai_model = os.getenv("OPENAI_MODEL", "gpt-5.6-luna")
         self.openai_timeout_seconds = float(os.getenv("OPENAI_TIMEOUT_SECONDS", "20"))
+        self.openai_reasoning_effort_classify = (
+            os.getenv("OPENAI_REASONING_EFFORT_CLASSIFY", "").strip() or None
+        )
         self.supabase_url = os.getenv("SUPABASE_URL", "")
         self.supabase_service_role_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
         allowed_origins = os.getenv("ALLOWED_ORIGINS") or os.getenv("CORS_ORIGINS")

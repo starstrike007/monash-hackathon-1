@@ -51,7 +51,7 @@ class PipelineOrchestrator:
         self.llm = llm
         self.max_workers = max(1, int(max_workers))
         self.output_dir = Path(output_dir).resolve() if output_dir else None
-        self.last_classification_metrics: dict[str, int | bool] = {}
+        self.last_classification_metrics: dict[str, Any] = {}
 
     def _default_output_dir(self) -> Path:
         """Keep fixture/custom-dataset exports from clobbering the submission."""
@@ -188,9 +188,13 @@ class PipelineOrchestrator:
         return {
             "category": decision.category.value,
             "decided_by": decision.decided_by,
+            "confidence": decision.confidence.value,
             "low_confidence": decision.low_confidence,
             "model_failure": decision.model_failure,
             "reason": decision.reason,
+            "failure_reason_code": decision.failure_reason_code,
+            "usage": decision.usage,
+            "latency_seconds": decision.latency_seconds,
             "subject": str(email.get("subject", "")),
         }
 

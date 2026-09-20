@@ -3,27 +3,41 @@ from __future__ import annotations
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 import hashlib
+import json
 import re
 import threading
+import time
 import unicodedata
 from typing import Any, Iterable
 
-from app.api.schemas.common import EmailCategory
+from app.adapters.openai_client import ClassificationProposal, failure_reason_code
+from app.api.schemas.common import Confidence, EmailCategory
+from app.pipeline.prompts import CLASSIFICATION_PROMPT, CLASSIFICATION_PROMPT_VERSION
 
 
 @dataclass(frozen=True)
 class ClassificationDecision:
     category: EmailCategory
     decided_by: str
-    low_confidence: bool = False
-    model_failure: bool = False
+    confidence: Confidence = Confidence.LOW
     reason: str | None = None
+    model_failure: bool = False
+    failure_reason_code: str | None = None
+    usage: dict[str, int] | None = None
+    latency_seconds: float | None = None
+
+    @property
+    def low_confidence(self) -> bool:
+        """Compatibility view for callers that used the old boolean field."""
+
+        return self.confidence == Confidence.LOW
 
 
 @dataclass(frozen=True)
 class _RuleDecision:
     category: EmailCategory
-    low_confidence: bool = False
+    confidence: Confidence = Confidence.HIGH
+    reason: str = "Deterministic rules matched the main request."
 
 
 def strip_noise(body: str) -> str:
@@ -245,6 +259,10 @@ def _rule_classify(email: dict[str, Any]) -> _RuleDecision | None:
 
 
 def _classification_context(email: dict[str, Any]) -> dict[str, Any]:
+    return classification_context(email)
+
+
+def classification_context(email: dict[str, Any]) -> dict[str, Any]:
     return {
         "subject": str(email.get("subject", "")),
         "body": strip_noise(str(email.get("body", "")))[:6000],
@@ -253,13 +271,33 @@ def _classification_context(email: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def classification_cache_key(email: dict[str, Any]) -> str:
-    """Hash normalized subject/body only; no sender or email ID is included."""
+def classification_cache_key(
+    email: dict[str, Any],
+    model_id: str = "",
+    prompt_version: str = CLASSIFICATION_PROMPT_VERSION,
+) -> str:
+    """Hash input plus model and prompt identity; sender and email ID are excluded."""
 
     subject = _normalise(email.get("subject", ""))
     body = _normalise(strip_noise(str(email.get("body", ""))))
-    payload = f"{subject}\n{body}".encode("utf-8")
-    return hashlib.sha256(payload).hexdigest()
+    attachments = email.get("attachments", []) or []
+    payload = {
+        "model_id": str(model_id),
+        "prompt_version": str(prompt_version),
+        "prompt_fingerprint": hashlib.sha256(CLASSIFICATION_PROMPT.encode("utf-8")).hexdigest(),
+        "subject": subject,
+        "body": body,
+        "attachments": attachments,
+    }
+    encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _safe_reason(value: Any, fallback: str) -> str:
+    words = str(value or "").split()
+    if not words:
+        return fallback
+    return " ".join(words[:20])
 
 
 class ClassificationService:
@@ -274,11 +312,22 @@ class ClassificationService:
         self.llm_calls = 0
         self.cache_hits = 0
         self.failures = 0
+        self._usage_totals = {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "reasoning_tokens": 0,
+        }
+        self._latency_seconds = 0.0
+        self._failure_reason_counts: dict[str, int] = {}
 
     @property
-    def metrics(self) -> dict[str, int | bool]:
+    def metrics(self) -> dict[str, Any]:
         provider_attempts = int(getattr(self.llm, "request_attempts", 0) or 0)
         provider_retries = int(getattr(self.llm, "retry_count", 0) or 0)
+        with self._lock:
+            usage_totals = dict(self._usage_totals)
+            latency_seconds = round(self._latency_seconds, 6)
+            failure_reason_counts = dict(self._failure_reason_counts)
         return {
             "rules_only": self.rules_only,
             "llm_calls": self.llm_calls,
@@ -286,6 +335,12 @@ class ClassificationService:
             "provider_retries": provider_retries,
             "cache_hits": self.cache_hits,
             "failures": self.failures,
+            "llm_input_tokens": usage_totals["input_tokens"],
+            "llm_output_tokens": usage_totals["output_tokens"],
+            "llm_reasoning_tokens": usage_totals["reasoning_tokens"],
+            "llm_latency_seconds": latency_seconds,
+            "llm_usage_totals": usage_totals,
+            "failure_reason_counts": failure_reason_counts,
         }
 
     def classify_many(
@@ -308,15 +363,21 @@ class ClassificationService:
             return ClassificationDecision(
                 category=rule_decision.category,
                 decided_by="rule",
-                low_confidence=rule_decision.low_confidence,
+                confidence=rule_decision.confidence,
+                reason=rule_decision.reason,
             )
 
         if self.rules_only:
             return self._fallback("rules_only")
         if self.llm is None or not getattr(self.llm, "available", False):
-            return self._fallback("model_unavailable")
+            failure_code = getattr(self.llm, "unavailable_failure_reason_code", None) or "llm_no_key"
+            return self._fallback(
+                failure_code,
+                model_failure=True,
+                failure_reason_code=failure_code,
+            )
 
-        cache_key = classification_cache_key(email)
+        cache_key = classification_cache_key(email, model_id=str(getattr(self.llm, "model", "")))
         owner = False
         with self._lock:
             cached = self._cache.get(cache_key)
@@ -344,29 +405,127 @@ class ClassificationService:
             future.set_result(decision)
         return decision
 
-    def _call_llm(self, email: dict[str, Any]) -> ClassificationDecision:
-        try:
-            candidate = self.llm.propose_classification(_classification_context(email))
-        except Exception as exc:
-            return self._fallback(f"model_exception:{type(exc).__name__}", model_failure=True)
-        if candidate is None:
-            return self._fallback("model_call_failed", model_failure=True)
-        try:
-            category = EmailCategory(candidate)
-        except (TypeError, ValueError):
-            return self._fallback("invalid_model_category", model_failure=True)
-        return ClassificationDecision(category=category, decided_by="llm")
+    def _record_call_metrics(
+        self,
+        usage: Any,
+        latency_seconds: Any,
+    ) -> None:
+        with self._lock:
+            if isinstance(usage, dict):
+                for key in self._usage_totals:
+                    try:
+                        self._usage_totals[key] += max(0, int(usage.get(key, 0) or 0))
+                    except (TypeError, ValueError):
+                        continue
+            try:
+                self._latency_seconds += max(0.0, float(latency_seconds or 0.0))
+            except (TypeError, ValueError):
+                pass
 
-    def _fallback(self, reason: str, model_failure: bool = False) -> ClassificationDecision:
+    def _call_llm(self, email: dict[str, Any]) -> ClassificationDecision:
+        started = time.perf_counter()
+        try:
+            traced_call = getattr(self.llm, "propose_classification_result", None)
+            if callable(traced_call):
+                result = traced_call(classification_context(email))
+            else:
+                result = self.llm.propose_classification(_classification_context(email))
+        except Exception as exc:
+            latency_seconds = time.perf_counter() - started
+            reason_code = failure_reason_code(exc)
+            self._record_call_metrics(None, latency_seconds)
+            return self._fallback(
+                reason_code,
+                model_failure=True,
+                failure_reason_code=reason_code,
+                latency_seconds=latency_seconds,
+            )
+
+        usage = getattr(result, "usage", None)
+        reported_latency = getattr(result, "latency_seconds", None)
+        latency_seconds = (
+            reported_latency
+            if isinstance(reported_latency, (int, float))
+            else time.perf_counter() - started
+        )
+        self._record_call_metrics(usage, latency_seconds)
+        result_failure_code = getattr(result, "failure_reason_code", None)
+        proposal = getattr(result, "proposal", result)
+
+        if isinstance(proposal, dict):
+            try:
+                proposal = ClassificationProposal.model_validate(proposal)
+            except Exception:
+                proposal = None
+
+        if isinstance(proposal, ClassificationProposal):
+            try:
+                category = EmailCategory(proposal.category)
+                confidence = Confidence(proposal.confidence)
+            except (TypeError, ValueError):
+                category = None
+                confidence = None
+            if category is not None and confidence is not None:
+                return ClassificationDecision(
+                    category=category,
+                    decided_by="llm",
+                    confidence=confidence,
+                    reason=_safe_reason(proposal.reason, "Model classified the main request."),
+                    usage=usage if isinstance(usage, dict) else None,
+                    latency_seconds=float(latency_seconds),
+                )
+
+        # Keep compatibility with lightweight test doubles and older adapter users
+        # that still return only a category string.
+        candidate = proposal if isinstance(proposal, str) else None
+        if candidate is not None:
+            try:
+                category = EmailCategory(candidate)
+            except (TypeError, ValueError):
+                category = None
+            if category is not None:
+                return ClassificationDecision(
+                    category=category,
+                    decided_by="llm",
+                    confidence=Confidence.MEDIUM,
+                    reason="Model returned the requested category.",
+                    usage=usage if isinstance(usage, dict) else None,
+                    latency_seconds=float(latency_seconds),
+                )
+
+        reason_code = result_failure_code or "llm_error"
+        return self._fallback(
+            reason_code,
+            model_failure=True,
+            failure_reason_code=reason_code,
+            usage=usage if isinstance(usage, dict) else None,
+            latency_seconds=float(latency_seconds),
+        )
+
+    def _fallback(
+        self,
+        reason: str,
+        model_failure: bool = False,
+        failure_reason_code: str | None = None,
+        usage: dict[str, int] | None = None,
+        latency_seconds: float | None = None,
+    ) -> ClassificationDecision:
         if model_failure:
             with self._lock:
                 self.failures += 1
+                if failure_reason_code:
+                    self._failure_reason_counts[failure_reason_code] = (
+                        self._failure_reason_counts.get(failure_reason_code, 0) + 1
+                    )
         return ClassificationDecision(
             category=EmailCategory.GENERAL,
             decided_by="fallback_default",
-            low_confidence=True,
+            confidence=Confidence.LOW,
             model_failure=model_failure,
-            reason=reason,
+            failure_reason_code=failure_reason_code,
+            reason=_safe_reason(reason, "Unable to determine the main request."),
+            usage=usage,
+            latency_seconds=latency_seconds,
         )
 
 

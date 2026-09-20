@@ -37,6 +37,13 @@ Set-Location backend
 pytest -q
 ```
 
+Smoke-test the Stage 1 LLM on only the first five emails:
+
+```powershell
+Set-Location backend
+python smoke_classify.py --limit 5
+```
+
 The API reads the bundled email and attachment fixtures. Without Supabase it
 uses `.runtime/shipcheck_store.json` for local results. Set the variables in
 `backend/.env.example` in the environment before starting the API; the
