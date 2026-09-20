@@ -48,7 +48,18 @@ The allowed corpus profile is 520 emails and 250 referenced attachments:
 
 ## Step 2 — Stage 2 analysis
 
-Not started.
+- Attempt 1: ran a rules-only in-memory pass over all allowed inbox records
+  and attachments, then wrote `docs/stage2-analysis.md`. No pipeline fixes
+  were made in this step.
+- Checks: analysis counters reconciled to 153 `BL_COMPARISON` emails and
+  `git diff --check` passed.
+- Result: 113 emails had exactly one readable SI and BL; format pairings,
+  81 review cases by reason, unavailable-field counts, and the intentionally
+  unmapped label list are documented. No evaluator or scoring command was
+  used.
+- Assumption: the analysis uses the rules-only category set so it is
+  repeatable offline; “supported pair” requires exactly one readable,
+  content-identified SI and BL, not filename inference.
 
 ## Step 3 — Stage 2 text fallback
 
