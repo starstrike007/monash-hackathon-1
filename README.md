@@ -102,6 +102,7 @@ Set these environment variables on Render:
 ```text
 OPENAI_API_KEY
 OPENAI_MODEL
+STAGE2_LLM_FALLBACK=0
 SUPABASE_URL
 SUPABASE_SERVICE_ROLE_KEY
 DATA_DIR=../data
@@ -111,6 +112,11 @@ ALLOWED_ORIGINS=https://your-vercel-domain.example
 `ALLOWED_ORIGINS` is a comma-separated list when more than one frontend origin
 is needed. The service listens on Render's `PORT` value and serves the bundled
 `../data` directory from the repository.
+
+`STAGE2_LLM_FALLBACK` is off by default. When enabled, Stage 2 asks the
+configured OpenAI model only for fields the deterministic parser could not
+resolve; every proposal must appear in the source text or the case remains in
+review.
 
 Render's free tier spins the service down when idle. Open the app a few
 minutes before a demo so the API has time to wake up.

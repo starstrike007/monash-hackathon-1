@@ -132,6 +132,7 @@ class DocumentExtraction(BaseModel):
     table_rows: list[list[str]] = Field(default_factory=list)
     locations: list[dict[str, Any]] = Field(default_factory=list)
     fields: list[FieldExtraction] = Field(default_factory=list)
+    llm_usage: dict[str, int] = Field(default_factory=dict)
 
 
 class FieldComparison(BaseModel):

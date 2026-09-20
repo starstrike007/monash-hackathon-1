@@ -63,8 +63,32 @@ The allowed corpus profile is 520 emails and 250 referenced attachments:
 
 ## Step 3 — Stage 2 text fallback
 
-Not started. The fallback will default off and will be tested with a mocked
-client before any real full export.
+- Attempt 1: added `STAGE2_LLM_FALLBACK`, default `false`; added the versioned
+  `extract_v1` prompt and strict seven-field structured output; validated model
+  values against Unicode-aware source text before accepting them; tagged
+  accepted fields `source=llm`; and recorded extraction input/output/reasoning
+  tokens in document and run metrics. Provider errors leave fields unresolved.
+- Checks: `.venv\\Scripts\\python.exe -m pytest tests/test_stage2_fallback.py
+  -q` -> 4 passed; `.venv\\Scripts\\python.exe -m pytest -q` -> 51 passed,
+  1 existing non-strict xfail, 2 warnings.
+- Mocked safety checks: the switch-off path makes no fallback call; a
+  source-supported proposal is accepted and token usage is recorded; invented
+  values are rejected; an incomplete SI/BL pair remains `NEEDS_REVIEW` with
+  no defect fields.
+- Export gate, switch off:
+  `$env:STAGE2_LLM_FALLBACK='0'; .\\.venv\\Scripts\\python.exe
+  export_stage1.py --rules-only --runtime-dir ..\\.runtime\\overnight-step3-off
+  --output-dir ..\\.runtime\\overnight-step3-off-output` -> 520 entries,
+  complete, zero failures, zero LLM calls.
+- Export gate, switch on:
+  `$env:STAGE2_LLM_FALLBACK='1'; .\\.venv\\Scripts\\python.exe
+  export_stage1.py --rules-only --runtime-dir ..\\.runtime\\overnight-step3-on
+  --output-dir ..\\.runtime\\overnight-step3-on-output` -> 520 entries,
+  complete, zero failures, zero LLM calls. The switch was exercised without
+  real provider usage because `--rules-only` intentionally disables the
+  classifier/provider path.
+- Assumption: a provider response with no usage object records no non-zero
+  token total rather than estimating tokens. No vision fallback was added.
 
 ## Final verification
 

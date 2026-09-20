@@ -38,6 +38,7 @@ def main() -> None:
         llm,
         max_workers=args.max_workers,
         output_dir=args.output_dir,
+        stage2_llm_fallback=settings.stage2_llm_fallback,
     )
     run = orchestrator.run(rules_only=args.rules_only)
     output_dir = orchestrator._default_output_dir()
@@ -63,6 +64,7 @@ def main() -> None:
                 "run_status": run["status"],
                 "openai_configured": bool(settings.openai_api_key),
                 **orchestrator.last_classification_metrics,
+                **orchestrator.last_stage2_metrics,
             },
             ensure_ascii=False,
         )

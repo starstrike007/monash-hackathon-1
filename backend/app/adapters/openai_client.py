@@ -14,15 +14,18 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.api.schemas.common import Confidence, EmailCategory
+from app.api.schemas.common import CanonicalField, Confidence, EmailCategory
 from app.pipeline.prompts import (
     CLASSIFICATION_PROMPT,
     CLASSIFICATION_PROMPT_VERSION,
+    EXTRACTION_PROMPT,
+    EXTRACTION_PROMPT_VERSION,
 )
 
 logger = logging.getLogger(__name__)
 
 CLASSIFICATION_SCHEMA_NAME = "email_classification"
+EXTRACTION_SCHEMA_NAME = "stage2_field_extraction"
 RETRY_DELAY_CAP_SECONDS = 20.0
 
 
@@ -52,6 +55,20 @@ class ClassificationProposal(BaseModel):
         # The explanation is diagnostic only; do not discard a valid category
         # because the model returned a verbose reason.
         return " ".join(words[:20])
+
+
+class ExtractionProposal(BaseModel):
+    """Strict Stage 2 output; null is the only accepted unknown value."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    shipper: str | None
+    consignee: str | None
+    notify_party: str | None
+    port_of_loading: str | None
+    port_of_discharge: str | None
+    container_count: str | None
+    gross_weight_kg: str | None
 
 
 @dataclass(frozen=True)
@@ -263,6 +280,9 @@ class OpenAIClient:
         self.last_attempts = 0
         self.request_attempts = 0
         self.retry_count = 0
+        self.last_extraction_usage: dict[str, int] | None = None
+        self.last_extraction_attempts = 0
+        self.last_extraction_error: str | None = None
         self._metrics_lock = threading.Lock()
         if not api_key:
             error = MissingAPIKeyError("OPENAI_API_KEY is not configured")
@@ -413,24 +433,78 @@ class OpenAIClient:
         result = self.propose_classification_result(context)
         return result.proposal.category.value if result.proposal is not None else None
 
-    def propose_fields(self, context: dict[str, Any]) -> dict[str, Any] | None:
-        """Retain the pre-Phase-6 adapter hook; Stage 2 does not call it yet."""
+    def _request_fields(self, context: dict[str, Any]) -> tuple[ExtractionProposal, Any]:
+        if self.client is None:
+            raise MissingAPIKeyError("OPENAI_API_KEY is not configured")
 
-        if not self.client:
-            return None
-        try:
-            response = self.client.responses.create(
-                model=self.model,
-                input=[
-                    {
-                        "role": "system",
-                        "content": "Return JSON for the requested shipping fields. Use null for anything not directly supported by the source evidence. Never guess.",
-                    },
-                    {"role": "user", "content": json.dumps(context, ensure_ascii=False)},
-                ],
+        request_kwargs: dict[str, Any] = {
+            "model": self.model,
+            "instructions": EXTRACTION_PROMPT,
+            "input": [{"role": "user", "content": json.dumps(context, ensure_ascii=False)}],
+            "prompt_cache_key": f"{EXTRACTION_PROMPT_VERSION}:{self.model}",
+            "timeout": self.timeout_seconds,
+        }
+        responses = self.client.responses
+        parse = getattr(responses, "parse", None)
+        if callable(parse):
+            response = parse(text_format=ExtractionProposal, **request_kwargs)
+            parsed = _value(response, "output_parsed")
+            if parsed is None:
+                raise ClassificationOutputError("Responses API returned no parsed extraction")
+            proposal = (
+                parsed
+                if isinstance(parsed, ExtractionProposal)
+                else ExtractionProposal.model_validate(parsed)
             )
-            data = json.loads(response.output_text)
-            return data if isinstance(data, dict) else None
-        except Exception as exc:
-            logger.warning("OpenAI extraction fallback failed: %s", type(exc).__name__)
+            return proposal, response
+
+        response = responses.create(
+            text={
+                "format": {
+                    "type": "json_schema",
+                    "name": EXTRACTION_SCHEMA_NAME,
+                    "strict": True,
+                    "schema": ExtractionProposal.model_json_schema(),
+                }
+            },
+            **request_kwargs,
+        )
+        output_text = _value(response, "output_text")
+        if not isinstance(output_text, str):
+            raise ClassificationOutputError("Responses API returned no extraction text")
+        return ExtractionProposal.model_validate_json(output_text), response
+
+    def propose_fields(self, context: dict[str, Any]) -> dict[str, Any] | None:
+        """Return schema-validated Stage 2 values with safe usage diagnostics."""
+
+        self.last_extraction_usage = None
+        self.last_extraction_attempts = 0
+        self.last_extraction_error = None
+        if not self.client:
+            self.last_extraction_error = self.unavailable_failure_reason_code or "llm_unavailable"
             return None
+
+        for attempt in range(self.max_retries + 1):
+            self.last_extraction_attempts += 1
+            try:
+                proposal, response = self._request_fields(context)
+                self.last_extraction_usage = response_usage(response)
+                return {
+                    field.value: getattr(proposal, field.value)
+                    for field in CanonicalField
+                }
+            except Exception as exc:
+                if _is_transient_error(exc) and attempt < self.max_retries:
+                    with self._metrics_lock:
+                        self.retry_count += 1
+                    delay = _retry_after_seconds(exc)
+                    if delay is None:
+                        delay = _backoff_seconds(self.retry_backoff_seconds, attempt)
+                    if delay:
+                        time.sleep(delay)
+                    continue
+                self.last_extraction_error = type(exc).__name__
+                logger.warning("OpenAI extraction fallback failed: %s", type(exc).__name__)
+                return None
+        self.last_extraction_error = "retry_limit"
+        return None

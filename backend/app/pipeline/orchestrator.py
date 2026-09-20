@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import json
 import logging
 import re
+import unicodedata
 from pathlib import Path
 from typing import Any
 
@@ -29,12 +30,25 @@ from app.pipeline.classify import ClassificationDecision, ClassificationService,
 from app.pipeline.compare import compare_documents
 from app.pipeline.decide import decide_result
 from app.pipeline.extract import extract_document
-from app.pipeline.normalize import normalize_field, normalize_text
+from app.pipeline.normalize import normalize_field
 
 
 logger = logging.getLogger(__name__)
 
 STAGES = ((1, "Classify"), (2, "Extract & normalize"), (3, "Compare"), (4, "Decide"))
+
+
+def _compact_evidence_text(value: str) -> str:
+    normalized = unicodedata.normalize("NFKC", value).casefold()
+    return re.sub(r"\W+", "", normalized, flags=re.UNICODE)
+
+
+def _source_snippet(source_text: str, candidate: str) -> str:
+    candidate_text = _compact_evidence_text(candidate)
+    for line in source_text.splitlines():
+        if candidate_text and candidate_text in _compact_evidence_text(line):
+            return line.strip()[:500]
+    return candidate[:500]
 
 
 class PipelineOrchestrator:
@@ -45,13 +59,23 @@ class PipelineOrchestrator:
         llm: OpenAIClient | None = None,
         max_workers: int = 4,
         output_dir: str | Path | None = None,
+        stage2_llm_fallback: bool = False,
     ) -> None:
         self.loader = loader
         self.store = store
         self.llm = llm
         self.max_workers = max(1, int(max_workers))
         self.output_dir = Path(output_dir).resolve() if output_dir else None
+        self.stage2_llm_fallback = bool(stage2_llm_fallback)
         self.last_classification_metrics: dict[str, Any] = {}
+        self.last_stage2_metrics: dict[str, Any] = {
+            "stage2_llm_fallback": self.stage2_llm_fallback,
+            "stage2_llm_calls": 0,
+            "stage2_llm_errors": 0,
+            "stage2_llm_input_tokens": 0,
+            "stage2_llm_output_tokens": 0,
+            "stage2_llm_reasoning_tokens": 0,
+        }
 
     def _default_output_dir(self) -> Path:
         """Keep fixture/custom-dataset exports from clobbering the submission."""
@@ -76,6 +100,14 @@ class PipelineOrchestrator:
         rules_only: bool = False,
     ) -> dict[str, Any]:
         run_full_dataset = email_ids is None and not retry_failed_only
+        self.last_stage2_metrics = {
+            "stage2_llm_fallback": self.stage2_llm_fallback,
+            "stage2_llm_calls": 0,
+            "stage2_llm_errors": 0,
+            "stage2_llm_input_tokens": 0,
+            "stage2_llm_output_tokens": 0,
+            "stage2_llm_reasoning_tokens": 0,
+        }
         emails = self.loader.list_emails()
         if retry_failed_only and not email_ids:
             latest_run = self.store.latest_run()
@@ -310,7 +342,7 @@ class PipelineOrchestrator:
 
     def extract_document(self, parsed, role: DocumentRole | None):
         document = extract_document(parsed, role)
-        if not self.llm or not self.llm.available or not parsed.readable:
+        if not self.stage2_llm_fallback or not self.llm or not getattr(self.llm, "available", False) or not parsed.readable:
             return document
         unresolved = [
             field.field_name.value
@@ -319,6 +351,7 @@ class PipelineOrchestrator:
         ]
         if not unresolved:
             return document
+        self.last_stage2_metrics["stage2_llm_calls"] += 1
         proposal = self.llm.propose_fields(
             {
                 "document_path": parsed.path,
@@ -327,16 +360,28 @@ class PipelineOrchestrator:
                 "source_text": parsed.text[:15000],
             }
         )
+        usage = getattr(self.llm, "last_extraction_usage", None)
+        if isinstance(usage, dict):
+            document.llm_usage = {
+                key: max(0, int(usage.get(key, 0) or 0))
+                for key in ("input_tokens", "output_tokens", "reasoning_tokens")
+            }
+            self.last_stage2_metrics["stage2_llm_input_tokens"] += document.llm_usage["input_tokens"]
+            self.last_stage2_metrics["stage2_llm_output_tokens"] += document.llm_usage["output_tokens"]
+            self.last_stage2_metrics["stage2_llm_reasoning_tokens"] += document.llm_usage["reasoning_tokens"]
         if not proposal:
+            self.last_stage2_metrics["stage2_llm_errors"] += 1
             return document
-        source_text = re.sub(r"[^a-z0-9]+", "", normalize_text(parsed.text).lower())
+        source_text = _compact_evidence_text(parsed.text)
         for field in document.fields:
+            if field.field_name.value not in unresolved:
+                continue
             proposed = proposal.get(field.field_name.value)
             if isinstance(proposed, dict):
                 proposed = proposed.get("value")
             if not isinstance(proposed, str) or not proposed.strip():
                 continue
-            candidate_text = re.sub(r"[^a-z0-9]+", "", normalize_text(proposed).lower())
+            candidate_text = _compact_evidence_text(proposed)
             if not candidate_text or candidate_text not in source_text:
                 continue
             normalized = normalize_field(field.field_name, proposed)
@@ -348,7 +393,7 @@ class PipelineOrchestrator:
             field.source = ExtractionSource.LLM
             field.confidence = Confidence.MEDIUM
             field.evidence = FieldEvidence(
-                snippet=f"Validated model value: {proposed}",
+                snippet=_source_snippet(parsed.text, proposed),
                 source_path=parsed.path,
             )
         return document

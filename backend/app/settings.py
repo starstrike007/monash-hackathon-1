@@ -6,6 +6,13 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 
+def _env_bool(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 class Settings:
     def __init__(self) -> None:
         self.backend_dir = Path(__file__).resolve().parents[1]
@@ -24,6 +31,7 @@ class Settings:
             self.openai_key_source = None
         self.openai_model = os.getenv("OPENAI_MODEL", "gpt-5.6-luna")
         self.openai_timeout_seconds = float(os.getenv("OPENAI_TIMEOUT_SECONDS", "20"))
+        self.stage2_llm_fallback = _env_bool("STAGE2_LLM_FALLBACK", default=False)
         self.openai_reasoning_effort_classify = (
             os.getenv("OPENAI_REASONING_EFFORT_CLASSIFY", "").strip() or None
         )
