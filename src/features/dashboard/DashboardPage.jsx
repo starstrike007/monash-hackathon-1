@@ -23,13 +23,24 @@ function SummaryCard({ label, value, caption, warning = false, compact = false, 
       onClick={onClick}
       className={cn(
         'relative rounded-2xl bg-white text-left shadow-[0_2px_10px_rgba(22,35,43,0.05)]',
-        'transition-all duration-200 ease-out hover:z-10 hover:scale-[1.03] hover:shadow-[0_12px_32px_rgba(22,35,43,0.12)] motion-reduce:transition-none motion-reduce:hover:scale-100',
         compact ? 'p-5' : 'p-6',
         warning && 'bg-[#FBEBCF]',
-        onClick &&
-          'cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0E5A66]',
+        onClick
+          ? 'group cursor-pointer transition-all duration-200 ease-out hover:z-10 hover:scale-[1.03] hover:shadow-[0_12px_32px_rgba(22,35,43,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0E5A66] motion-reduce:transition-none motion-reduce:hover:scale-100'
+          : 'cursor-default',
       )}
     >
+      {onClick && (
+        <ArrowRight
+          size={16}
+          weight="bold"
+          aria-hidden="true"
+          className={cn(
+            'absolute right-4 top-4 transition-transform duration-200 group-hover:translate-x-0.5',
+            warning ? 'text-[#8A5300]' : 'text-[#0E5A66]',
+          )}
+        />
+      )}
       <p className={cn('text-sm font-medium text-[#687780]', warning && 'text-[#8A5300]')}>
         {label}
       </p>
@@ -53,15 +64,6 @@ function SummaryCard({ label, value, caption, warning = false, compact = false, 
       </p>
     </Tag>
   )
-}
-
-function formatLastUpdated(timestamp, now) {
-  const minutes = Math.floor((now - timestamp) / 60000)
-  if (minutes < 1) return 'just now'
-  if (minutes === 1) return '1 min ago'
-  if (minutes < 60) return `${minutes} mins ago`
-  const hours = Math.floor(minutes / 60)
-  return hours === 1 ? '1 hour ago' : `${hours} hours ago`
 }
 
 function useRelativeTime(value, intervalMs = 30000) {
@@ -142,7 +144,7 @@ function buildInsights(data) {
   return insights
 }
 
-function SummaryBrief({ data, navigate, lastRunAt }) {
+function SummaryBrief({ data, navigate, lastRunAt, onOpenComparisons, onOpenMismatches }) {
   const insights = buildInsights(data)
   const lastRun = useRelativeTime(lastRunAt)
 
@@ -199,12 +201,14 @@ function SummaryBrief({ data, navigate, lastRunAt }) {
               label="Comparison requests"
               value={data.comparison_requests}
               caption={`${data.comparison_requests - 2} SI/BL pairs · 2 missing attachment`}
+              onClick={onOpenComparisons}
             />
             <SummaryCard
               compact
               label="Mismatches found"
               value={data.mismatches_found}
               caption={`Across ${data.comparison_requests - data.needs_review} fully compared pairs`}
+              onClick={onOpenMismatches}
             />
             <SummaryCard
               compact
@@ -212,6 +216,7 @@ function SummaryBrief({ data, navigate, lastRunAt }) {
               value={data.needs_review}
               caption="Open review queue →"
               warning
+              onClick={() => navigate('/review')}
             />
           </div>
 
@@ -425,13 +430,10 @@ export function DashboardPage({ navigate, initialRunId = null }) {
   const [lastRunAt, setLastRunAt] = useState(null)
   const [runId, setRunId] = useState(initialRunId)
   const [running, setRunning] = useState(false)
-  const [lastUpdated, setLastUpdated] = useState(Date.now)
-  const [now, setNow] = useState(Date.now)
 
   async function loadDashboard() {
     const summary = await getDashboard()
     setData(summary)
-    setLastUpdated(Date.now())
 
     // The summary endpoint only carries the run id, so the finish time comes
     // from the run record itself.
@@ -454,18 +456,12 @@ export function DashboardPage({ navigate, initialRunId = null }) {
     )
   }, [data])
 
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 30000)
-    return () => window.clearInterval(timer)
-  }, [])
-
   async function startPipeline() {
     setRunning(true)
     const run = await runPipeline()
     setRunId(run.run_id)
     setRunning(false)
     loadDashboard()
-    setNow(Date.now())
   }
 
   async function openFirst(filter, fallback) {
@@ -527,31 +523,17 @@ export function DashboardPage({ navigate, initialRunId = null }) {
         </header>
 
         <div className="mt-10">
-          <SummaryBrief data={data} navigate={navigate} lastRunAt={lastRunAt} />
-        </div>
-
-        <section className="mt-7 grid gap-4 xl:grid-cols-4">
-          <SummaryCard
-            label="Emails processed"
-            value={data.emails_processed}
-            caption={`Last updated: ${formatLastUpdated(lastUpdated, now)}`}
-          />
-          <SummaryCard
-            label="Comparison requests"
-            value={data.comparison_requests}
-            caption={`${data.comparison_requests - 2} SI/BL pairs · 2 missing attachment`}
-            onClick={() =>
+          <SummaryBrief
+            data={data}
+            navigate={navigate}
+            lastRunAt={lastRunAt}
+            onOpenComparisons={() =>
               openFirst(
                 { params: {}, match: (item) => item.category === 'BL_COMPARISON' },
                 '/inbox',
               )
             }
-          />
-          <SummaryCard
-            label="Mismatches found"
-            value={data.mismatches_found}
-            caption={`Across ${data.comparison_requests - data.needs_review} fully compared pairs`}
-            onClick={() =>
+            onOpenMismatches={() =>
               openFirst(
                 {
                   params: { status: 'mismatch' },
@@ -561,14 +543,7 @@ export function DashboardPage({ navigate, initialRunId = null }) {
               )
             }
           />
-          <SummaryCard
-            label="Needs review"
-            value={data.needs_review}
-            caption="Awaiting a person's decision"
-            warning
-            onClick={() => navigate('/review')}
-          />
-        </section>
+        </div>
 
         <section className="mt-7 grid gap-6 xl:grid-cols-2">
           <SectionCard
