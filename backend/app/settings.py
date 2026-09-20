@@ -3,13 +3,25 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 
 class Settings:
     def __init__(self) -> None:
+        self.backend_dir = Path(__file__).resolve().parents[1]
         self.root_dir = Path(__file__).resolve().parents[2]
+        self.env_file_path = self.backend_dir / ".env"
+        api_key_from_environment = os.environ.get("OPENAI_API_KEY")
+        load_dotenv(dotenv_path=self.env_file_path, override=False)
         self.data_dir = Path(os.getenv("DATA_DIR", self.root_dir / "data")).resolve()
         self.runtime_dir = Path(os.getenv("RUNTIME_DIR", self.root_dir / ".runtime")).resolve()
         self.openai_api_key = os.getenv("OPENAI_API_KEY", "")
+        if api_key_from_environment:
+            self.openai_key_source = "env"
+        elif self.openai_api_key:
+            self.openai_key_source = ".env"
+        else:
+            self.openai_key_source = None
         self.openai_model = os.getenv("OPENAI_MODEL", "gpt-5.6-luna")
         self.openai_timeout_seconds = float(os.getenv("OPENAI_TIMEOUT_SECONDS", "20"))
         self.openai_reasoning_effort_classify = (

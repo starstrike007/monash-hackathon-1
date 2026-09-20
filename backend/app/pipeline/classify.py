@@ -10,7 +10,11 @@ import time
 import unicodedata
 from typing import Any, Iterable
 
-from app.adapters.openai_client import ClassificationProposal, failure_reason_code
+from app.adapters.openai_client import (
+    ClassificationProposal,
+    failure_reason_code,
+    safe_exception_message,
+)
 from app.api.schemas.common import Confidence, EmailCategory
 from app.pipeline.prompts import CLASSIFICATION_PROMPT, CLASSIFICATION_PROMPT_VERSION
 
@@ -25,6 +29,9 @@ class ClassificationDecision:
     failure_reason_code: str | None = None
     usage: dict[str, int] | None = None
     latency_seconds: float | None = None
+    attempts: int | None = None
+    exception_class: str | None = None
+    exception_message: str | None = None
 
     @property
     def low_confidence(self) -> bool:
@@ -375,6 +382,8 @@ class ClassificationService:
                 failure_code,
                 model_failure=True,
                 failure_reason_code=failure_code,
+                exception_class=getattr(self.llm, "unavailable_exception_class", None),
+                exception_message=getattr(self.llm, "unavailable_exception_message", None),
             )
 
         cache_key = classification_cache_key(email, model_id=str(getattr(self.llm, "model", "")))
@@ -438,6 +447,9 @@ class ClassificationService:
                 reason_code,
                 model_failure=True,
                 failure_reason_code=reason_code,
+                attempts=1,
+                exception_class=type(exc).__name__,
+                exception_message=safe_exception_message(exc),
                 latency_seconds=latency_seconds,
             )
 
@@ -450,6 +462,9 @@ class ClassificationService:
         )
         self._record_call_metrics(usage, latency_seconds)
         result_failure_code = getattr(result, "failure_reason_code", None)
+        result_attempts = getattr(result, "attempts", None)
+        result_exception_class = getattr(result, "exception_class", None)
+        result_exception_message = getattr(result, "exception_message", None)
         proposal = getattr(result, "proposal", result)
 
         if isinstance(proposal, dict):
@@ -498,6 +513,9 @@ class ClassificationService:
             reason_code,
             model_failure=True,
             failure_reason_code=reason_code,
+            attempts=result_attempts,
+            exception_class=result_exception_class,
+            exception_message=result_exception_message,
             usage=usage if isinstance(usage, dict) else None,
             latency_seconds=float(latency_seconds),
         )
@@ -507,6 +525,9 @@ class ClassificationService:
         reason: str,
         model_failure: bool = False,
         failure_reason_code: str | None = None,
+        attempts: int | None = None,
+        exception_class: str | None = None,
+        exception_message: str | None = None,
         usage: dict[str, int] | None = None,
         latency_seconds: float | None = None,
     ) -> ClassificationDecision:
@@ -523,6 +544,9 @@ class ClassificationService:
             confidence=Confidence.LOW,
             model_failure=model_failure,
             failure_reason_code=failure_reason_code,
+            attempts=attempts,
+            exception_class=exception_class,
+            exception_message=exception_message,
             reason=_safe_reason(reason, "Unable to determine the main request."),
             usage=usage,
             latency_seconds=latency_seconds,
