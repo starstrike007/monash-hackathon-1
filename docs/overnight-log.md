@@ -1,12 +1,31 @@
 # Overnight run log
 
-Summary: Started the unattended run on `overnight/phase-8`, created from
+Summary: Completed the unattended run on `overnight/phase-8`, created from
 `phase8-document-parsers`. The existing local `overnight` branch was
 preserved as `overnight-base` because Git cannot create a child ref while a
-branch uses the parent name. No remote, main branch, deployment, account, or
-prohibited evaluator data was touched.
+branch uses the parent name. Step 1, Step 2, and Step 3 are committed as
+`68b0597`, `5ea0b5e`, and `753fa55`. No remote, main branch, deployment,
+account, or prohibited evaluator data was touched.
 
-Current state: Step 1 passed and is committed as `PENDING COMMIT` below.
+Final verification commands and results:
+
+```powershell
+Set-Location backend
+.\.venv\Scripts\python.exe -m pytest -q
+$env:STAGE2_LLM_FALLBACK='0'; .\.venv\Scripts\python.exe export_stage1.py --rules-only --runtime-dir ..\.runtime\overnight-final-rules --output-dir ..\.runtime\overnight-final-rules-output
+$env:STAGE2_LLM_FALLBACK='0'; .\.venv\Scripts\python.exe export_stage1.py --runtime-dir ..\.runtime\overnight-final-full --output-dir ..\.runtime\overnight-final-full-output
+```
+
+- Pytest: 51 passed, 1 existing non-strict xfail, 2 warnings.
+- Final rules-only export: 520 entries, `run_status=complete`, zero
+  failures, zero provider calls.
+- Final full export: 520 entries and `run_status=complete`; 147 logical
+  provider calls made 441 bounded attempts (294 retries), all ending in
+  `llm_error`, with zero reported tokens. The export file was generated, but
+  the provider-backed classification result is not reliable until the
+  OpenAI connectivity/configuration issue is resolved. No second full export
+  was started.
+
 Baseline `pytest -q` from `backend/`
 passed 41 tests with 3 existing non-strict xfails and 2 dependency warnings.
 The allowed corpus profile is 520 emails and 250 referenced attachments:
@@ -92,4 +111,6 @@ The allowed corpus profile is 520 emails and 250 referenced attachments:
 
 ## Final verification
 
-Not started.
+- Completed. The exact commands and results are recorded at the top of this
+  log. The remaining unfinished item is the provider-backed full-export
+  failure described above; rules-only and mocked Stage 2 paths pass.
