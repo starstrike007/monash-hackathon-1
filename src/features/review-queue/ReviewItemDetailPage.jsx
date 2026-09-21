@@ -229,7 +229,7 @@ function ReclassifyPanel({ itemId, onSaved, defaultNote }) {
 }
 
 function DraftReplyPanel({ email }) {
-  const draft = `Hi,\n\nWe're missing an attachment needed to verify ${email?.subject || 'this shipment'}. Could you resend the Shipping Instruction and draft Bill of Lading?\n\nThanks,\nShipCheck team`
+  const draft = `Hi,\n\nWe're missing an attachment needed to verify ${email?.subject || 'this shipment'}. Could you resend the Shipping Instruction and draft Bill of Lading?\n\nThanks,\nClearance team`
   return (
     <section className="rounded-2xl bg-white p-6 shadow-sm">
       <h2 className="text-lg font-semibold text-[#26353D]">

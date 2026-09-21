@@ -93,7 +93,7 @@ browser click-through was still unavailable.
 
 ### Global
 
-1. **PASS — Sidebar and live badge.** `src/components/layout/AppShell.jsx:6-13,65-85` keeps exactly Dashboard, Inbox, Docs Comparison, and Review queue. `src/app/router.jsx:37-58` refreshes the open count on load and after `shipcheck:data-changed`; the fixture HTTP run returned the live open count.
+1. **PASS — Sidebar and live badge.** `src/components/layout/AppShell.jsx:6-13,65-85` keeps exactly Dashboard, Inbox, Docs Comparison, and Review queue. `src/app/router.jsx:37-58` refreshes the open count on load and after `clearance:data-changed`; the fixture HTTP run returned the live open count.
 2. **PASS — Direct-load routes.** `src/app/router.jsx:18-32` still defines all seven routes. Vite HTTP checks returned 200 for every requested path after the final build.
 3. **PARTIAL — Prototype visual language.** The requested design tokens remain in `src/index.css` and `src/components/layout/AppShell.jsx`, but no browser surface was available for screenshot/click verification (`cua.listBrowsers()=[]`; Playwright/Vitest are not installed).
 4. **PASS — Effective dashboard values.** `backend/app/services/dashboard_service.py:77-111` aggregates from effective `EmailListItem` values; the added dashboard override regression test verifies the category count ripple. Export/list behavior is also covered.
@@ -102,8 +102,8 @@ browser click-through was still unavailable.
 
 ### Stage 1 — Inbox
 
-1. **PASS — Date groups and newest-first order.** `src/features/inbox/InboxPage.jsx:22-59,141-177` renders all five buckets and sorts descending. The final 520-email scratch runtime populated Today 116, Yesterday 31, This week 100, This month 213, Earlier 60.
-2. **PASS — Deterministic simulated time and rebase.** `backend/app/services/timestamps.py:27-78` stores hash-derived Kuala Lumpur business-hour timestamps once; `backend/app/api/routes/admin.py:11-18` was exercised against the isolated fixture runtime and returned `updated: 6`. `src/lib/time.js:22-59` formats the stored value without a fake default.
+1. **PASS — Date groups and newest-first order.** `src/features/inbox/InboxPage.jsx` renders all five buckets and sorts descending. The ID-ordered schedule places EM-0001 in Today, EM-0002–0003 in Yesterday, EM-0004–0006 in This week, EM-0007–0010 in This month, and EM-0011–0520 in Earlier.
+2. **PASS — Deterministic simulated time and daily rebase.** `backend/app/services/timestamps.py` derives business-hour timestamps from the numeric email ID and automatically rebases all records when the Asia/Kuala_Lumpur calendar date changes. `backend/app/api/routes/admin.py:11-18` still supports an immediate manual rebase, and `src/lib/time.js` formats the stored value without a fake default.
 3. **PASS — Longer subjects.** `src/features/inbox/InboxPage.jsx:145-151` uses a two-line clamp.
 4. **PASS — No Status or attention columns.** `src/features/inbox/InboxPage.jsx:143-166` contains only ID/time, subject/sender, category, and attachment count.
 5. **PASS — Category chips/counts and search.** `src/features/inbox/InboxPage.jsx:11-19,44-78,108-132` fetches all pages, computes global chip counts, and filters by the API-backed subject/sender/ID query.

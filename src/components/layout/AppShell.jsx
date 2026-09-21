@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Archive, ChartLineUp, Files, List, X, WarningCircle } from '@phosphor-icons/react'
 
+import clearanceLogo from '@/assets/clearance-logo.png'
 import { cn } from '@/lib/utils'
 
 const navigation = [
@@ -46,12 +47,15 @@ export function AppShell({ pathname, navigate, children, reviewCount = null }) {
           <button
             className="flex items-center gap-3"
             onClick={() => go('/dashboard')}
-            aria-label="ShipCheck home"
+            aria-label="Clearance home"
           >
-            <span className="grid h-10 w-10 place-items-center rounded-lg bg-[#7C2D12] text-xl">
-              ✓
-            </span>
-            <span className="font-serif text-2xl font-semibold tracking-tight">ShipCheck</span>
+            <img
+              src={clearanceLogo}
+              alt=""
+              aria-hidden="true"
+              className="h-10 w-10 shrink-0 object-contain"
+            />
+            <span className="font-serif text-2xl font-semibold tracking-tight">Clearance</span>
           </button>
           <button
             className="rounded-md p-2 text-white/70 hover:bg-white/10 lg:hidden"
@@ -92,7 +96,9 @@ export function AppShell({ pathname, navigate, children, reviewCount = null }) {
 
         <div className="mt-auto rounded-xl bg-[#0E5A66] p-4 text-white/70">
           <p className="font-semibold text-white">Live pipeline</p>
-          <p className="mt-1 text-sm leading-5">Counts and review state come from the backend results store.</p>
+          <p className="mt-1 text-sm leading-5">
+            Counts and review state come from the backend results store.
+          </p>
         </div>
       </aside>
 

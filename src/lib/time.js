@@ -55,6 +55,27 @@ export function formatBusinessDate(value) {
   }).format(date)
 }
 
+/** Split display for list rows: { date: "21 Sep 2026", time: "13:13" }. */
+export function formatBusinessDateTimeParts(value) {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return {
+    date: new Intl.DateTimeFormat('en-GB', {
+      timeZone: BUSINESS_TIME_ZONE,
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }).format(date),
+    time: new Intl.DateTimeFormat('en-GB', {
+      timeZone: BUSINESS_TIME_ZONE,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(date),
+  }
+}
+
 export function formatBusinessDay(value = Date.now()) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return 'â€”'
