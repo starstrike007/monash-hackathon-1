@@ -77,8 +77,8 @@ Status meanings: PASS is implemented and verified; PARTIAL is present but incomp
 
 ## Baseline totals
 
-PASS: **8**  
-PARTIAL: **25**  
+PASS: **8**
+PARTIAL: **25**
 MISSING: **5**
 
 The fixes below are applied in the task's priority order. Each group is followed
