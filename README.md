@@ -1,6 +1,6 @@
-# ShipCheck
+# Clearance
 
-ShipCheck classifies a shipping inbox, compares Shipping Instructions with
+Clearance classifies a shipping inbox, compares Shipping Instructions with
 draft Bills of Lading, and routes uncertain cases to human review.
 
 ## Local run
@@ -95,18 +95,20 @@ it shows a visible "Backend unavailable" state with a retry action.
 ## Simulated timestamps
 
 The dataset has no real receipt times, so each email's `received_at` is
-generated once, deterministically, from a hash of its `email_id` (business
-hours in Asia/Kuala_Lumpur, spread over the last ~45 days and weighted
-toward recent days). It's stored in `email_meta` and never regenerated on
-page load. To re-anchor the demo so "Today"/"Yesterday" line up with the
-day you're presenting, call:
+generated deterministically from its numeric email ID in Asia/Kuala_Lumpur
+business hours. The demo order is intentional: EM-0001 is Today, EM-0002 to
+EM-0003 are Yesterday, EM-0004 to EM-0006 are This week, EM-0007 to EM-0010
+are This month, and EM-0011 onward are Earlier. The timestamp anchor moves
+automatically when the Kuala Lumpur calendar date changes.
+
+To re-anchor the demo immediately (for example, before a presentation), call:
 
 ```powershell
 curl -X POST http://localhost:8000/api/admin/rebase-timestamps
 ```
 
-This regenerates every email's timestamp relative to now and leaves
-everything else (results, categories, review state) untouched.
+This regenerates every email's timestamp relative to now and leaves everything
+else (results, categories, review state) untouched.
 
 ## Category override and the review queue
 

@@ -1,1 +1,1 @@
-"""ShipCheck backend package."""
+"""Clearance backend package."""

@@ -51,11 +51,11 @@ export function Router() {
           if (active) setReviewCount(null)
         })
     refreshReviewCount()
-    window.addEventListener('shipcheck:data-changed', refreshReviewCount)
+    window.addEventListener('clearance:data-changed', refreshReviewCount)
     return () => {
       active = false
       window.removeEventListener('popstate', onPopState)
-      window.removeEventListener('shipcheck:data-changed', refreshReviewCount)
+      window.removeEventListener('clearance:data-changed', refreshReviewCount)
     }
   }, [])
 

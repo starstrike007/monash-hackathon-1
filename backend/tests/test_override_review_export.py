@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import base64
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
 
+from app.adapters.dataset_loader import DatasetLoader
+from app.adapters.local_store import LocalStore
 from app.main import app
 from app.pipeline.orchestrator import PipelineOrchestrator
-from app.services.timestamps import KUALA_LUMPUR, generate_received_at
+from app.services.timestamps import KUALA_LUMPUR, TIMESTAMP_ANCHOR_KEY, ensure_received_timestamps, generate_received_at
 
 from .conftest import FIXTURE_DATA_DIR
 from app.settings import settings
@@ -37,6 +39,39 @@ def test_timestamps_are_deterministic_and_in_business_hours() -> None:
 
     parsed = datetime.fromisoformat(first).astimezone(KUALA_LUMPUR)
     assert 9 <= parsed.hour < 18
+
+
+def test_timestamps_follow_the_requested_id_order_and_bucket_sizes() -> None:
+    now = datetime(2026, 9, 21, 4, tzinfo=timezone.utc)
+    anchor_date = now.astimezone(KUALA_LUMPUR).date()
+    timestamps = [
+        datetime.fromisoformat(generate_received_at(f"email_{number:03d}", now=now)).astimezone(
+            KUALA_LUMPUR
+        )
+        for number in range(1, 521)
+    ]
+    offsets = [(anchor_date - timestamp.date()).days for timestamp in timestamps]
+
+    assert offsets[:10] == [0, 1, 1, 2, 3, 4, 7, 8, 9, 10]
+    assert all(30 <= offset <= 45 for offset in offsets[10:])
+    assert timestamps == sorted(timestamps, reverse=True)
+    assert all(9 <= timestamp.hour < 18 for timestamp in timestamps)
+
+
+def test_timestamps_rebase_automatically_when_the_calendar_day_changes(tmp_path) -> None:
+    loader = DatasetLoader(FIXTURE_DATA_DIR)
+    store = LocalStore(tmp_path / "runtime")
+    first_day = datetime(2026, 9, 21, 4, tzinfo=timezone.utc)
+    next_day = first_day + timedelta(days=1)
+
+    assert ensure_received_timestamps(store, loader, now=first_day) == len(loader.list_emails())
+    first_timestamp = store.get_email_meta("email_fixture_general")["received_at"]
+    assert store.get_email_meta("email_fixture_general")[TIMESTAMP_ANCHOR_KEY] == "2026-09-21"
+
+    assert ensure_received_timestamps(store, loader, now=first_day) == 0
+    assert ensure_received_timestamps(store, loader, now=next_day) == len(loader.list_emails())
+    assert store.get_email_meta("email_fixture_general")["received_at"] != first_timestamp
+    assert store.get_email_meta("email_fixture_general")[TIMESTAMP_ANCHOR_KEY] == "2026-09-22"
 
 
 def test_override_away_from_comparison_clears_status(api_client):

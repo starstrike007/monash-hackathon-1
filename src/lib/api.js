@@ -2,7 +2,7 @@ const API_BASE =
   import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
 export function notifyDataChanged() {
-  window.dispatchEvent(new CustomEvent('shipcheck:data-changed'))
+  window.dispatchEvent(new CustomEvent('clearance:data-changed'))
 }
 
 export class ApiError extends Error {
