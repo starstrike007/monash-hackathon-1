@@ -14,7 +14,7 @@ from app.api.schemas.common import (
     FieldEvidence,
     FieldExtraction,
 )
-from app.pipeline.normalize import normalize_extraction
+from app.pipeline.normalize import normalize_extraction, normalize_field, normalize_text
 
 
 FIELD_PATTERNS: dict[CanonicalField, tuple[str, ...]] = {
@@ -156,6 +156,80 @@ def _evidence(snippet: str | None, raw_value: str | None, location: dict, path: 
     return FieldEvidence(snippet=quoted, quoted_text=quoted or None, source_path=path, **fields)
 
 
+def _starts_field_label(line: str) -> bool:
+    stripped = line.strip().strip("|").strip()
+    for patterns in FIELD_PATTERNS.values():
+        for pattern in patterns:
+            try:
+                if re.match(rf"(?:{pattern})(?:\s|[:=()/|-]|$)", stripped, flags=re.IGNORECASE):
+                    return True
+            except re.error:
+                continue
+    return False
+
+
+def _line_index(lines: list[str], snippet: str | None) -> int | None:
+    if not snippet:
+        return None
+    target = snippet.strip().strip("|").strip()
+    for index, line in enumerate(lines):
+        if line.strip().strip("|").strip() == target:
+            return index
+    return None
+
+
+def _following_context(lines: list[str], start: int | None, limit: int = 6) -> list[str]:
+    if start is None:
+        return []
+    context: list[str] = []
+    for line in lines[start + 1 : start + 1 + limit]:
+        stripped = line.strip().strip("|").strip()
+        if not stripped:
+            continue
+        if _starts_field_label(stripped):
+            break
+        context.append(normalize_text(stripped))
+    return context
+
+
+def _same_address_context(left: list[str], right: list[str]) -> bool:
+    if not left or not right:
+        return False
+    overlap = set(left) & set(right)
+    if len(left) == len(right) == 1:
+        return bool(overlap)
+    return len(overlap) >= 2 and len(overlap) / max(len(left), len(right)) >= 0.75
+
+
+def _repair_compound_notify(fields: list[FieldExtraction], parsed: ParsedDocument, lines: list[str]) -> None:
+    """Repair PDF text-layer joins in `Notify Party/Intermediate Consignee`.
+
+    Some PDFs place the label and value in overlapping text objects. pdfplumber
+    then returns strings such as `/Intermediate ConsKiTgPne CeO., LTD` rather
+    than the visible party name. If the following address block is identical to
+    the document's consignee block, it is safe to reuse that party value. If it
+    is not, mark the field ambiguous instead of accepting OCR/layout garbage as
+    a real mismatch.
+    """
+
+    notify = next((field for field in fields if field.field_name == CanonicalField.NOTIFY_PARTY), None)
+    consignee = next((field for field in fields if field.field_name == CanonicalField.CONSIGNEE), None)
+    if not notify or not consignee or notify.state != ExtractionState.FOUND or not notify.raw_value:
+        return
+    if not re.match(r"^\s*/?\s*intermediate\s+cons", notify.raw_value, flags=re.IGNORECASE):
+        return
+
+    notify_context = _following_context(lines, _line_index(lines, notify.evidence.snippet))
+    consignee_context = _following_context(lines, _line_index(lines, consignee.evidence.snippet))
+    if _same_address_context(notify_context, consignee_context) and consignee.raw_value:
+        notify.raw_value = consignee.raw_value
+        notify.normalized_value = normalize_field(CanonicalField.NOTIFY_PARTY, notify.raw_value)
+        return
+
+    notify.state = ExtractionState.AMBIGUOUS
+    notify.normalized_value = None
+
+
 def extract_document(parsed: ParsedDocument, role: DocumentRole | None = None) -> DocumentExtraction:
     fields: list[FieldExtraction] = []
     lines, line_meta = _effective_lines(parsed)
@@ -198,6 +272,8 @@ def extract_document(parsed: ParsedDocument, role: DocumentRole | None = None) -
                 evidence=_evidence(snippet, raw_value, location, parsed.path),
             )
         fields.append(normalize_extraction(extraction))
+
+    _repair_compound_notify(fields, parsed, lines)
 
     return DocumentExtraction(
         role=role,
