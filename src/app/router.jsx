@@ -7,6 +7,8 @@ import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { InboxPage } from '@/features/inbox/InboxPage'
 import { DocsComparisonDetailPage } from '@/features/docs-comparison/DocsComparisonDetailPage'
 import { DocsComparisonListPage } from '@/features/docs-comparison/DocsComparisonListPage'
+import { ReviewItemDetailPage } from '@/features/review-queue/ReviewItemDetailPage'
+import { ReviewQueuePage } from '@/features/review-queue/ReviewQueuePage'
 
 function currentLocation() {
   const url = new URL(window.location.href)
@@ -25,13 +27,8 @@ function routeFor(location) {
     return { name: 'docs-comparison-detail', emailId: parts[1], pathname, search }
   if (parts[0] === 'docs-comparison') return { name: 'docs-comparison', pathname, search }
   if (parts[0] === 'review' && parts[1])
-    return { name: 'case', emailId: parts[1], mode: 'review', pathname, search }
-  if (parts[0] === 'review')
-    return {
-      name: 'inbox',
-      pathname: '/review',
-      search: new URLSearchParams('status=needs_review'),
-    }
+    return { name: 'review-item', itemId: parts[1], pathname, search }
+  if (parts[0] === 'review') return { name: 'review-queue', pathname, search }
   return { name: 'not-found', pathname, search }
 }
 
@@ -45,7 +42,7 @@ export function Router() {
     window.addEventListener('popstate', onPopState)
     if (location.pathname === '/') navigate('/dashboard', true)
     getDashboard()
-      .then((data) => setReviewCount(data.needs_review || 0))
+      .then((data) => setReviewCount(data.review_queue_open ?? data.needs_review ?? 0))
       .catch(() => {})
     return () => window.removeEventListener('popstate', onPopState)
   }, [])
@@ -76,6 +73,10 @@ export function Router() {
     )
   else if (route.name === 'docs-comparison-detail')
     content = <DocsComparisonDetailPage navigate={navigate} emailId={route.emailId} />
+  else if (route.name === 'review-queue')
+    content = <ReviewQueuePage navigate={navigate} initialReason={route.search.get('reason')} />
+  else if (route.name === 'review-item')
+    content = <ReviewItemDetailPage navigate={navigate} itemId={route.itemId} />
   else
     content = (
       <div className="p-12">
