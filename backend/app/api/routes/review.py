@@ -26,6 +26,7 @@ def list_review_items(
 
 @router.get("/review/items/{item_id}", response_model=ReviewItem)
 def get_review_item(item_id: str, request: Request) -> ReviewItem:
+    request.app.state.orchestrator.ensure_seeded()
     item = request.app.state.store.get_review_item(item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Review item not found")

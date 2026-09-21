@@ -1,25 +1,45 @@
-import { mockDashboard, mockDetails, mockEmails, mockRun } from '@/lib/mockData'
-
 const API_BASE =
   import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
-async function request(path, options = {}) {
-  const response = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
-    ...options,
-  })
-  if (!response.ok) {
-    throw new Error((await response.text()) || `Request failed: ${response.status}`)
-  }
-  return response.json()
+export function notifyDataChanged() {
+  window.dispatchEvent(new CustomEvent('shipcheck:data-changed'))
 }
 
-async function withFallback(operation, fallback) {
+export class ApiError extends Error {
+  constructor(message, { status = null, backendUnavailable = false, cause = null } = {}) {
+    super(message, { cause })
+    this.name = 'ApiError'
+    this.status = status
+    this.backendUnavailable = backendUnavailable
+  }
+}
+
+async function request(path, options = {}) {
+  let response
   try {
-    return await operation()
+    response = await fetch(`${API_BASE}${path}`, {
+      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+      ...options,
+    })
   } catch (error) {
-    console.warn('[ShipCheck API fallback]', error.message)
-    return typeof fallback === 'function' ? fallback() : fallback
+    throw new ApiError(
+      'Backend unreachable. Start the FastAPI service and try again.',
+      { backendUnavailable: true, cause: error },
+    )
+  }
+  if (!response.ok) {
+    let detail = ''
+    try {
+      detail = await response.text()
+    } catch {
+      detail = ''
+    }
+    throw new ApiError(detail || `Request failed: ${response.status}`, { status: response.status })
+  }
+  try {
+    return await response.json()
+  } catch (error) {
+    throw new ApiError('The backend returned an invalid response.', { cause: error })
   }
 }
 
@@ -31,100 +51,62 @@ function queryString(params = {}) {
   return query.toString()
 }
 
-function fallbackEmails(params = {}) {
-  let items = [...mockEmails]
-  if (params.status) {
-    const status =
-      params.status.toUpperCase() === 'NO_MISMATCH' ? 'OK' : params.status.toUpperCase()
-    items = items.filter((item) => item.status === status)
-  }
-  if (params.query) {
-    const text = params.query.toLowerCase()
-    items = items.filter((item) =>
-      `${item.subject} ${item.sender} ${item.email_id}`.toLowerCase().includes(text),
-    )
-  }
-  return { items, total: items.length, page: 1, page_size: items.length }
-}
-
 export function getDashboard() {
-  return withFallback(() => request('/api/dashboard/summary'), mockDashboard)
+  return request('/api/dashboard/summary')
 }
 
 export function getEmails(params = {}) {
-  return withFallback(
-    () => request(`/api/emails?${queryString(params)}`),
-    () => fallbackEmails(params),
-  )
+  return request(`/api/emails?${queryString(params)}`)
 }
 
 export function getAllEmails(params = {}) {
-  return withFallback(
-    async () => {
-      // The API caps a page at 200 items, so collect every page for the inbox.
-      const pageSize = 200
-      const items = []
-      let page = 1
-      let total = 0
+  return (async () => {
+    // The API caps a page at 200 items, so collect every page for the inbox.
+    const pageSize = 200
+    const items = []
+    let page = 1
+    let total = 0
 
-      while (page <= 100) {
-        const response = await request(
-          `/api/emails?${queryString({ ...params, page, page_size: pageSize })}`,
-        )
-        const pageItems = Array.isArray(response.items) ? response.items : []
-        items.push(...pageItems)
-        total = Number.isFinite(response.total) ? response.total : items.length
+    while (page <= 100) {
+      const response = await request(
+        `/api/emails?${queryString({ ...params, page, page_size: pageSize })}`,
+      )
+      const pageItems = Array.isArray(response.items) ? response.items : []
+      items.push(...pageItems)
+      total = Number.isFinite(response.total) ? response.total : items.length
 
-        if (!pageItems.length || items.length >= total || pageItems.length < pageSize) break
-        page += 1
-      }
+      if (!pageItems.length || items.length >= total || pageItems.length < pageSize) break
+      page += 1
+    }
 
-      return { items, total, page: 1, page_size: items.length }
-    },
-    () => fallbackEmails(params),
-  )
+    return { items, total, page: 1, page_size: items.length }
+  })()
 }
 
 export function getEmail(emailId) {
-  return withFallback(
-    () => request(`/api/emails/${emailId}`),
-    () => mockDetails[emailId] || { ...mockDetails.email_417, email_id: emailId },
-  )
+  return request(`/api/emails/${emailId}`)
 }
 
 export function runPipeline() {
-  return withFallback(
-    () => request('/api/pipeline/run', { method: 'POST', body: JSON.stringify({}) }),
-    { ...mockRun, run_id: `run-${Date.now()}` },
-  )
+  return request('/api/pipeline/run', { method: 'POST', body: JSON.stringify({}) })
 }
 
 export function getPipelineRun(runId) {
-  return withFallback(() => request(`/api/pipeline/runs/${runId}`), mockRun)
+  return request(`/api/pipeline/runs/${runId}`)
 }
 
 export function retryEmail(emailId) {
-  return withFallback(
-    () => request(`/api/emails/${emailId}/retry`, { method: 'POST', body: JSON.stringify({}) }),
-    { email_id: emailId, run_id: mockRun.run_id, status: 'complete' },
-  )
+  return request(`/api/emails/${emailId}/retry`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
 }
 
 export function resolveEmail(emailId, payload) {
-  return withFallback(
-    () =>
-      request(`/api/emails/${emailId}/resolve`, { method: 'POST', body: JSON.stringify(payload) }),
-    () => ({
-      email_id: emailId,
-      saved: true,
-      message: 'Review decision saved',
-      result: {
-        ...(mockDetails[emailId]?.result || mockDetails.email_231.result),
-        status: payload.action === 'correct' ? 'OK' : 'MISMATCH',
-        review_reason: null,
-      },
-    }),
-  )
+  return request(`/api/emails/${emailId}/resolve`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
 }
 
 export function submissionUrl() {
@@ -152,11 +134,7 @@ export function getAttachmentView(path) {
 }
 
 export function getReviewItems(params = {}) {
-  return withFallback(() => request(`/api/review/items?${queryString(params)}`), {
-    items: [],
-    total: 0,
-    open_count: 0,
-  })
+  return request(`/api/review/items?${queryString(params)}`)
 }
 
 export function getReviewItem(itemId) {
@@ -164,6 +142,13 @@ export function getReviewItem(itemId) {
 }
 
 export function resolveReviewItem(itemId, payload) {
+  return request(`/api/review/items/${itemId}/resolve`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function uploadReviewAttachment(itemId, payload) {
   return request(`/api/review/items/${itemId}/resolve`, {
     method: 'POST',
     body: JSON.stringify(payload),
