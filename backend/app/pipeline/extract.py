@@ -22,10 +22,15 @@ FIELD_PATTERNS = FIELD_LABEL_ALIASES
 PLACEHOLDERS = {"", "TBA", "TBC", "N/A", "NA", "-", "_", "UNKNOWN", "TO BE ADVISED"}
 
 
-def _match_label(label: str, patterns: tuple[str, ...]) -> re.Match[str] | None:
+def _match_label(
+    label: str,
+    patterns: tuple[str, ...],
+    *,
+    require_start: bool = False,
+) -> re.Match[str] | None:
     for pattern in patterns:
         match = re.search(pattern, label, flags=re.IGNORECASE)
-        if match:
+        if match and (not require_start or match.start() == 0):
             return match
     return None
 
@@ -71,9 +76,20 @@ def _find_value(
 
         # Explicit separators are preferred so a colon in a value cannot be
         # mistaken for a second label.
-        separator = re.search(r"[:：=]", stripped)
+        # Explicit separators are preferred, but search only the label cell
+        # when a table row contains pipes. A colon in a value such as
+        # ``P.O. BOX: 123`` must not turn the address tail into the field
+        # value.
+        separator_segment = parts[0] if len(parts) > 1 else stripped
+        separator = re.search(r"[:：=]", separator_segment)
         if separator:
-            candidates.append((stripped[: separator.start()].strip(), stripped[separator.end() :].strip(), 0))
+            candidates.append(
+                (
+                    separator_segment[: separator.start()].strip(),
+                    separator_segment[separator.end() :].strip(),
+                    0,
+                )
+            )
 
         # Spreadsheet and Word table rows use pipe-separated cells after the
         # parser turns them into the shared text representation.
@@ -85,7 +101,11 @@ def _find_value(
         candidates.append((stripped, None, 0))
 
         for label, explicit_value, part_number in candidates:
-            match = _match_label(label, patterns)
+            # A field label must begin its cell/line.  Searching anywhere in
+            # a free-form line makes a table header such as
+            # ``CONTAINER NO. DESCRIPTION GROSS WEIGHT (KG)`` look like a
+            # gross-weight field and consumes the next row as its value.
+            match = _match_label(label, patterns, require_start=True)
             if not match:
                 continue
             value = _clean_value(explicit_value)

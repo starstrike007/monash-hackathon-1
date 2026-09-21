@@ -133,6 +133,65 @@ def test_synthetic_pdf_with_cid_garbling_is_unreadable(tmp_path):
     assert parsed.error_code == "unreadable_pdf"
 
 
+def test_multiline_docx_value_cell_keeps_name_separate_from_address(tmp_path):
+    loader = _loader(tmp_path)
+    document = Document()
+    document.add_paragraph("BILL OF LADING")
+    table = document.add_table(rows=1, cols=2)
+    table.cell(0, 0).text = "Shipper"
+    table.cell(0, 1).text = "Meridian Pulp\n77 Harbour Road\nSingapore"
+    document.save(loader.attachments_dir / "multiline.docx")
+
+    parsed = parse_attachment(loader, "attachments/multiline.docx")
+    extraction = extract_document(parsed, DocumentRole.BL)
+    shipper = next(field for field in extraction.fields if field.field_name == CanonicalField.SHIPPER)
+
+    assert shipper.state == ExtractionState.FOUND
+    assert shipper.raw_value == "Meridian Pulp"
+    assert "77 Harbour Road" not in shipper.raw_value
+
+
+def test_colon_in_later_table_value_does_not_override_first_value_cell(tmp_path):
+    loader = _loader(tmp_path)
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.append(["SHIPPING INSTRUCTION", None])
+    sheet.append(["Shipper", "Meridian Pulp | P.O. BOX: 123"])
+    workbook.save(loader.attachments_dir / "value-colon.xlsx")
+
+    parsed = parse_attachment(loader, "attachments/value-colon.xlsx")
+    extraction = extract_document(parsed, DocumentRole.SI)
+    shipper = next(field for field in extraction.fields if field.field_name == CanonicalField.SHIPPER)
+
+    assert shipper.state == ExtractionState.FOUND
+    assert shipper.raw_value == "Meridian Pulp"
+
+
+def test_pdf_table_header_does_not_become_gross_weight_value(tmp_path):
+    loader = _loader(tmp_path)
+    (loader.attachments_dir / "header.pdf").write_bytes(
+        _make_pdf(
+            [
+                "BILL OF LADING",
+                "CONTAINER NO. DESCRIPTION GROSS WEIGHT (KG)",
+                "ABC123 40HC PAPER 23,702",
+                "TOTAL GROSS WEIGHT: 23,702 KG",
+            ]
+        )
+    )
+
+    parsed = parse_attachment(loader, "attachments/header.pdf")
+    extraction = extract_document(parsed, DocumentRole.BL)
+    gross_weight = next(
+        field for field in extraction.fields if field.field_name == CanonicalField.GROSS_WEIGHT_KG
+    )
+
+    assert gross_weight.state == ExtractionState.FOUND
+    assert gross_weight.normalized_value == "23702"
+    assert gross_weight.evidence is not None
+    assert "TOTAL GROSS WEIGHT" in gross_weight.evidence.snippet
+
+
 def test_missing_attachment_is_explicit(tmp_path):
     loader = _loader(tmp_path)
 

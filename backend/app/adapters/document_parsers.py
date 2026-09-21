@@ -48,7 +48,15 @@ def detect_document_type(text: str) -> DocumentType:
 def _clean_cell(value: Any) -> str:
     if value is None:
         return ""
-    return re.sub(r"\s+", " ", str(value).replace("\r", " ").replace("\n", " ")).strip()
+    # Keep paragraph breaks inside a Word/Excel cell.  They are meaningful
+    # structure: a party name followed by its address must not become one
+    # extracted legal-name value merely because the cell contains newlines.
+    text = str(value).replace("\r\n", "\n").replace("\r", "\n")
+    lines = [
+        re.sub(r"[ \t]+", " ", line).strip()
+        for line in text.split("\n")
+    ]
+    return "\n".join(line for line in lines if line)
 
 
 def _looks_garbled_text(text: str) -> bool:
