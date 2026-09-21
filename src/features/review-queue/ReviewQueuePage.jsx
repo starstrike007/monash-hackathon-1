@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowRight } from '@phosphor-icons/react'
 
+import { BackendError } from '@/components/BackendError'
 import { reasonLabel } from '@/features/review-queue/reasons'
 import { getAllEmails, getReviewItems } from '@/lib/api'
 import { formatDate } from '@/lib/types'
@@ -20,20 +21,29 @@ export function ReviewQueuePage({ navigate, initialReason = '' }) {
   const [items, setItems] = useState([])
   const [emailsById, setEmailsById] = useState({})
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [retryNonce, setRetryNonce] = useState(0)
 
   useEffect(() => {
-    getAllEmails({}).then((data) => {
-      setEmailsById(Object.fromEntries((data.items || []).map((item) => [item.email_id, item])))
-    })
-  }, [])
+    getAllEmails({})
+      .then((data) => {
+        setEmailsById(Object.fromEntries((data.items || []).map((item) => [item.email_id, item])))
+      })
+      .catch(setError)
+  }, [retryNonce])
 
   useEffect(() => {
     setLoading(true)
-    getReviewItems({ status: statusFilter }).then((data) => {
-      setItems(data.items || [])
-      setLoading(false)
-    })
-  }, [statusFilter])
+    getReviewItems({ status: statusFilter })
+      .then((data) => {
+        setItems(data.items || [])
+        setLoading(false)
+      })
+      .catch((reason) => {
+        setError(reason)
+        setLoading(false)
+      })
+  }, [statusFilter, retryNonce])
 
   const reasonCounts = useMemo(() => {
     const counts = {}
@@ -55,6 +65,12 @@ export function ReviewQueuePage({ navigate, initialReason = '' }) {
         </h1>
       </header>
 
+      {error && (
+        <div className="mt-7">
+          <BackendError error={error} onRetry={() => setRetryNonce((value) => value + 1)} />
+        </div>
+      )}
+
       <div className="mt-9 flex flex-wrap items-center gap-3">
         <div className="inline-flex rounded-lg bg-[#E9E5D9] p-1">
           {['open', 'resolved'].map((status) => (
@@ -62,6 +78,7 @@ export function ReviewQueuePage({ navigate, initialReason = '' }) {
               key={status}
               type="button"
               onClick={() => setStatusFilter(status)}
+              aria-pressed={statusFilter === status}
               className={cn(
                 'rounded-md px-4 py-2 text-sm font-semibold capitalize',
                 statusFilter === status ? 'bg-white text-[#16232B] shadow-sm' : 'text-[#62757D]',
@@ -107,7 +124,7 @@ export function ReviewQueuePage({ navigate, initialReason = '' }) {
           <span />
         </div>
         {loading && <div className="px-6 py-14 text-center text-sm text-[#71808A]">Loading…</div>}
-        {!loading &&
+        {!loading && !error &&
           visible.map((item) => {
             const email = emailsById[item.email_id]
             return (
@@ -131,7 +148,7 @@ export function ReviewQueuePage({ navigate, initialReason = '' }) {
               </button>
             )
           })}
-        {!loading && !visible.length && (
+        {!loading && !error && !visible.length && (
           <div className="px-6 py-14 text-center text-sm text-[#71808A]">
             Nothing here.{' '}
             {statusFilter === 'open' ? 'The review queue is clear.' : 'No resolved items yet.'}

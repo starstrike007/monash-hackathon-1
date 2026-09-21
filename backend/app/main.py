@@ -31,8 +31,8 @@ def create_store():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    loader = DatasetLoader(settings.data_dir)
     store = create_store()
+    loader = DatasetLoader(settings.data_dir, store.runtime_dir)
     openai = OpenAIClient(
         settings.openai_api_key,
         settings.openai_model,

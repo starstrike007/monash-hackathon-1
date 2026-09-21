@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, Warning } from '@phosphor-icons/react'
 
+import { BackendError } from '@/components/BackendError'
 import { DocumentViewer } from '@/components/document-viewer/DocumentViewer'
 import { reasonLabel } from '@/features/review-queue/reasons'
 import { fieldLabels } from '@/features/docs-comparison/summary'
-import { getEmail, getReviewItem, resolveReviewItem } from '@/lib/api'
-import { CATEGORY_LABELS, formatDate } from '@/lib/types'
+import { getEmail, getReviewItem, notifyDataChanged, resolveReviewItem, uploadReviewAttachment } from '@/lib/api'
+import { CATEGORY_LABELS, FIELDS, formatDate } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 const RECLASSIFY_OPTIONS = ['SI_REQUEST', 'INVOICE_QUERY', 'GENERAL', 'SPAM']
@@ -17,15 +18,24 @@ function ConfirmCorrectPanel({ itemId, email, fieldOptions, onSaved }) {
   const [saving, setSaving] = useState(false)
   const comparison = email?.result?.comparisons?.find((item) => item.field_name === fieldName)
 
+  useEffect(() => {
+    setFieldName((current) => current || fieldOptions[0] || '')
+  }, [fieldOptions])
+
   async function save() {
     setSaving(true)
-    const outcome = await resolveReviewItem(itemId, {
-      action,
-      field_name: fieldName,
-      corrected_value: action === 'correct' ? correctedValue : null,
-    })
-    setSaving(false)
-    onSaved(outcome)
+    try {
+      const outcome = await resolveReviewItem(itemId, {
+        action,
+        field_name: fieldName,
+        corrected_value: action === 'correct' ? correctedValue : null,
+      })
+      onSaved(outcome)
+    } catch (reason) {
+      onSaved(null, reason)
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -70,6 +80,21 @@ function ConfirmCorrectPanel({ itemId, email, fieldOptions, onSaved }) {
           <p className="font-semibold text-[#26353D]">Enter the correct value</p>
           <p className="mt-1 text-sm text-[#71808A]">The extracted reading was wrong or missing.</p>
         </button>
+        {email?.result?.review_reason === 'missing_value' && (
+          <button
+            type="button"
+            className={cn(
+              'rounded-xl border p-4 text-left',
+              action === 'confirm_absent' ? 'border-[#8A5300] bg-[#FFF8E9]' : 'border-[#D5D0C2]',
+            )}
+            onClick={() => setAction('confirm_absent')}
+          >
+            <p className="font-semibold text-[#26353D]">Confirm the field is absent</p>
+            <p className="mt-1 text-sm text-[#71808A]">
+              Record the absence as a discrepancy for this field.
+            </p>
+          </button>
+        )}
       </div>
       {action === 'correct' && (
         <input
@@ -90,18 +115,91 @@ function ConfirmCorrectPanel({ itemId, email, fieldOptions, onSaved }) {
   )
 }
 
+async function fileToBase64(file) {
+  const bytes = new Uint8Array(await file.arrayBuffer())
+  let binary = ''
+  const chunkSize = 0x8000
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize))
+  }
+  return btoa(binary)
+}
+
+function UploadMissingPanel({ itemId, onSaved }) {
+  const [role, setRole] = useState('SI')
+  const [file, setFile] = useState(null)
+  const [saving, setSaving] = useState(false)
+
+  async function upload() {
+    if (!file) return
+    setSaving(true)
+    try {
+      const outcome = await uploadReviewAttachment(itemId, {
+        action: 'upload_missing',
+        role,
+        filename: file.name,
+        content_base64: await fileToBase64(file),
+      })
+      onSaved(outcome)
+    } catch (reason) {
+      onSaved(null, reason)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <section className="rounded-2xl bg-white p-6 shadow-sm">
+      <h2 className="text-lg font-semibold text-[#26353D]">Upload a replacement attachment</h2>
+      <p className="mt-1 text-sm text-[#71808A]">
+        The file is stored with this case, attached to the email, and the comparison is rerun.
+      </p>
+      <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-[#71808A]">
+        Attachment role
+        <select
+          className="mt-2 h-11 w-full rounded-lg border border-[#D5D0C2] bg-white px-3 text-sm"
+          value={role}
+          onChange={(event) => setRole(event.target.value)}
+        >
+          <option value="SI">Shipping instruction</option>
+          <option value="BL">Draft bill of lading</option>
+        </select>
+      </label>
+      <input
+        type="file"
+        accept=".txt,.pdf,.docx,.xlsx"
+        className="mt-3 block w-full text-sm text-[#46555E]"
+        onChange={(event) => setFile(event.target.files?.[0] || null)}
+      />
+      <button
+        type="button"
+        className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[#0E5A66] text-sm font-semibold text-white disabled:opacity-60"
+        onClick={upload}
+        disabled={saving || !file}
+      >
+        {saving ? 'Uploading and recomputing…' : 'Upload and recompute'}
+      </button>
+    </section>
+  )
+}
+
 function ReclassifyPanel({ itemId, onSaved, defaultNote }) {
   const [category, setCategory] = useState('GENERAL')
   const [saving, setSaving] = useState(false)
 
   async function save() {
     setSaving(true)
-    const outcome = await resolveReviewItem(itemId, {
-      action: 'reclassify',
-      new_category: category,
-    })
-    setSaving(false)
-    onSaved(outcome)
+    try {
+      const outcome = await resolveReviewItem(itemId, {
+        action: 'reclassify',
+        new_category: category,
+      })
+      onSaved(outcome)
+    } catch (reason) {
+      onSaved(null, reason)
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -157,17 +255,46 @@ function ReassignRolesPanel({ itemId, email, onSaved }) {
   const attachments = email?.attachments || []
   const [siPath, setSiPath] = useState(attachments[0]?.path || '')
   const [blPath, setBlPath] = useState(attachments[1]?.path || '')
+  const [missingPath, setMissingPath] = useState(attachments[0]?.path || '')
+  const [missingRole, setMissingRole] = useState('SI')
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setSiPath((current) => current || attachments[0]?.path || '')
+    setBlPath((current) => current || attachments[1]?.path || '')
+    setMissingPath((current) => current || attachments[0]?.path || '')
+  }, [email, attachments])
 
   async function save() {
     setSaving(true)
-    const outcome = await resolveReviewItem(itemId, {
-      action: 'reassign_roles',
-      si_path: siPath,
-      bl_path: blPath,
-    })
-    setSaving(false)
-    onSaved(outcome)
+    try {
+      const outcome = await resolveReviewItem(itemId, {
+        action: 'reassign_roles',
+        si_path: siPath,
+        bl_path: blPath,
+      })
+      onSaved(outcome)
+    } catch (reason) {
+      onSaved(null, reason)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function markMissing() {
+    setSaving(true)
+    try {
+      const outcome = await resolveReviewItem(itemId, {
+        action: 'mark_missing',
+        missing_role: missingRole,
+        missing_path: missingPath,
+      })
+      onSaved(outcome)
+    } catch (reason) {
+      onSaved(null, reason)
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -211,6 +338,41 @@ function ReassignRolesPanel({ itemId, email, onSaved }) {
       >
         {saving ? 'Saving…' : 'Reassign and recompute'}
       </button>
+      <div className="mt-5 border-t border-[#E9E5D9] pt-4">
+        <label className="block text-xs font-semibold uppercase tracking-wide text-[#71808A]">
+          Mark a document missing
+          <select
+            className="mt-2 h-11 w-full rounded-lg border border-[#D5D0C2] bg-white px-3 text-sm"
+            value={missingRole}
+            onChange={(event) => setMissingRole(event.target.value)}
+          >
+            <option value="SI">Shipping instruction</option>
+            <option value="BL">Draft bill of lading</option>
+          </select>
+        </label>
+        <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-[#71808A]">
+          Attachment to exclude
+          <select
+            className="mt-2 h-11 w-full rounded-lg border border-[#D5D0C2] bg-white px-3 text-sm"
+            value={missingPath}
+            onChange={(event) => setMissingPath(event.target.value)}
+          >
+            {attachments.map((attachment) => (
+              <option key={attachment.path} value={attachment.path}>
+                {attachment.filename}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="button"
+          className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-lg border border-[#8A5300] bg-[#FFF8E9] text-sm font-semibold text-[#8A5300] disabled:opacity-60"
+          onClick={markMissing}
+          disabled={saving}
+        >
+          Mark missing and recompute
+        </button>
+      </div>
     </section>
   )
 }
@@ -219,9 +381,14 @@ function RetryPanel({ itemId, onSaved }) {
   const [saving, setSaving] = useState(false)
   async function retry() {
     setSaving(true)
-    const outcome = await resolveReviewItem(itemId, { action: 'retry' })
-    setSaving(false)
-    onSaved(outcome)
+    try {
+      const outcome = await resolveReviewItem(itemId, { action: 'retry' })
+      onSaved(outcome)
+    } catch (reason) {
+      onSaved(null, reason)
+    } finally {
+      setSaving(false)
+    }
   }
   return (
     <section className="rounded-2xl bg-white p-6 shadow-sm">
@@ -244,27 +411,55 @@ export function ReviewItemDetailPage({ navigate, itemId }) {
   const [item, setItem] = useState(null)
   const [email, setEmail] = useState(null)
   const [notice, setNotice] = useState('')
+  const [error, setError] = useState(null)
+  const [activeField, setActiveField] = useState(null)
 
   useEffect(() => {
-    getReviewItem(itemId).then((data) => {
-      setItem(data)
-      getEmail(data.email_id).then(setEmail)
-    })
+    setError(null)
+    getReviewItem(itemId)
+      .then((data) => {
+        setItem(data)
+        getEmail(data.email_id).then(setEmail).catch(setError)
+      })
+      .catch(setError)
   }, [itemId])
 
-  const siDoc = email?.result?.documents?.find((document) => document.role === 'SI')
-  const blDoc = email?.result?.documents?.find((document) => document.role === 'BL')
+  const documents = email?.result?.documents || []
+  const siDoc = documents.find((document) => document.role === 'SI') || documents[0]
+  const blDoc = documents.find((document) => document.role === 'BL') || documents[1]
   const flaggedFields = useMemo(() => {
     if (!email?.result) return []
     const fromSkipped = email.result.skipped_fields || []
     if (fromSkipped.length) return fromSkipped
-    return (email.result.comparisons || []).map((entry) => entry.field_name)
+    const compared = (email.result.comparisons || []).map((entry) => entry.field_name)
+    return compared.length ? compared : FIELDS.map((field) => field.key)
   }, [email])
 
-  function handleSaved(outcome) {
+  useEffect(() => {
+    setActiveField((field) => field || flaggedFields[0] || null)
+  }, [flaggedFields])
+
+  const activeComparison = email?.result?.comparisons?.find(
+    (comparison) => comparison.field_name === activeField,
+  )
+
+  function handleSaved(outcome, reason = null) {
+    if (reason) {
+      setError(reason)
+      return
+    }
+    notifyDataChanged()
     setNotice('Saved. The report and dashboard are updated.')
     if (outcome?.review_item) setItem(outcome.review_item)
-    if (item) getEmail(item.email_id).then(setEmail)
+    if (item) getEmail(item.email_id).then(setEmail).catch(setError)
+  }
+
+  if (error && !item) {
+    return (
+      <div className="mx-auto max-w-[900px] px-5 py-10 lg:px-14">
+        <BackendError error={error} onRetry={() => window.location.reload()} />
+      </div>
+    )
   }
 
   if (!item) {
@@ -311,6 +506,7 @@ export function ReviewItemDetailPage({ navigate, itemId }) {
           <p className="mt-1 text-sm leading-6 text-[#72541E]">{item.description}</p>
         </div>
       </div>
+      {error && <div className="mt-5"><BackendError error={error} compact /></div>}
 
       <div className="mt-7 grid gap-7 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="space-y-5">
@@ -331,16 +527,13 @@ export function ReviewItemDetailPage({ navigate, itemId }) {
           )}
           {item.status === 'open' && item.reason === 'missing_attachment' && (
             <>
+              <UploadMissingPanel itemId={item.id} onSaved={handleSaved} />
               <ReclassifyPanel
                 itemId={item.id}
                 onSaved={handleSaved}
                 defaultNote="If this was never really a comparison request, set its real category. The export will use this from now on."
               />
               <DraftReplyPanel email={email} />
-              <p className="text-xs text-[#8A7F68]">
-                Uploading a replacement SI/BL from your device isn't available in this build -
-                reclassify the email or draft a reply asking the sender to resend it.
-              </p>
             </>
           )}
           {item.status === 'resolved' && (
@@ -353,11 +546,37 @@ export function ReviewItemDetailPage({ navigate, itemId }) {
           )}
         </div>
         <div className="grid gap-4">
+          {flaggedFields.length > 0 && (
+            <label className="block text-xs font-semibold uppercase tracking-wide text-[#71808A]">
+              Evidence field
+              <select
+                className="mt-2 h-10 w-full rounded-lg border border-[#D5D0C2] bg-white px-3 text-sm normal-case"
+                value={activeField || ''}
+                onChange={(event) => setActiveField(event.target.value)}
+              >
+                {flaggedFields.map((field) => (
+                  <option key={field} value={field}>
+                    {fieldLabels[field]?.label || field}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <div className="h-[360px]">
-            <DocumentViewer path={siDoc?.path} label="Shipping instruction" location={null} />
+            <DocumentViewer
+              path={siDoc?.path}
+              label="Shipping instruction"
+              location={activeComparison?.si?.evidence}
+              readable={siDoc?.readable}
+            />
           </div>
           <div className="h-[360px]">
-            <DocumentViewer path={blDoc?.path} label="Draft bill of lading" location={null} />
+            <DocumentViewer
+              path={blDoc?.path}
+              label="Draft bill of lading"
+              location={activeComparison?.bl?.evidence}
+              readable={blDoc?.readable}
+            />
           </div>
         </div>
       </div>

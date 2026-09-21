@@ -124,6 +124,13 @@ class LocalStore:
         self.persist()
         return current
 
+    def append_email_attachment(self, email_id: str, path: str) -> dict[str, Any]:
+        meta = self.get_email_meta(email_id) or {"email_id": email_id}
+        paths = list(meta.get("uploaded_attachments") or [])
+        if path not in paths:
+            paths.append(path)
+        return self.upsert_email_meta(email_id, uploaded_attachments=paths)
+
     # -- Review queue --------------------------------------------------------
 
     def add_review_item(self, item: dict[str, Any]) -> dict[str, Any]:
@@ -281,7 +288,17 @@ class SupabaseStore(LocalStore):
                 evidence = field.get("evidence") or {}
                 location = {
                     key: evidence.get(key)
-                    for key in ("page", "line", "sheet", "cell", "table_index", "row_index", "bbox", "quoted_text")
+                    for key in (
+                        "page",
+                        "line",
+                        "sheet",
+                        "cell",
+                        "table_index",
+                        "row_index",
+                        "paragraph_index",
+                        "bbox",
+                        "quoted_text",
+                    )
                     if evidence.get(key) is not None
                 }
                 self._mirror(
@@ -317,6 +334,7 @@ class SupabaseStore(LocalStore):
                 "corrected_value": review.get("corrected_value"),
                 "reviewer_id": review.get("reviewer_id"),
                 "created_at": review.get("created_at"),
+                "metadata": {"evidence": review.get("evidence") or {}},
             },
         )
 
@@ -333,6 +351,8 @@ class SupabaseStore(LocalStore):
                 "category_override": meta.get("category_override"),
                 "override_by": meta.get("override_by"),
                 "override_at": meta.get("override_at"),
+                "uploaded_attachments": meta.get("uploaded_attachments", []),
+                "excluded_attachments": meta.get("excluded_attachments", []),
             },
             "email_id",
         )
@@ -377,6 +397,7 @@ class SupabaseStore(LocalStore):
                 "after": entry.get("after"),
                 "actor": entry.get("actor"),
                 "evidence_ref": entry.get("evidence_ref"),
+                "evidence": entry.get("evidence"),
                 "created_at": entry.get("created_at"),
             },
             "id",

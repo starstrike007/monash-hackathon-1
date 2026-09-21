@@ -68,5 +68,10 @@ class ReviewItemResolveRequest(BaseModel):
     new_category: EmailCategory | None = None
     si_path: str | None = None
     bl_path: str | None = None
+    role: str | None = None
+    filename: str | None = None
+    content_base64: str | None = None
+    missing_role: str | None = None
+    missing_path: str | None = None
     reviewer_id: str = "local-reviewer"
     note: str | None = None
