@@ -1,5 +1,43 @@
 # Overnight run log
 
+## Merge-candidate continuation summary (2026-09-21)
+
+The unattended merge-readiness pass created `merge-candidate` from
+`overnight/phase-8` in the untracked worktree
+`.runtime/merge-readiness-20260921/`. It did not push, merge, deploy, create an
+account, or modify `main`. The permitted evaluator path was missing, so no
+aggregate score, Stage 1 macro-F1, Stage 3 precision/recall, end-to-end score,
+or evaluator review count is claimed.
+
+Final commands:
+
+```powershell
+C:\Users\User\monash-hackathon\backend\.venv\Scripts\python.exe -m pytest -q
+$env:STAGE2_LLM_FALLBACK='0'; & C:\Users\User\monash-hackathon\backend\.venv\Scripts\python.exe C:\Users\User\monash-hackathon\backend\export_stage1.py --rules-only --data-dir C:\Users\User\monash-hackathon\data --runtime-dir C:\Users\User\monash-hackathon\.runtime\merge-readiness-20260921\merge-candidate-v2-runtime --output-dir C:\Users\User\monash-hackathon\.runtime\merge-readiness-20260921\merge-candidate-v2-output
+$env:STAGE2_LLM_FALLBACK='0'; & C:\Users\User\monash-hackathon\backend\.venv\Scripts\python.exe C:\Users\User\monash-hackathon\backend\export_stage1.py --data-dir C:\Users\User\monash-hackathon\data --runtime-dir C:\Users\User\monash-hackathon\.runtime\merge-readiness-20260921\merge-candidate-full-runtime --output-dir C:\Users\User\monash-hackathon\.runtime\merge-readiness-20260921\merge-candidate-full-output
+$env:STAGE2_LLM_FALLBACK='1'; & C:\Users\User\monash-hackathon\backend\.venv\Scripts\python.exe C:\Users\User\monash-hackathon\backend\export_stage1.py --data-dir C:\Users\User\monash-hackathon\data --runtime-dir C:\Users\User\monash-hackathon\.runtime\merge-readiness-20260921\merge-candidate-full-on-runtime --output-dir C:\Users\User\monash-hackathon\.runtime\merge-readiness-20260921\merge-candidate-full-on-output
+$env:PYTHONIOENCODING='utf-8'; & C:\Users\User\monash-hackathon\backend\.venv\Scripts\python.exe C:\Users\User\sdoc-eval\server\score_cli.py C:\Users\User\monash-hackathon\.runtime\merge-readiness-20260921\merge-candidate-v2-output\submission.json --json
+```
+
+Results: final pytest was 61 passed, 1 existing xfailed, and 2 dependency
+warnings. The final rules-only export was 520/520, `run_status=complete`, with
+411 OK, 28 MISMATCH, and 81 NEEDS_REVIEW. The final full export without the
+candidate `.env` was 520/520, `run_status=degraded`, 147 `llm_no_key`
+fallbacks, and zero provider calls. The switch-on export used a temporary
+ignored copy of the existing `.env`, deleted it in `finally`, and completed
+520/520 with `run_status=degraded`, 8 logical classification calls, 24
+provider attempts, 28 bounded retries, 147 model failures, 139
+`llm_unavailable` circuit-open fallbacks, 6 Stage 2 calls, 6 Stage 2 errors,
+and zero reported tokens. No key content was printed or logged. The scorer
+command failed before reading the submission because
+`C:\Users\User\sdoc-eval\server\score_cli.py` does not exist.
+
+The two general parser fixes (preserved multiline cells and line-start label
+matching, including protection from colons inside table values) are covered by
+synthetic tests. Local candidate output now matches the fresh `main` status
+counts and differs only in five conservative document-resolution review
+reasons. See `docs/merge-readiness.md` and `docs/regression-diff.md`.
+
 Summary: Completed the unattended run on `overnight/phase-8`, created from
 `phase8-document-parsers`. The existing local `overnight` branch was
 preserved as `overnight-base` because Git cannot create a child ref while a
