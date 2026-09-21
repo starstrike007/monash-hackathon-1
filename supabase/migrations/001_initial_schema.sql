@@ -60,7 +60,7 @@ create table if not exists field_extractions (
   state text not null check (state in ('found', 'missing', 'placeholder', 'ambiguous', 'unreadable')),
   raw_value text,
   normalized_value text,
-  source text check (source is null or source in ('rule', 'llm', 'vision')),
+  source text check (source is null or source in ('rule', 'llm', 'vision', 'human')),
   confidence text check (confidence is null or confidence in ('high', 'medium', 'low')),
   evidence jsonb,
   unique (result_id, document_role, field_name)
@@ -70,7 +70,7 @@ create table if not exists review_decisions (
   id uuid primary key default gen_random_uuid(),
   result_id uuid not null references results(id) on delete cascade,
   field_name text not null,
-  action text not null check (action in ('confirm', 'correct')),
+  action text not null check (action in ('confirm', 'correct', 'confirm_absent')),
   original_value text,
   corrected_value text,
   reviewer_id text,

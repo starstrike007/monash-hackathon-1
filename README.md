@@ -62,9 +62,8 @@ frontend example is the root `.env.example`.
 CORS always allows `http://localhost:*`/`http://127.0.0.1:*` in addition to
 whatever `ALLOWED_ORIGINS`/`CORS_ORIGINS` is set to, so a deployed
 `ALLOWED_ORIGINS` (e.g. the Vercel URL) never blocks a local Vite dev
-server. If API calls silently fall back to mock data during local dev,
-check the backend is actually running and reachable first — `api.js`
-swallows any fetch failure and falls back rather than surfacing an error.
+server. The UI does not substitute fixture data when the API is unavailable;
+it shows a visible "Backend unavailable" state with a retry action.
 
 ## Screens
 
@@ -87,10 +86,11 @@ swallows any fetch failure and falls back rather than surfacing an error.
 - **Review queue** (`/review`, `/review/:itemId`) — everything a person
   must resolve (its own id, not an email id), oldest first, filterable by
   reason, with reason-specific actions: confirm/correct a value
-  (unreadable, missing_value), reassign SI/BL roles (wrong_doc_type),
-  reclassify or copy a draft reply (missing_attachment — uploading a
-  replacement file from the reviewer's device is not implemented), or
-  retry (processing_failed). The sidebar badge shows the open count.
+  (unreadable, missing_value), confirm an absent value as a discrepancy,
+  upload a replacement SI/BL or reclassify/copy a draft reply
+  (missing_attachment), reassign SI/BL roles or mark a document missing
+  (wrong_doc_type), or retry (processing_failed). The sidebar badge shows
+  the live open count.
 
 ## Simulated timestamps
 
@@ -141,13 +141,14 @@ frontend is hosted on Vercel, and Supabase is the deployed results store.
 ## Supabase setup
 
 1. Create a Supabase project.
-2. Run [`supabase/migrations/001_initial_schema.sql`](supabase/migrations/001_initial_schema.sql)
-   and [`supabase/migrations/002_review_location_audit.sql`](supabase/migrations/002_review_location_audit.sql)
-   in the Supabase SQL editor, in that order. Migration 002 adds
-   classification/override columns on `emails`, a `location` column on
-   `field_extractions`, and the `review_items`/`audit_log` tables — nothing
-   is dropped or renamed. Without it, the app still works (local JSON
-   remains authoritative), but Supabase silently rejects the new columns.
+2. Run [`supabase/migrations/001_initial_schema.sql`](supabase/migrations/001_initial_schema.sql),
+   [`supabase/migrations/002_review_location_audit.sql`](supabase/migrations/002_review_location_audit.sql),
+   [`supabase/migrations/003_review_uploads.sql`](supabase/migrations/003_review_uploads.sql),
+   and [`supabase/migrations/004_human_review_compatibility.sql`](supabase/migrations/004_human_review_compatibility.sql)
+   in the Supabase SQL editor, in that order. Migrations 002 and 003 add
+   provenance/override/location columns, review/audit tables, and
+   reviewer-upload columns; migration 004 only widens validation for human
+   review values/actions without deleting or renaming existing data.
 3. Copy the project URL and service-role key into the Render environment.
 
 The service-role key is backend-only. The browser never connects to Supabase

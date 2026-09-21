@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 from datetime import datetime, timezone
 
 import pytest
@@ -58,6 +59,11 @@ def test_override_away_from_comparison_clears_status(api_client):
     after = api_client.get("/api/emails/email_fixture_ok").json()
     assert after["category"] == "SPAM"
     assert after["category_machine"] == "BL_COMPARISON"
+    assert any(
+        entry["action"] == "category_override"
+        and entry.get("after", {}).get("category") == "SPAM"
+        for entry in app.state.store.list_audit_log("email_fixture_ok")
+    )
 
 
 def test_override_into_comparison_with_no_attachments_opens_review_item(api_client):
@@ -129,3 +135,119 @@ def test_export_submission_uses_effective_category(api_client):
 
     submission = api_client.get("/api/export/submission").json()
     assert submission["email_fixture_ok"]["category"] == "INVOICE_QUERY"
+
+
+def test_dashboard_uses_effective_category_after_override(api_client):
+    api_client.post("/api/pipeline/run", json={})
+    before = api_client.get("/api/dashboard/summary").json()
+
+    api_client.post(
+        "/api/emails/email_fixture_mismatch/override",
+        json={"category": "GENERAL", "actor": "qa"},
+    )
+    after = api_client.get("/api/dashboard/summary").json()
+
+    assert after["comparison_requests"] == before["comparison_requests"] - 1
+    assert after["categories"]["GENERAL"] == before["categories"].get("GENERAL", 0) + 1
+
+
+def test_missing_attachment_upload_reruns_and_writes_audit(api_client):
+    api_client.post("/api/pipeline/run", json={"email_ids": ["email_fixture_missing_bl"]})
+    item = api_client.get(
+        "/api/review/items", params={"status": "open", "email_id": "email_fixture_missing_bl"}
+    ).json()["items"][0]
+    replacement = (FIXTURE_DATA_DIR / "attachments" / "fixture_ok_bl.txt").read_bytes()
+
+    response = api_client.post(
+        f"/api/review/items/{item['id']}/resolve",
+        json={
+            "action": "upload_missing",
+            "role": "BL",
+            "filename": "replacement-bl.txt",
+            "content_base64": base64.b64encode(replacement).decode("ascii"),
+            "reviewer_id": "qa",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["result"]["status"] == "OK"
+    assert body["review_item"]["status"] == "resolved"
+    assert any(document["role"] == "BL" for document in body["result"]["documents"])
+
+    audit = api_client.get("/api/emails/email_fixture_missing_bl").json()
+    assert audit["attachments"][-1]["filename"].endswith("replacement-bl.txt")
+    uploaded_path = audit["attachments"][-1]["path"]
+    assert api_client.get(f"/api/attachments/{uploaded_path}/view").status_code == 200
+    assert api_client.get(f"/api/attachments/{uploaded_path}").status_code == 200
+    assert any(
+        entry["action"] == "review_upload" and entry.get("evidence", {}).get("path") == uploaded_path
+        for entry in app.state.store.list_audit_log("email_fixture_missing_bl")
+    )
+
+
+def test_confirm_absent_is_a_human_mismatch_and_audited(api_client):
+    api_client.post("/api/pipeline/run", json={"email_ids": ["email_fixture_placeholder"]})
+    item = api_client.get(
+        "/api/review/items", params={"status": "open", "email_id": "email_fixture_placeholder"}
+    ).json()["items"][0]
+
+    response = api_client.post(
+        f"/api/review/items/{item['id']}/resolve",
+        json={
+            "action": "confirm_absent",
+            "field_name": "gross_weight_kg",
+            "reviewer_id": "qa",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["result"]["status"] == "MISMATCH"
+    assert body["result"]["has_defect"] is True
+    field = next(
+        field
+        for document in body["result"]["documents"]
+        if document["role"] == "BL"
+        for field in document["fields"]
+        if field["field_name"] == "gross_weight_kg"
+    )
+    assert field["source"] == "human"
+    assert body["review_item"]["status"] == "resolved"
+    assert any(
+        entry["action"] == "review_resolved"
+        and entry.get("evidence", {}).get("after", {}).get("quoted_text") == "Confirmed absent by reviewer"
+        for entry in app.state.store.list_audit_log("email_fixture_placeholder")
+    )
+
+
+def test_unreadable_attachment_view_is_a_clean_response(api_client):
+    response = api_client.get("/api/attachments/fixture_empty.pdf/view")
+    assert response.status_code in {200, 415, 422}
+    assert response.status_code != 500
+
+
+def test_processing_failure_stays_retryable_for_one_email(api_client, monkeypatch):
+    orchestrator = app.state.orchestrator
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            orchestrator,
+            "process_email",
+            lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("synthetic failure")),
+        )
+        failed = api_client.post(
+            "/api/pipeline/run", json={"email_ids": ["email_fixture_general"]}
+        )
+        assert failed.status_code == 200
+
+    items = api_client.get(
+        "/api/review/items", params={"status": "open", "email_id": "email_fixture_general"}
+    ).json()["items"]
+    assert len(items) == 1
+    assert items[0]["reason"] == "processing_failed"
+
+    retried = api_client.post(
+        f"/api/review/items/{items[0]['id']}/resolve", json={"action": "retry"}
+    )
+    assert retried.status_code == 200
+    assert retried.json()["review_item"]["status"] == "resolved"
