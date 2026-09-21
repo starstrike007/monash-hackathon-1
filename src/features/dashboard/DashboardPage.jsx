@@ -48,7 +48,7 @@ function SummaryCard({ label, value, caption, warning = false, compact = false, 
       </p>
       <p
         className={cn(
-          'mt-1 font-mono font-semibold tracking-tight text-white',
+          'mt-1 font-display font-semibold tracking-[-0.01em] text-white',
           compact ? 'text-4xl' : 'text-5xl',
           warning && 'text-amber-200',
         )}
@@ -155,7 +155,7 @@ function SummaryBrief({ data, navigate, lastRunAt, onOpenComparisons, onOpenMism
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(400px,0.78fr)]">
         <div>
           <div className="flex items-center gap-3">
-            <h2 className="font-serif text-[1.625rem] font-semibold tracking-tight text-[#0F172A]">
+            <h2 className="font-display text-[1.625rem] font-semibold tracking-[-0.01em] text-[#0F172A]">
               Summary brief
             </h2>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F1F5F9] px-3 py-1 text-xs font-medium text-[#64748B]">
@@ -240,7 +240,7 @@ function SummaryBrief({ data, navigate, lastRunAt, onOpenComparisons, onOpenMism
 function SectionCard({ id, title, subtitle, children, className }) {
   return (
     <section id={id} className={cn('rounded-2xl bg-white p-7 border border-slate-200', className)}>
-      <h2 className="font-serif text-[1.625rem] font-semibold tracking-tight text-[#0F172A]">
+      <h2 className="font-display text-[1.625rem] font-semibold tracking-[-0.01em] text-[#0F172A]">
         {title}
       </h2>
       {subtitle && <p className="mt-1 text-sm text-[#64748B]">{subtitle}</p>}
@@ -529,7 +529,7 @@ export function DashboardPage({ navigate, initialRunId = null }) {
             <p className="text-xs font-medium uppercase tracking-[0.14em] text-[#475569]">
               {formatBusinessDay()}
             </p>
-            <h1 className="mt-2 font-serif text-[3.25rem] font-semibold tracking-tight text-[#0F172A]">
+            <h1 className="mt-2 font-display text-[3rem] font-semibold tracking-[-0.02em] text-[#0F172A]">
               Overview
             </h1>
           </div>

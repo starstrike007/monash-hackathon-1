@@ -90,7 +90,12 @@ export function AppShell({ pathname, navigate, children, reviewCount = null }) {
               aria-hidden="true"
               className="h-10 w-10 shrink-0 object-contain"
             />
-            <span className={cn('text-2xl font-semibold tracking-tight', collapsed && 'lg:hidden')}>
+            <span
+              className={cn(
+                'font-display text-[1.375rem] font-semibold tracking-[-0.01em]',
+                collapsed && 'lg:hidden',
+              )}
+            >
               Clearance
             </span>
           </button>

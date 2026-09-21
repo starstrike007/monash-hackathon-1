@@ -135,7 +135,7 @@ export function PipelineRunDrawer({ runId, onClose }) {
           Started {run?.started_at ? formatDate(run.started_at) : '—'} · {run?.total_emails ?? '—'}{' '}
           emails
         </p>
-        <h1 className="mt-0.5 text-2xl font-semibold tracking-tight text-[#0F172A]">
+        <h1 className="font-display mt-0.5 text-2xl font-semibold tracking-[-0.01em] text-[#0F172A]">
           Pipeline run
         </h1>
         {error && (

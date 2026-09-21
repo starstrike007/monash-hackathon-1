@@ -1,12 +1,29 @@
 @import 'tailwindcss';
 
-/* The three font stacks are defined here once; Tailwind's font-sans / font-serif /
+/* Satoshi (headings) is self-hosted from src/assets/fonts/satoshi. Weights 500 and 700 only;
+   semibold (600) resolves to the 700 face. */
+@font-face {
+  font-family: 'Satoshi';
+  src: url('./assets/fonts/satoshi/Satoshi-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Satoshi';
+  src: url('./assets/fonts/satoshi/Satoshi-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* The three font stacks are defined here once. Tailwind's font-sans / font-display /
    font-mono utilities and the root font below all read these variables. To swap a
-   family, change its line here and its @fontsource import in main.jsx. */
+   family, change its line here and its import in main.jsx (or its @font-face above). */
 @theme static {
-  --font-sans:
-    'Source Sans 3 Variable', 'Source Sans 3', -apple-system, system-ui, 'Segoe UI', sans-serif;
-  --font-serif: 'Fraunces Variable', Fraunces, Georgia, 'Times New Roman', serif;
+  --font-sans: 'Inter Variable', 'Inter', -apple-system, system-ui, 'Segoe UI', sans-serif;
+  --font-display: 'Satoshi', 'Inter Variable', 'Inter', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', 'Roboto Mono', ui-monospace, monospace;
 }
 

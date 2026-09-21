@@ -107,7 +107,7 @@ function ComparisonSummaryCard({ navigate, detail }) {
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6">
-      <h2 className="text-lg font-semibold text-[#1E293B]">Document comparison</h2>
+      <h2 className="font-display text-lg font-semibold text-[#1E293B]">Document comparison</h2>
       <p
         className={cn(
           'mt-2 text-sm font-medium',
@@ -253,7 +253,9 @@ export function InboxDetailPage({ navigate, emailId }) {
           </span>
         )}
       </div>
-      <h1 className="mt-3 text-4xl font-semibold text-[#0F172A]">{detail.subject}</h1>
+      <h1 className="font-display mt-3 text-[2rem] font-semibold text-[#0F172A]">
+        {detail.subject}
+      </h1>
       <p className="mt-2 text-sm text-[#475569]">
         From {detail.sender} · Received {formatDate(detail.received_at)}
       </p>
@@ -265,13 +267,13 @@ export function InboxDetailPage({ navigate, emailId }) {
 
       <div className="mt-7 grid gap-7 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <section className="rounded-2xl border border-slate-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-[#1E293B]">Message</h2>
+          <h2 className="font-display text-lg font-semibold text-[#1E293B]">Message</h2>
           <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#475569]">{detail.body}</p>
         </section>
 
         <div className="space-y-5">
           <section className="rounded-2xl border border-slate-200 bg-white p-6">
-            <h2 className="text-lg font-semibold text-[#1E293B]">Change Category</h2>
+            <h2 className="font-display text-lg font-semibold text-[#1E293B]">Change Category</h2>
             <p className="mt-1 text-xs text-[#64748B]">
               Change this category if this email was classified incorrectly.
             </p>
@@ -308,7 +310,7 @@ export function InboxDetailPage({ navigate, emailId }) {
         </div>
 
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm xl:col-span-2">
-          <h2 className="text-lg font-semibold text-[#1E293B]">
+          <h2 className="font-display text-lg font-semibold text-[#1E293B]">
             Attachments ({detail.attachments?.length || 0})
           </h2>
           <div className="mt-3 space-y-2">

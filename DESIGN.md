@@ -14,10 +14,11 @@
 > | Verified / no mismatch | `#059669` | `emerald-600` |
 > | Mismatch / error (confirmed SI vs BL discrepancies only) | `#DC2626` | `red-600` |
 >
-> - Fonts (self-hosted via `@fontsource`, defined once as `--font-sans` / `--font-serif` /
->   `--font-mono` in `src/index.css`): Source Sans 3 for UI text, Fraunces for large headings,
->   IBM Plex Mono for identifiers, raw email subjects and system tags. `tabular-nums` is
->   applied globally so counters do not shift.
+> - Fonts, defined once as `--font-sans` / `--font-display` / `--font-mono` in `src/index.css`:
+>   Inter for UI text (`@fontsource-variable/inter`), Satoshi for headings, the logo wordmark and
+>   big dashboard numbers (`font-display`, self-hosted from `src/assets/fonts/satoshi`), and
+>   IBM Plex Mono for identifiers, raw values and system tags (`@fontsource/ibm-plex-mono`).
+>   `tabular-nums` is applied globally so counters do not shift.
 > - Sidebar is fixed, `#0F172A`, inactive text `slate-400`, active item white on `slate-700` (`#334155`).
 >   Sidebar counters are `rounded-full` pills.
 > - Main content sits in a `max-w-7xl` container. Cards are white with `border-slate-200`;

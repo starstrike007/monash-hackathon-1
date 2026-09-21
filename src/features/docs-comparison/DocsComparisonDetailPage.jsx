@@ -141,7 +141,9 @@ export function DocsComparisonDetailPage({ navigate, emailId }) {
         setDetail(data)
         const comparisons = data.result?.comparisons || []
         setPendingResults(
-          Object.fromEntries(comparisons.map((comparison) => [comparison.field_name, comparison.result])),
+          Object.fromEntries(
+            comparisons.map((comparison) => [comparison.field_name, comparison.result]),
+          ),
         )
         const firstMismatch = comparisons.find((item) => item.result === 'mismatch')
         setActiveField((firstMismatch || comparisons[0])?.field_name || null)
@@ -195,9 +197,7 @@ export function DocsComparisonDetailPage({ navigate, emailId }) {
       const refreshedComparisons = refreshed.result?.comparisons || []
       setDetail(refreshed)
       setPendingResults(
-        Object.fromEntries(
-          refreshedComparisons.map((item) => [item.field_name, item.result]),
-        ),
+        Object.fromEntries(refreshedComparisons.map((item) => [item.field_name, item.result])),
       )
       setActiveField(fieldName)
       if (refreshed.result?.status === 'NEEDS_REVIEW') {
@@ -247,7 +247,7 @@ export function DocsComparisonDetailPage({ navigate, emailId }) {
         <span className="font-mono text-[#475569]">{detail.display_id}</span>
         <CategoryBadge category={result?.category} />
       </header>
-      <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[#0F172A] sm:text-4xl">
+      <h1 className="font-display mt-3 text-[1.625rem] font-semibold tracking-[-0.02em] text-[#0F172A] sm:text-[2rem]">
         {detail.subject}
       </h1>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
@@ -265,7 +265,7 @@ export function DocsComparisonDetailPage({ navigate, emailId }) {
       </div>
 
       <div className={cn('mt-7 rounded-2xl border px-6 py-3', BANNER_TONE[summary.tone])}>
-        <p className="text-2xl font-semibold">{summary.text}</p>
+        <p className="font-display text-2xl font-semibold">{summary.text}</p>
         {result?.status === 'NEEDS_REVIEW' && reviewItem && (
           <button
             type="button"

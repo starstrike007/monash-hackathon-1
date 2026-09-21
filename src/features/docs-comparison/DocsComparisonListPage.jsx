@@ -133,7 +133,7 @@ export function DocsComparisonListPage({ navigate, initialStatus = '' }) {
       <header className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
         <div>
           <p className="text-sm font-medium text-[#475569]">{shownCount} comparison requests</p>
-          <h1 className="mt-1 text-5xl font-semibold tracking-tight text-[#0F172A]">
+          <h1 className="font-display mt-1 text-[2.75rem] font-semibold tracking-[-0.02em] text-[#0F172A]">
             Document Comparison
           </h1>
         </div>

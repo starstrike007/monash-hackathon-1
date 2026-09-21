@@ -46,7 +46,7 @@ function ConfirmCorrectPanel({ itemId, email, fieldOptions, onSaved }) {
 
   return (
     <section className="rounded-2xl bg-white p-6 border border-slate-200">
-      <h2 className="text-lg font-semibold text-[#1E293B]">Resolve this field</h2>
+      <h2 className="font-display text-lg font-semibold text-[#1E293B]">Resolve this field</h2>
       <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-[#64748B]">
         Field
         <select
@@ -156,7 +156,9 @@ function UploadMissingPanel({ itemId, onSaved }) {
 
   return (
     <section className="rounded-2xl bg-white p-6 border border-slate-200">
-      <h2 className="text-lg font-semibold text-[#1E293B]">Upload a replacement attachment</h2>
+      <h2 className="font-display text-lg font-semibold text-[#1E293B]">
+        Upload a replacement attachment
+      </h2>
       <p className="mt-1 text-sm text-[#64748B]">
         The file is stored with this case, attached to the email, and the comparison is rerun.
       </p>
@@ -210,7 +212,9 @@ function ReclassifyPanel({ itemId, onSaved, defaultNote }) {
 
   return (
     <section className="rounded-2xl bg-white p-6 border border-slate-200">
-      <h2 className="text-lg font-semibold text-[#1E293B]">Reclassify away from comparison</h2>
+      <h2 className="font-display text-lg font-semibold text-[#1E293B]">
+        Reclassify away from comparison
+      </h2>
       <p className="mt-1 text-sm text-[#64748B]">{defaultNote}</p>
       <select
         className="mt-4 h-11 w-full rounded-lg border border-[#CBD5E1] bg-white px-3 text-sm"
@@ -238,7 +242,7 @@ function DraftReplyPanel({ email }) {
   const draft = `Hi,\n\nWe're missing an attachment needed to verify ${email?.subject || 'this shipment'}. Could you resend the Shipping Instruction and draft Bill of Lading?\n\nThanks,\nClearance team`
   return (
     <section className="rounded-2xl bg-white p-6 border border-slate-200">
-      <h2 className="text-lg font-semibold text-[#1E293B]">
+      <h2 className="font-display text-lg font-semibold text-[#1E293B]">
         Draft reply (copy only, nothing is sent)
       </h2>
       <textarea
@@ -305,7 +309,7 @@ function ReassignRolesPanel({ itemId, email, onSaved }) {
 
   return (
     <section className="rounded-2xl bg-white p-6 border border-slate-200">
-      <h2 className="text-lg font-semibold text-[#1E293B]">Reassign SI / BL</h2>
+      <h2 className="font-display text-lg font-semibold text-[#1E293B]">Reassign SI / BL</h2>
       <p className="mt-1 text-sm text-[#64748B]">
         Pick which attachment is the Shipping Instruction and which is the draft Bill of Lading.
       </p>
@@ -398,7 +402,7 @@ function RetryPanel({ itemId, onSaved }) {
   }
   return (
     <section className="rounded-2xl bg-white p-6 border border-slate-200">
-      <h2 className="text-lg font-semibold text-[#1E293B]">Processing failed</h2>
+      <h2 className="font-display text-lg font-semibold text-[#1E293B]">Processing failed</h2>
       <p className="mt-1 text-sm text-[#64748B]">
         This never became a defect - it stayed a visible, retryable failure.
       </p>
@@ -500,7 +504,7 @@ export function ReviewItemDetailPage({ navigate, itemId }) {
           </span>
         )}
       </div>
-      <h1 className="mt-3 text-4xl font-semibold text-[#0F172A]">
+      <h1 className="font-display mt-3 text-[2rem] font-semibold text-[#0F172A]">
         {email?.subject || item.email_id}
       </h1>
       <p className="mt-2 text-sm text-[#475569]">Received {formatDate(email?.received_at)}</p>
@@ -508,7 +512,7 @@ export function ReviewItemDetailPage({ navigate, itemId }) {
       <div className="mt-6 flex gap-4 rounded-2xl border border-[#FDE68A] bg-[#FEF3C7] p-6">
         <Warning size={22} className="mt-0.5 shrink-0 text-[#B45309]" />
         <div>
-          <p className="font-semibold text-[#78350F]">Why this needs a person</p>
+          <p className="font-display font-semibold text-[#78350F]">Why this needs a person</p>
           <p className="mt-1 text-sm leading-6 text-[#92400E]">{item.description}</p>
         </div>
       </div>
@@ -548,7 +552,7 @@ export function ReviewItemDetailPage({ navigate, itemId }) {
           )}
           {item.status === 'resolved' && (
             <section className="rounded-2xl bg-white p-6 border border-slate-200">
-              <h2 className="text-lg font-semibold text-[#1E293B]">Resolution</h2>
+              <h2 className="font-display text-lg font-semibold text-[#1E293B]">Resolution</h2>
               <pre className="mt-2 overflow-auto rounded-lg bg-[#F8FAFC] p-3 font-mono text-xs text-[#475569]">
                 {JSON.stringify(item.resolution, null, 2)}
               </pre>

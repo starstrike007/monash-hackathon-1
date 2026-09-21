@@ -204,7 +204,9 @@ export function InboxPage({ navigate }) {
       <header className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
         <div>
           <p className="text-sm font-medium text-[#475569]">{shownCount} emails</p>
-          <h1 className="mt-1 text-5xl font-semibold tracking-tight text-[#0F172A]">Inbox</h1>
+          <h1 className="font-display mt-1 text-[2.75rem] font-semibold tracking-[-0.02em] text-[#0F172A]">
+            Inbox
+          </h1>
         </div>
         <label className="flex h-14 w-full items-center gap-3 rounded-xl border border-[#CBD5E1] bg-white px-5 text-[#64748B] sm:max-w-[420px]">
           <MagnifyingGlass size={20} />
