@@ -24,11 +24,11 @@ function SummaryCard({ label, value, caption, warning = false, compact = false, 
       type={onClick ? 'button' : undefined}
       onClick={onClick}
       className={cn(
-        'relative rounded-2xl bg-white text-left shadow-[0_2px_10px_rgba(22,35,43,0.05)]',
+        'relative rounded-2xl border bg-gradient-to-b from-[#34558F] to-[#28457D] text-left text-white',
+        warning ? 'border-[#B08A2E]' : 'border-[#4A6BAA]',
         compact ? 'p-5' : 'p-6',
-        warning && 'bg-[#FBEBCF]',
         onClick
-          ? 'group cursor-pointer transition-all duration-200 ease-out hover:z-10 hover:scale-[1.03] hover:shadow-[0_12px_32px_rgba(22,35,43,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0E5A66] motion-reduce:transition-none motion-reduce:hover:scale-100'
+          ? 'group cursor-pointer transition-all duration-200 ease-out hover:z-10 hover:scale-[1.03] hover:border-[#7D9AD2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0B3FA8] motion-reduce:transition-none motion-reduce:hover:scale-100'
           : 'cursor-default',
       )}
     >
@@ -39,27 +39,27 @@ function SummaryCard({ label, value, caption, warning = false, compact = false, 
           aria-hidden="true"
           className={cn(
             'absolute right-4 top-4 transition-transform duration-200 group-hover:translate-x-0.5',
-            warning ? 'text-[#8A5300]' : 'text-[#0E5A66]',
+            warning ? 'text-amber-200' : 'text-slate-100',
           )}
         />
       )}
-      <p className={cn('text-sm font-medium text-[#687780]', warning && 'text-[#8A5300]')}>
+      <p className={cn('text-sm font-medium text-slate-300', warning && 'text-amber-200')}>
         {label}
       </p>
       <p
         className={cn(
-          'mt-1 font-mono font-semibold tracking-tight text-[#16232B]',
+          'mt-1 font-mono font-semibold tracking-tight text-white',
           compact ? 'text-4xl' : 'text-5xl',
-          warning && 'text-[#8A5300]',
+          warning && 'text-amber-200',
         )}
       >
         {value}
       </p>
       <p
         className={cn(
-          'text-sm text-[#687780]',
+          'text-sm text-slate-200',
           compact ? 'mt-2' : 'mt-3',
-          warning && 'font-medium text-[#8A5300]',
+          warning && 'font-medium text-amber-200',
         )}
       >
         {caption}
@@ -81,10 +81,10 @@ function useRelativeTime(value, intervalMs = 30000) {
 }
 
 const TONES = {
-  critical: '#CF3B32',
-  warning: '#C47A00',
-  positive: '#2B965C',
-  neutral: '#0E5A66',
+  critical: '#DC2626',
+  warning: '#D97706',
+  positive: '#059669',
+  neutral: '#0F172A',
 }
 
 function buildInsights(data) {
@@ -151,23 +151,25 @@ function SummaryBrief({ data, navigate, lastRunAt, onOpenComparisons, onOpenMism
   const lastRun = useRelativeTime(lastRunAt)
 
   return (
-    <section className="rounded-2xl border border-[#E3DED1] bg-white p-7">
+    <section className="rounded-2xl border border-[#E2E8F0] bg-white p-7">
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(400px,0.78fr)]">
         <div>
           <div className="flex items-center gap-3">
-            <h2 className="text-xl font-semibold tracking-tight text-[#16232B]">Summary brief</h2>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F6F3EC] px-3 py-1 text-xs font-medium text-[#71808A]">
+            <h2 className="font-serif text-3xl font-semibold tracking-tight text-[#0F172A]">
+              Summary brief
+            </h2>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F1F5F9] px-3 py-1 text-xs font-medium text-[#64748B]">
               <Clock size={13} />
               Latest run
               {lastRun && (
                 <>
                   <span aria-hidden="true">·</span>
-                  <span className="font-semibold text-[#46555E]">{lastRun}</span>
+                  <span className="font-semibold text-[#475569]">{lastRun}</span>
                 </>
               )}
             </span>
           </div>
-          <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-[#46555E]">
+          <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-[#475569]">
             This run read {data.emails_processed} emails and checked {data.comparison_requests}{' '}
             SI/BL comparison requests. Draft quality is the story: mismatches are concentrated in a
             handful of fields, and the small review queue is driven by unreadable or missing
@@ -181,8 +183,8 @@ function SummaryBrief({ data, navigate, lastRunAt, onOpenComparisons, onOpenMism
                   className="mt-[7px] h-2 w-2 shrink-0 rounded-full bg-current"
                   style={{ color: TONES[insight.tone] }}
                 />
-                <p className="text-sm leading-relaxed text-[#71808A]">
-                  <strong className="font-semibold text-[#26353D]">{insight.claim}.</strong>{' '}
+                <p className="text-sm leading-relaxed text-[#64748B]">
+                  <strong className="font-semibold text-[#1E293B]">{insight.claim}.</strong>{' '}
                   {insight.detail}
                 </p>
               </li>
@@ -223,7 +225,7 @@ function SummaryBrief({ data, navigate, lastRunAt, onOpenComparisons, onOpenMism
           </div>
 
           <button
-            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#0E5A66] bg-[#0E5A66] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0B4A54]"
+            className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[#1D4ED8] px-5 text-sm font-semibold text-white transition hover:bg-[#1A44BC]"
             onClick={() => navigate('/review')}
           >
             Open review queue
@@ -237,12 +239,9 @@ function SummaryBrief({ data, navigate, lastRunAt, onOpenComparisons, onOpenMism
 
 function SectionCard({ id, title, subtitle, children, className }) {
   return (
-    <section
-      id={id}
-      className={cn('rounded-2xl bg-white p-7 shadow-[0_2px_10px_rgba(22,35,43,0.05)]', className)}
-    >
-      <h2 className="text-xl font-semibold tracking-tight text-[#16232B]">{title}</h2>
-      {subtitle && <p className="mt-1 text-sm text-[#71808A]">{subtitle}</p>}
+    <section id={id} className={cn('rounded-2xl bg-white p-7 border border-slate-200', className)}>
+      <h2 className="font-serif text-3xl font-semibold tracking-tight text-[#0F172A]">{title}</h2>
+      {subtitle && <p className="mt-1 text-sm text-[#64748B]">{subtitle}</p>}
       {children}
     </section>
   )
@@ -257,9 +256,9 @@ const OUTCOME_INBOX_FILTER = {
 function OutcomeBreakdown({ outcomes, navigate }) {
   const [activeKey, setActiveKey] = useState(null)
   const rows = [
-    ['OK', 'No mismatch', '#2B965C', 'all 7 fields agree'],
-    ['MISMATCH', 'Mismatch', '#CF3B32', 'at least one field differs'],
-    ['NEEDS_REVIEW', 'Needs review', '#C47A00', 'a person decides'],
+    ['OK', 'No mismatch', '#059669', 'all 7 fields agree'],
+    ['MISMATCH', 'Mismatch', '#DC2626', 'at least one field differs'],
+    ['NEEDS_REVIEW', 'Needs review', '#D97706', 'a person decides'],
   ]
   const total = rows.reduce((sum, [key]) => sum + (outcomes?.[key] || 0), 0) || 1
   const openComparisons = (key) => navigate(`/docs-comparison?status=${OUTCOME_INBOX_FILTER[key]}`)
@@ -307,7 +306,7 @@ function OutcomeBreakdown({ outcomes, navigate }) {
               <span
                 role="tooltip"
                 className={cn(
-                  'pointer-events-none absolute -top-11 z-20 whitespace-nowrap rounded-lg bg-[#16232B] px-3 py-2 text-xs font-semibold leading-none text-white shadow-lg transition-all duration-200 motion-reduce:transition-none',
+                  'pointer-events-none absolute -top-11 z-20 whitespace-nowrap rounded-lg bg-[#0F172A] px-3 py-2 text-xs font-semibold leading-none text-white shadow-lg transition-all duration-200 motion-reduce:transition-none',
                   edge,
                   active ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0',
                 )}
@@ -344,16 +343,16 @@ function OutcomeBreakdown({ outcomes, navigate }) {
                 )}
                 style={{ color }}
               />
-              <span className="font-semibold text-[#26353D]">{label}</span>
-              <span className={cn('text-[#71808A]', active && 'font-medium text-[#26353D]')}>
+              <span className="font-semibold text-[#1E293B]">{label}</span>
+              <span className={cn('text-[#64748B]', active && 'font-medium text-[#1E293B]')}>
                 · {description}
               </span>
-              <span className="ml-auto font-mono text-[#26353D]">{outcomes?.[key] || 0}</span>
+              <span className="ml-auto font-mono text-[#1E293B]">{outcomes?.[key] || 0}</span>
             </button>
           )
         })}
       </div>
-      <p className="mt-6 rounded-xl bg-[#F6F3EC] px-4 py-3 text-sm text-[#71808A]">
+      <p className="mt-6 rounded-xl bg-[#F1F5F9] px-4 py-3 text-sm text-[#64748B]">
         Uncertain results are never counted as “No mismatch”. They wait for a person.
       </p>
     </div>
@@ -362,12 +361,12 @@ function OutcomeBreakdown({ outcomes, navigate }) {
 
 function AttentionList({ items, navigate }) {
   return (
-    <div className="mt-5 divide-y divide-[#E9E5D9]">
+    <div className="mt-5 divide-y divide-[#E2E8F0]">
       {items?.length ? (
         items.slice(0, 6).map((item) => (
           <button
             key={item.email_id}
-            className="flex w-full items-center gap-4 py-4 text-left hover:bg-[#FCFAF4]"
+            className="flex w-full items-center gap-4 py-4 text-left hover:bg-[#F8FAFC]"
             onClick={() =>
               // Every attention item is a NEEDS_REVIEW comparison; Docs
               // Comparison shows the state-aware banner with a link into
@@ -375,23 +374,23 @@ function AttentionList({ items, navigate }) {
               navigate(`/docs-comparison/${item.email_id}`)
             }
           >
-            <span className="w-20 shrink-0 font-mono text-sm text-[#71808A]">
+            <span className="w-20 shrink-0 font-mono text-sm text-[#64748B]">
               {item.display_id}
             </span>
             <span className="min-w-0 flex-1">
-              <strong className="block truncate text-sm text-[#26353D]">{item.subject}</strong>
-              <span className="block truncate text-sm text-[#71808A]">
+              <strong className="block truncate text-sm text-[#1E293B]">{item.subject}</strong>
+              <span className="block truncate text-sm text-[#64748B]">
                 {item.attention || 'Needs attention'}
               </span>
             </span>
-            <span className="hidden rounded-full bg-[#FBEBCF] px-3 py-1 font-mono text-xs text-[#8A5300] sm:block">
+            <span className="hidden rounded-md bg-amber-600/10 px-2 py-1 font-mono text-xs text-amber-700 sm:block">
               {item.review_reason || 'needs_review'}
             </span>
-            <ArrowRight size={18} className="text-[#71808A]" />
+            <ArrowRight size={18} className="text-[#64748B]" />
           </button>
         ))
       ) : (
-        <p className="py-8 text-sm text-[#71808A]">No cases need attention.</p>
+        <p className="py-8 text-sm text-[#64748B]">No cases need attention.</p>
       )}
     </div>
   )
@@ -410,16 +409,16 @@ function DefectsByFieldSelectable({ defects, onSelect }) {
           key={row.key}
           onClick={() => onSelect(row.key)}
           aria-label={`${row.label}: ${row.value} defects. Open a case with this defect`}
-          className="group flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left text-sm hover:bg-[#FCFAF4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0E5A66]"
+          className="group flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left text-sm hover:bg-[#F8FAFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0F172A]"
         >
-          <span className="w-32 shrink-0 text-[#46555E]">{row.label}</span>
-          <div className="flex h-3 flex-1 items-center rounded-full bg-[#E9E5D9]">
+          <span className="w-32 shrink-0 text-[#475569]">{row.label}</span>
+          <div className="flex h-3 flex-1 items-center rounded-full bg-[#E2E8F0]">
             <div
-              className="h-2 rounded-full bg-[#CF3B32] transition-all duration-200 ease-out group-hover:h-3 group-hover:bg-[#B02A22] motion-reduce:transition-none"
+              className="h-2 rounded-full bg-[#DC2626] transition-all duration-200 ease-out group-hover:h-3 group-hover:bg-[#B91C1C] motion-reduce:transition-none"
               style={{ width: `${(row.value / maximum) * 100}%` }}
             />
           </div>
-          <span className="w-7 text-right font-mono text-[#46555E]">{row.value}</span>
+          <span className="w-7 text-right font-mono text-[#475569]">{row.value}</span>
         </button>
       ))}
     </div>
@@ -515,33 +514,35 @@ export function DashboardPage({ navigate, initialRunId = null }) {
   if (!data)
     return (
       <div className="p-8 lg:p-12">
-        <div className="h-8 w-56 animate-pulse rounded bg-[#E9E5D9]" />
+        <div className="h-8 w-56 animate-pulse rounded bg-[#E2E8F0]" />
         <div className="mt-8 h-80 animate-pulse rounded-2xl bg-white" />
       </div>
     )
 
   return (
     <>
-      <div className="mx-auto max-w-[1540px] px-5 py-10 lg:px-14">
-        <header className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
-          <div>
-            <p className="text-sm font-medium text-[#62757D]">{formatBusinessDay()}</p>
-            <h1 className="mt-1 font-serif text-5xl font-semibold tracking-tight text-[#16232B]">
+      <div className="mx-auto max-w-7xl px-5 py-10 lg:px-14">
+        <header className="relative px-0 py-6 text-[#0F172A] sm:flex sm:items-end sm:justify-between sm:gap-6">
+          <div className="relative">
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-[#475569]">
+              {formatBusinessDay()}
+            </p>
+            <h1 className="mt-2 font-serif text-6xl font-semibold tracking-tight text-[#0F172A]">
               Overview
             </h1>
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="relative mt-6 flex flex-wrap gap-3 sm:mt-0">
             <a
               href={submissionUrl()}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 text-sm font-semibold leading-none transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100 bg-white text-[#26353D] shadow-sm"
+              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full border border-[#6C8AC4] bg-[#2A4682] px-6 text-sm font-semibold leading-none text-white transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-[#33569A] active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
             >
               <ArrowDown size={16} className="shrink-0" />
               Export submission JSON
             </a>
             <button
-              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 text-sm font-semibold leading-none transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100 bg-[#0E5A66] text-white hover:bg-[#0B4B55] disabled:opacity-60 disabled:hover:scale-100 disabled:hover:shadow-none"
+              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-[#1D4ED8] px-6 text-sm font-semibold leading-none text-white transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-[#1A44BC] active:translate-y-0 disabled:opacity-60 disabled:hover:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
               onClick={startPipeline}
               disabled={running}
             >
@@ -611,7 +612,7 @@ export function DashboardPage({ navigate, initialRunId = null }) {
         {runId && <PipelineRunDrawer runId={runId} onClose={() => setRunId(null)} />}
       </div>
       {running && (
-        <div className="fixed bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-[#16232B] px-5 py-3 text-sm font-semibold text-white shadow-xl">
+        <div className="fixed bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-[#0F172A] px-5 py-3 text-sm font-semibold text-white shadow-lg">
           <WarningCircle size={18} />
           Processing the inbox…
         </div>

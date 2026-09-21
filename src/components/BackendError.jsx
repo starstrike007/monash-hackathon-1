@@ -5,7 +5,7 @@ export function BackendError({ error, onRetry, compact = false }) {
   return (
     <div
       role="alert"
-      className={`rounded-2xl border border-[#F2C2BC] bg-[#F8E3E0] text-[#8C2A24] ${compact ? 'p-4' : 'p-6'}`}
+      className={`rounded-2xl border border-[#FECACA] bg-[#FEE2E2] text-[#991B1B] ${compact ? 'p-4' : 'p-6'}`}
     >
       <div className="flex items-start gap-3">
         <WarningCircle size={20} weight="fill" className="mt-0.5 shrink-0" />
@@ -16,7 +16,7 @@ export function BackendError({ error, onRetry, compact = false }) {
             <button
               type="button"
               onClick={onRetry}
-              className="mt-3 inline-flex h-9 items-center gap-2 rounded-lg bg-white px-3 text-sm font-semibold text-[#8C2A24] shadow-sm"
+              className="mt-3 inline-flex h-9 items-center gap-2 rounded-lg border border-[#0F172A] bg-transparent px-3 text-sm font-semibold text-[#0F172A] hover:bg-slate-100"
             >
               <ArrowClockwise size={15} />
               Try again

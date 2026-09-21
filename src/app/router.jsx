@@ -85,9 +85,9 @@ export function Router() {
   else
     content = (
       <div className="p-12">
-        <h1 className="font-serif text-4xl">Page not found</h1>
+        <h1 className="text-4xl text-[#0F172A]">Page not found</h1>
         <button
-          className="mt-5 inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 text-sm font-semibold leading-none transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100 bg-[#0E5A66] text-white hover:bg-[#0B4B55] disabled:opacity-60 disabled:hover:scale-100 disabled:hover:shadow-none"
+          className="mt-5 inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 text-sm font-semibold leading-none transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100 bg-[#0F172A] text-white hover:bg-[#1E293B] disabled:opacity-60 disabled:hover:scale-100 disabled:hover:shadow-none"
           onClick={() => navigate('/dashboard')}
         >
           Back to dashboard

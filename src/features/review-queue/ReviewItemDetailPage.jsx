@@ -5,7 +5,13 @@ import { BackendError } from '@/components/BackendError'
 import { DocumentViewer } from '@/components/document-viewer/DocumentViewer'
 import { reasonLabel } from '@/features/review-queue/reasons'
 import { fieldLabels } from '@/features/docs-comparison/summary'
-import { getEmail, getReviewItem, notifyDataChanged, resolveReviewItem, uploadReviewAttachment } from '@/lib/api'
+import {
+  getEmail,
+  getReviewItem,
+  notifyDataChanged,
+  resolveReviewItem,
+  uploadReviewAttachment,
+} from '@/lib/api'
 import { CATEGORY_LABELS, FIELDS, formatDate } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -39,12 +45,12 @@ function ConfirmCorrectPanel({ itemId, email, fieldOptions, onSaved }) {
   }
 
   return (
-    <section className="rounded-2xl bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-[#26353D]">Resolve this field</h2>
-      <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-[#71808A]">
+    <section className="rounded-2xl bg-white p-6 border border-slate-200">
+      <h2 className="text-lg font-semibold text-[#1E293B]">Resolve this field</h2>
+      <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-[#64748B]">
         Field
         <select
-          className="mt-2 h-11 w-full rounded-lg border border-[#D5D0C2] bg-white px-3 text-sm"
+          className="mt-2 h-11 w-full rounded-lg border border-[#CBD5E1] bg-white px-3 text-sm"
           value={fieldName}
           onChange={(event) => setFieldName(event.target.value)}
         >
@@ -60,12 +66,12 @@ function ConfirmCorrectPanel({ itemId, email, fieldOptions, onSaved }) {
           type="button"
           className={cn(
             'rounded-xl border p-4 text-left',
-            action === 'confirm' ? 'border-[#0E5A66] bg-[#E1EEF0]' : 'border-[#D5D0C2]',
+            action === 'confirm' ? 'border-[#0F172A] bg-[#F1F5F9]' : 'border-[#CBD5E1]',
           )}
           onClick={() => setAction('confirm')}
         >
-          <p className="font-semibold text-[#26353D]">Confirm the reading is correct</p>
-          <p className="mt-1 text-sm text-[#71808A]">
+          <p className="font-semibold text-[#1E293B]">Confirm the reading is correct</p>
+          <p className="mt-1 text-sm text-[#64748B]">
             BL value is {comparison?.bl?.raw_value || 'as extracted'}.
           </p>
         </button>
@@ -73,24 +79,24 @@ function ConfirmCorrectPanel({ itemId, email, fieldOptions, onSaved }) {
           type="button"
           className={cn(
             'rounded-xl border p-4 text-left',
-            action === 'correct' ? 'border-[#0E5A66] bg-[#E1EEF0]' : 'border-[#D5D0C2]',
+            action === 'correct' ? 'border-[#0F172A] bg-[#F1F5F9]' : 'border-[#CBD5E1]',
           )}
           onClick={() => setAction('correct')}
         >
-          <p className="font-semibold text-[#26353D]">Enter the correct value</p>
-          <p className="mt-1 text-sm text-[#71808A]">The extracted reading was wrong or missing.</p>
+          <p className="font-semibold text-[#1E293B]">Enter the correct value</p>
+          <p className="mt-1 text-sm text-[#64748B]">The extracted reading was wrong or missing.</p>
         </button>
         {email?.result?.review_reason === 'missing_value' && (
           <button
             type="button"
             className={cn(
               'rounded-xl border p-4 text-left',
-              action === 'confirm_absent' ? 'border-[#8A5300] bg-[#FFF8E9]' : 'border-[#D5D0C2]',
+              action === 'confirm_absent' ? 'border-[#B45309] bg-[#FFFBEB]' : 'border-[#CBD5E1]',
             )}
             onClick={() => setAction('confirm_absent')}
           >
-            <p className="font-semibold text-[#26353D]">Confirm the field is absent</p>
-            <p className="mt-1 text-sm text-[#71808A]">
+            <p className="font-semibold text-[#1E293B]">Confirm the field is absent</p>
+            <p className="mt-1 text-sm text-[#64748B]">
               Record the absence as a discrepancy for this field.
             </p>
           </button>
@@ -98,14 +104,14 @@ function ConfirmCorrectPanel({ itemId, email, fieldOptions, onSaved }) {
       </div>
       {action === 'correct' && (
         <input
-          className="mt-3 h-11 w-full rounded-lg border border-[#D5D0C2] px-3 font-mono text-sm"
+          className="mt-3 h-11 w-full rounded-lg border border-[#CBD5E1] px-3 font-mono text-sm"
           value={correctedValue}
           onChange={(event) => setCorrectedValue(event.target.value)}
           placeholder={comparison?.si?.raw_value || 'Corrected value'}
         />
       )}
       <button
-        className="mt-5 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[#0E5A66] text-sm font-semibold text-white disabled:opacity-60"
+        className="mt-5 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[#0F172A] text-sm font-semibold text-white disabled:opacity-60 hover:bg-[#1E293B]"
         onClick={save}
         disabled={saving || !fieldName || (action === 'correct' && !correctedValue)}
       >
@@ -149,15 +155,15 @@ function UploadMissingPanel({ itemId, onSaved }) {
   }
 
   return (
-    <section className="rounded-2xl bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-[#26353D]">Upload a replacement attachment</h2>
-      <p className="mt-1 text-sm text-[#71808A]">
+    <section className="rounded-2xl bg-white p-6 border border-slate-200">
+      <h2 className="text-lg font-semibold text-[#1E293B]">Upload a replacement attachment</h2>
+      <p className="mt-1 text-sm text-[#64748B]">
         The file is stored with this case, attached to the email, and the comparison is rerun.
       </p>
-      <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-[#71808A]">
+      <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-[#64748B]">
         Attachment role
         <select
-          className="mt-2 h-11 w-full rounded-lg border border-[#D5D0C2] bg-white px-3 text-sm"
+          className="mt-2 h-11 w-full rounded-lg border border-[#CBD5E1] bg-white px-3 text-sm"
           value={role}
           onChange={(event) => setRole(event.target.value)}
         >
@@ -168,12 +174,12 @@ function UploadMissingPanel({ itemId, onSaved }) {
       <input
         type="file"
         accept=".txt,.pdf,.docx,.xlsx"
-        className="mt-3 block w-full text-sm text-[#46555E]"
+        className="mt-3 block w-full text-sm text-[#475569]"
         onChange={(event) => setFile(event.target.files?.[0] || null)}
       />
       <button
         type="button"
-        className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[#0E5A66] text-sm font-semibold text-white disabled:opacity-60"
+        className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[#0F172A] text-sm font-semibold text-white disabled:opacity-60 hover:bg-[#1E293B]"
         onClick={upload}
         disabled={saving || !file}
       >
@@ -203,11 +209,11 @@ function ReclassifyPanel({ itemId, onSaved, defaultNote }) {
   }
 
   return (
-    <section className="rounded-2xl bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-[#26353D]">Reclassify away from comparison</h2>
-      <p className="mt-1 text-sm text-[#71808A]">{defaultNote}</p>
+    <section className="rounded-2xl bg-white p-6 border border-slate-200">
+      <h2 className="text-lg font-semibold text-[#1E293B]">Reclassify away from comparison</h2>
+      <p className="mt-1 text-sm text-[#64748B]">{defaultNote}</p>
       <select
-        className="mt-4 h-11 w-full rounded-lg border border-[#D5D0C2] bg-white px-3 text-sm"
+        className="mt-4 h-11 w-full rounded-lg border border-[#CBD5E1] bg-white px-3 text-sm"
         value={category}
         onChange={(event) => setCategory(event.target.value)}
       >
@@ -218,7 +224,7 @@ function ReclassifyPanel({ itemId, onSaved, defaultNote }) {
         ))}
       </select>
       <button
-        className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[#0E5A66] text-sm font-semibold text-white disabled:opacity-60"
+        className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[#0F172A] text-sm font-semibold text-white disabled:opacity-60 hover:bg-[#1E293B]"
         onClick={save}
         disabled={saving}
       >
@@ -231,18 +237,18 @@ function ReclassifyPanel({ itemId, onSaved, defaultNote }) {
 function DraftReplyPanel({ email }) {
   const draft = `Hi,\n\nWe're missing an attachment needed to verify ${email?.subject || 'this shipment'}. Could you resend the Shipping Instruction and draft Bill of Lading?\n\nThanks,\nClearance team`
   return (
-    <section className="rounded-2xl bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-[#26353D]">
+    <section className="rounded-2xl bg-white p-6 border border-slate-200">
+      <h2 className="text-lg font-semibold text-[#1E293B]">
         Draft reply (copy only, nothing is sent)
       </h2>
       <textarea
         readOnly
-        className="mt-3 h-32 w-full rounded-lg border border-[#D5D0C2] bg-[#FBF9F4] p-3 font-mono text-xs text-[#26353D]"
+        className="mt-3 h-32 w-full rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] p-3 font-mono text-xs text-[#1E293B]"
         value={draft}
       />
       <button
         type="button"
-        className="mt-3 inline-flex h-9 items-center rounded-lg bg-white px-4 text-sm font-semibold text-[#26353D] shadow-sm"
+        className="mt-3 inline-flex h-9 items-center rounded-lg border border-[#0F172A] bg-transparent px-4 text-sm font-semibold text-[#0F172A] hover:bg-slate-100"
         onClick={() => navigator.clipboard?.writeText(draft)}
       >
         Copy to clipboard
@@ -298,15 +304,15 @@ function ReassignRolesPanel({ itemId, email, onSaved }) {
   }
 
   return (
-    <section className="rounded-2xl bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-[#26353D]">Reassign SI / BL</h2>
-      <p className="mt-1 text-sm text-[#71808A]">
+    <section className="rounded-2xl bg-white p-6 border border-slate-200">
+      <h2 className="text-lg font-semibold text-[#1E293B]">Reassign SI / BL</h2>
+      <p className="mt-1 text-sm text-[#64748B]">
         Pick which attachment is the Shipping Instruction and which is the draft Bill of Lading.
       </p>
-      <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-[#71808A]">
+      <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-[#64748B]">
         Shipping instruction
         <select
-          className="mt-2 h-11 w-full rounded-lg border border-[#D5D0C2] bg-white px-3 text-sm"
+          className="mt-2 h-11 w-full rounded-lg border border-[#CBD5E1] bg-white px-3 text-sm"
           value={siPath}
           onChange={(event) => setSiPath(event.target.value)}
         >
@@ -317,10 +323,10 @@ function ReassignRolesPanel({ itemId, email, onSaved }) {
           ))}
         </select>
       </label>
-      <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-[#71808A]">
+      <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-[#64748B]">
         Draft bill of lading
         <select
-          className="mt-2 h-11 w-full rounded-lg border border-[#D5D0C2] bg-white px-3 text-sm"
+          className="mt-2 h-11 w-full rounded-lg border border-[#CBD5E1] bg-white px-3 text-sm"
           value={blPath}
           onChange={(event) => setBlPath(event.target.value)}
         >
@@ -332,17 +338,17 @@ function ReassignRolesPanel({ itemId, email, onSaved }) {
         </select>
       </label>
       <button
-        className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[#0E5A66] text-sm font-semibold text-white disabled:opacity-60"
+        className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[#0F172A] text-sm font-semibold text-white disabled:opacity-60 hover:bg-[#1E293B]"
         onClick={save}
         disabled={saving || !siPath || !blPath || siPath === blPath}
       >
         {saving ? 'Saving…' : 'Reassign and recompute'}
       </button>
-      <div className="mt-5 border-t border-[#E9E5D9] pt-4">
-        <label className="block text-xs font-semibold uppercase tracking-wide text-[#71808A]">
+      <div className="mt-5 border-t border-[#E2E8F0] pt-4">
+        <label className="block text-xs font-semibold uppercase tracking-wide text-[#64748B]">
           Mark a document missing
           <select
-            className="mt-2 h-11 w-full rounded-lg border border-[#D5D0C2] bg-white px-3 text-sm"
+            className="mt-2 h-11 w-full rounded-lg border border-[#CBD5E1] bg-white px-3 text-sm"
             value={missingRole}
             onChange={(event) => setMissingRole(event.target.value)}
           >
@@ -350,10 +356,10 @@ function ReassignRolesPanel({ itemId, email, onSaved }) {
             <option value="BL">Draft bill of lading</option>
           </select>
         </label>
-        <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-[#71808A]">
+        <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-[#64748B]">
           Attachment to exclude
           <select
-            className="mt-2 h-11 w-full rounded-lg border border-[#D5D0C2] bg-white px-3 text-sm"
+            className="mt-2 h-11 w-full rounded-lg border border-[#CBD5E1] bg-white px-3 text-sm"
             value={missingPath}
             onChange={(event) => setMissingPath(event.target.value)}
           >
@@ -366,7 +372,7 @@ function ReassignRolesPanel({ itemId, email, onSaved }) {
         </label>
         <button
           type="button"
-          className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-lg border border-[#8A5300] bg-[#FFF8E9] text-sm font-semibold text-[#8A5300] disabled:opacity-60"
+          className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-lg border border-[#B45309] bg-[#FFFBEB] text-sm font-semibold text-[#B45309] disabled:opacity-60"
           onClick={markMissing}
           disabled={saving}
         >
@@ -391,13 +397,13 @@ function RetryPanel({ itemId, onSaved }) {
     }
   }
   return (
-    <section className="rounded-2xl bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-[#26353D]">Processing failed</h2>
-      <p className="mt-1 text-sm text-[#71808A]">
+    <section className="rounded-2xl bg-white p-6 border border-slate-200">
+      <h2 className="text-lg font-semibold text-[#1E293B]">Processing failed</h2>
+      <p className="mt-1 text-sm text-[#64748B]">
         This never became a defect - it stayed a visible, retryable failure.
       </p>
       <button
-        className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[#0E5A66] text-sm font-semibold text-white disabled:opacity-60"
+        className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[#0F172A] text-sm font-semibold text-white disabled:opacity-60 hover:bg-[#1E293B]"
         onClick={retry}
         disabled={saving}
       >
@@ -465,48 +471,52 @@ export function ReviewItemDetailPage({ navigate, itemId }) {
   if (!item) {
     return (
       <div className="p-8 lg:p-12">
-        <div className="h-8 w-64 animate-pulse rounded bg-[#E9E5D9]" />
+        <div className="h-8 w-64 animate-pulse rounded bg-[#E2E8F0]" />
       </div>
     )
   }
 
   return (
-    <div className="mx-auto max-w-[1500px] px-5 py-10 lg:px-14">
+    <div className="mx-auto max-w-7xl px-5 py-10 lg:px-14">
       <button
         type="button"
         onClick={() => navigate('/review')}
-        className="mb-6 inline-flex h-10 items-center gap-2 rounded-lg bg-white px-4 text-sm font-semibold text-[#26353D] shadow-sm"
+        className="mb-6 inline-flex h-10 items-center gap-2 rounded-lg border border-[#0F172A] bg-transparent px-4 text-sm font-semibold text-[#0F172A] hover:bg-white/60"
       >
         <ArrowLeft size={16} />
         Review queue
       </button>
 
       <div className="flex flex-wrap items-center gap-3">
-        <span className="font-mono text-sm text-[#71808A]">
+        <span className="font-mono text-sm text-[#475569]">
           {email?.display_id || item.email_id}
         </span>
-        <span className="inline-flex items-center rounded-full bg-[#FBEBCF] px-3 py-1 text-xs font-semibold text-[#8A5300]">
+        <span className="inline-flex items-center rounded-md bg-[#FEF3C7] px-2 py-1 font-mono text-xs font-medium text-amber-700">
           {reasonLabel(item.reason)}
         </span>
         {item.status === 'resolved' && (
-          <span className="inline-flex items-center rounded-full bg-[#E2F1E8] px-3 py-1 text-xs font-semibold text-[#17693F]">
+          <span className="inline-flex items-center rounded-md bg-[#D1FAE5] px-2 py-1 font-mono text-xs font-medium text-emerald-700">
             Resolved
           </span>
         )}
       </div>
-      <h1 className="mt-3 font-serif text-4xl font-semibold text-[#16232B]">
+      <h1 className="mt-3 text-4xl font-semibold text-[#0F172A]">
         {email?.subject || item.email_id}
       </h1>
-      <p className="mt-2 text-sm text-[#71808A]">Received {formatDate(email?.received_at)}</p>
+      <p className="mt-2 text-sm text-[#475569]">Received {formatDate(email?.received_at)}</p>
 
-      <div className="mt-6 flex gap-4 rounded-2xl border border-[#EFD9A6] bg-[#FBEBCF] p-6">
-        <Warning size={22} className="mt-0.5 shrink-0 text-[#8A5300]" />
+      <div className="mt-6 flex gap-4 rounded-2xl border border-[#FDE68A] bg-[#FEF3C7] p-6">
+        <Warning size={22} className="mt-0.5 shrink-0 text-[#B45309]" />
         <div>
-          <p className="font-semibold text-[#5A3A08]">Why this needs a person</p>
-          <p className="mt-1 text-sm leading-6 text-[#72541E]">{item.description}</p>
+          <p className="font-semibold text-[#78350F]">Why this needs a person</p>
+          <p className="mt-1 text-sm leading-6 text-[#92400E]">{item.description}</p>
         </div>
       </div>
-      {error && <div className="mt-5"><BackendError error={error} compact /></div>}
+      {error && (
+        <div className="mt-5">
+          <BackendError error={error} compact />
+        </div>
+      )}
 
       <div className="mt-7 grid gap-7 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="space-y-5">
@@ -537,9 +547,9 @@ export function ReviewItemDetailPage({ navigate, itemId }) {
             </>
           )}
           {item.status === 'resolved' && (
-            <section className="rounded-2xl bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-[#26353D]">Resolution</h2>
-              <pre className="mt-2 overflow-auto rounded-lg bg-[#FBF9F4] p-3 font-mono text-xs text-[#46555E]">
+            <section className="rounded-2xl bg-white p-6 border border-slate-200">
+              <h2 className="text-lg font-semibold text-[#1E293B]">Resolution</h2>
+              <pre className="mt-2 overflow-auto rounded-lg bg-[#F8FAFC] p-3 font-mono text-xs text-[#475569]">
                 {JSON.stringify(item.resolution, null, 2)}
               </pre>
             </section>
@@ -547,10 +557,10 @@ export function ReviewItemDetailPage({ navigate, itemId }) {
         </div>
         <div className="grid gap-4">
           {flaggedFields.length > 0 && (
-            <label className="block text-xs font-semibold uppercase tracking-wide text-[#71808A]">
+            <label className="block text-xs font-semibold uppercase tracking-wide text-[#475569]">
               Evidence field
               <select
-                className="mt-2 h-10 w-full rounded-lg border border-[#D5D0C2] bg-white px-3 text-sm normal-case"
+                className="mt-2 h-10 w-full rounded-lg border border-[#CBD5E1] bg-white px-3 text-sm normal-case"
                 value={activeField || ''}
                 onChange={(event) => setActiveField(event.target.value)}
               >
@@ -583,7 +593,7 @@ export function ReviewItemDetailPage({ navigate, itemId }) {
 
       {notice && (
         <div
-          className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2 rounded-full bg-[#16232B] px-5 py-3 text-sm font-semibold text-white shadow-xl"
+          className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2 rounded-full bg-[#0F172A] px-5 py-3 text-sm font-semibold text-white shadow-lg"
           role="status"
         >
           {notice}

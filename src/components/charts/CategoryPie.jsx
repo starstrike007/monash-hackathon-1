@@ -2,17 +2,17 @@ import { useState } from 'react'
 
 import { CATEGORY_LABELS } from '@/lib/types'
 
-// Categorical slots 1-5, fixed order. Validated on the ring-adjacent pairlist
-// (worst CVD deltaE 9.1, worst normal-vision deltaE 19.6 against a white surface).
-// Colour follows the category, never its rank, so slices are drawn in this order.
+// Categorical slots 1-5, fixed order. Blues and slates only: red, amber and green
+// are reserved for mismatch, review and verified states. Colour follows the
+// category, never its rank, so slices are drawn in this order.
 const SLICES = [
-  { key: 'BL_COMPARISON', color: '#2a78d6' },
-  { key: 'SI_REQUEST', color: '#eb6834' },
-  { key: 'INVOICE_QUERY', color: '#1baf7a' },
-  { key: 'GENERAL', color: '#eda100' },
-  { key: 'SPAM', color: '#e87ba4' },
+  { key: 'BL_COMPARISON', color: '#0F172A' },
+  { key: 'SI_REQUEST', color: '#4F46E5' },
+  { key: 'INVOICE_QUERY', color: '#06B6D4' },
+  { key: 'GENERAL', color: '#64748B' },
+  { key: 'SPAM', color: '#94A3B8' },
 ]
-const OTHER_COLOR = '#8A969B'
+const OTHER_COLOR = '#CBD5E1'
 
 const SIZE = 232
 const CENTER = SIZE / 2
@@ -66,7 +66,7 @@ export function CategoryPie({ categories }) {
   const total = slices.reduce((sum, slice) => sum + slice.value, 0)
 
   if (!total) {
-    return <p className="mt-6 text-sm text-[#71808A]">No emails classified yet.</p>
+    return <p className="mt-6 text-sm text-[#64748B]">No emails classified yet.</p>
   }
 
   let cursor = 0
@@ -110,7 +110,7 @@ export function CategoryPie({ categories }) {
           x={CENTER}
           y={focused ? CENTER - 8 : CENTER - 4}
           textAnchor="middle"
-          className="fill-[#16232B] font-mono text-[28px] font-semibold"
+          className="fill-[#0F172A] font-mono text-[28px] font-semibold"
         >
           {focused ? focused.value : total}
         </text>
@@ -118,7 +118,7 @@ export function CategoryPie({ categories }) {
           x={CENTER}
           y={focused ? CENTER + 14 : CENTER + 18}
           textAnchor="middle"
-          className="fill-[#71808A] text-[12px] font-medium"
+          className="fill-[#64748B] text-[12px] font-medium"
         >
           {focused ? `${focused.share}% of inbox` : 'emails'}
         </text>
@@ -127,7 +127,7 @@ export function CategoryPie({ categories }) {
             x={CENTER}
             y={CENTER + 30}
             textAnchor="middle"
-            className="fill-[#46555E] text-[11px] font-semibold"
+            className="fill-[#475569] text-[11px] font-semibold"
           >
             {focused.label}
           </text>
@@ -140,7 +140,7 @@ export function CategoryPie({ categories }) {
             <button
               type="button"
               className={`flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm transition-colors ${
-                focused?.key === arc.key ? 'bg-[#F6F3EC]' : 'hover:bg-[#FCFAF4]'
+                focused?.key === arc.key ? 'bg-[#F1F5F9]' : 'hover:bg-[#F8FAFC]'
               }`}
               onMouseEnter={() => setActive(arc.key)}
               onMouseLeave={() => setActive(null)}
@@ -151,11 +151,11 @@ export function CategoryPie({ categories }) {
                 className="h-3 w-3 shrink-0 rounded-sm bg-current"
                 style={{ color: arc.color }}
               />
-              <span className="min-w-0 flex-1 whitespace-nowrap font-medium text-[#26353D]">
+              <span className="min-w-0 flex-1 whitespace-nowrap font-medium text-[#1E293B]">
                 {arc.label}
               </span>
-              <span className="font-mono text-[#26353D]">{arc.value}</span>
-              <span className="w-10 text-right font-mono text-xs text-[#71808A]">{arc.share}%</span>
+              <span className="font-mono text-[#1E293B]">{arc.value}</span>
+              <span className="w-10 text-right font-mono text-xs text-[#64748B]">{arc.share}%</span>
             </button>
           </li>
         ))}

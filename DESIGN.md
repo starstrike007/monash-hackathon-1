@@ -1,5 +1,31 @@
 # Design direction
 
+> **Palette update (supersedes the orange palette and cream surfaces described below).**
+> Clearance is now a trustworthy, data-dense, enterprise-grade dashboard on a cool slate
+> and navy palette. Where this section conflicts with the rest of this file, this section wins.
+>
+> | Role | Value | Tailwind |
+> | --- | --- | --- |
+> | App background | `#F8FAFC` | `slate-50` |
+> | Card / surface | `#FFFFFF` with `border-slate-200` | white |
+> | Sidebar / dark structure | `#0F172A` to `#1E293B` | `slate-900` / `slate-800` |
+> | Primary action, links, focus (same navy as the sidebar) | `#0F172A` | `slate-900` |
+> | Needs review / warning | `#D97706` | `amber-600` |
+> | Verified / no mismatch | `#059669` | `emerald-600` |
+> | Mismatch / error (confirmed SI vs BL discrepancies only) | `#DC2626` | `red-600` |
+>
+> - Fonts: Inter for UI text, JetBrains Mono for identifiers, raw email subjects and system
+>   tags. `tabular-nums` is applied globally so counters do not shift.
+> - Sidebar is fixed, `#0F172A`, inactive text `slate-400`, active item white on `slate-700` (`#334155`).
+>   Sidebar counters are `rounded-full` pills.
+> - Main content sits in a `max-w-7xl` container. Cards are white with `border-slate-200`;
+>   no heavy drop shadows (floating menus and drawers may use a light shadow).
+> - System tags are `rounded-md`, monospace, a 10% tint of the semantic colour with
+>   darker (`-700`) text for contrast.
+> - Primary buttons: navy (`slate-900`) fill, white text, `slate-800` on hover. Secondary
+>   buttons: transparent with navy text and border.
+> - Red, amber and green are reserved for status; chart categories use blues and slates.
+
 The dashboard in this repository is the visual source of truth. Match its existing
 screens, shared components, tokens, typography, spacing, icons, and interaction patterns
 before introducing new UI.
