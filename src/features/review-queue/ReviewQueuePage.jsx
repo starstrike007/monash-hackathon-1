@@ -91,7 +91,7 @@ export function ReviewQueuePage({ navigate, initialReason = '' }) {
       })
   }, [statusFilter, retryNonce])
 
-  // Search subject, sender or ID. Counts in the filter menus follow the search, as in the inbox.
+  // Search subject, sender or email ID. Counts in the filter menus follow the search, as in the inbox.
   const searched = useMemo(() => {
     const needle = query.trim().toLowerCase()
     if (!needle) return items
@@ -182,7 +182,7 @@ export function ReviewQueuePage({ navigate, initialReason = '' }) {
             className="min-w-0 flex-1 bg-transparent text-sm text-[#0F172A] outline-none placeholder:text-[#94A3B8]"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search subject, sender or ID"
+            placeholder="Search subject, sender or email ID"
           />
         </label>
       </header>
@@ -194,7 +194,7 @@ export function ReviewQueuePage({ navigate, initialReason = '' }) {
       )}
 
       <div className="mt-9 flex flex-wrap items-center gap-3">
-        <div className="inline-flex rounded-lg bg-[#E2E8F0] p-1">
+        <div className="inline-flex h-10 items-stretch rounded-lg border border-[#B4C8EC] bg-[#E6EEFC] p-0.5">
           {['open', 'resolved'].map((status) => (
             <button
               key={status}
@@ -202,10 +202,10 @@ export function ReviewQueuePage({ navigate, initialReason = '' }) {
               onClick={() => setStatusFilter(status)}
               aria-pressed={statusFilter === status}
               className={cn(
-                'rounded-md px-4 py-2 text-sm font-semibold capitalize',
+                'inline-flex items-center rounded-md px-4 text-sm font-semibold capitalize',
                 statusFilter === status
-                  ? 'border border-slate-200 bg-white text-[#0F172A]'
-                  : 'text-[#64748B]',
+                  ? 'bg-[#0F172A] text-white'
+                  : 'text-[#0F172A] hover:bg-[#D6E3FA]',
               )}
             >
               {status}
@@ -280,7 +280,7 @@ export function ReviewQueuePage({ navigate, initialReason = '' }) {
                         )}
                       </span>
                       <span>
-                        <span className="inline-flex w-fit items-center rounded-md bg-[#CBD5E1] px-2 py-1 font-mono text-xs font-medium text-[#1E293B]">
+                        <span className="inline-flex w-fit items-center rounded-md bg-[#1E3A5F] px-2 py-1 font-mono text-xs font-medium text-white">
                           {reasonLabel(item.reason)}
                         </span>
                       </span>

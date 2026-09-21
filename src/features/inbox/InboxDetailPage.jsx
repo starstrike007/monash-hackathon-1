@@ -43,7 +43,7 @@ function CategoryPicker({ value, onChange, disabled }) {
         onClick={() => setOpen((current) => !current)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="inline-flex h-10 min-w-[13rem] items-center justify-between gap-2 rounded-lg bg-white px-4 text-sm font-semibold text-[#475569] shadow-sm ring-1 ring-[#CBD5E1] transition-colors hover:bg-[#F8FAFC] disabled:opacity-60"
+        className="inline-flex h-10 min-w-[13rem] items-center justify-between gap-2 rounded-lg px-4 text-sm font-semibold transition-colors disabled:opacity-60 border border-[#B4C8EC] bg-[#E6EEFC] text-[#0F172A] hover:bg-[#D6E3FA]"
       >
         <span className="truncate">{CATEGORY_LABELS[value] || 'Select category'}</span>
         <CaretDown
@@ -68,8 +68,8 @@ function CategoryPicker({ value, onChange, disabled }) {
                   setOpen(false)
                 }}
                 className={cn(
-                  'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-[#1E293B] hover:bg-[#F8FAFC]',
-                  key === value && 'bg-[#F1F5F9] font-semibold text-[#0F172A]',
+                  'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-[#0F172A] bg-[#E6EEFC] hover:bg-[#D6E3FA]',
+                  key === value && 'bg-[#0F172A] font-semibold text-white hover:bg-[#1E293B]',
                 )}
               >
                 <span className="min-w-0 flex-1 truncate">{CATEGORY_LABELS[key]}</span>
@@ -218,7 +218,7 @@ export function InboxDetailPage({ navigate, emailId }) {
       <button
         type="button"
         onClick={() => navigate('/inbox')}
-        className="mb-6 inline-flex h-10 items-center gap-2 rounded-lg border border-[#0F172A] bg-transparent px-4 text-sm font-semibold text-[#0F172A] hover:bg-white/60"
+        className="mb-6 inline-flex h-10 items-center gap-2 rounded-lg border border-[#B4C8EC] bg-[#E6EEFC] px-4 text-sm font-semibold text-[#0F172A] hover:bg-[#D6E3FA]"
       >
         <ArrowLeft size={16} />
         Inbox
@@ -268,7 +268,7 @@ export function InboxDetailPage({ navigate, emailId }) {
                 type="button"
                 disabled={saving || !hasPendingChange}
                 onClick={() => applyOverride(pendingCategory)}
-                className="inline-flex h-10 items-center rounded-lg bg-[#0F172A] px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#1E293B] disabled:cursor-not-allowed disabled:bg-[#E2E8F0] disabled:text-[#94A3B8] disabled:shadow-none"
+                className="inline-flex h-10 items-center rounded-lg bg-[#0F172A] px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#1E293B] disabled:cursor-not-allowed disabled:bg-[#E6EEFC] disabled:text-[#94A3B8] disabled:shadow-none"
               >
                 {saving ? 'Saving…' : 'Save Changes'}
               </button>

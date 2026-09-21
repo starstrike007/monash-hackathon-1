@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, EnvelopeSimple, Trash, Warning } from '@phosphor-icons/react'
+import { ArrowLeft, EnvelopeSimple, FileText, Trash, Warning } from '@phosphor-icons/react'
 
 import { BackendError } from '@/components/BackendError'
 import { DocumentViewer } from '@/components/document-viewer/DocumentViewer'
@@ -55,7 +55,7 @@ async function fileToBase64(file) {
   return btoa(binary)
 }
 
-function UploadMissingPanel({ itemId, onSaved }) {
+function UploadReplacementPanel({ itemId, onSaved }) {
   const [role, setRole] = useState('SI')
   const [file, setFile] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -196,7 +196,7 @@ function ReclassifyPanel({ itemId, onSaved, defaultNote }) {
 }
 
 function DraftReplyPanel({ email }) {
-  const draft = `Hi,\n\nWe're missing an attachment needed to verify ${email?.subject || 'this shipment'}. Could you resend the Shipping Instruction and draft Bill of Lading?\n\nThanks,\nClearance team`
+  const draft = `Hi,\n\nWe need to clarify the shipping documents for ${email?.subject || 'this shipment'}. Could you please resend the Shipping Instruction and draft Bill of Lading so we can complete the verification?\n\nThanks,\nClearance team`
   return (
     <section className="rounded-2xl bg-white p-6 border border-slate-200">
       <h2 className="font-display text-lg font-semibold text-[#1E293B]">
@@ -209,7 +209,7 @@ function DraftReplyPanel({ email }) {
       />
       <button
         type="button"
-        className="mt-3 inline-flex h-9 items-center rounded-lg border border-[#0F172A] bg-transparent px-4 text-sm font-semibold text-[#0F172A] hover:bg-slate-100"
+        className="mt-3 inline-flex h-9 items-center rounded-lg border border-[#B4C8EC] bg-[#E6EEFC] px-4 text-sm font-semibold text-[#0F172A] hover:bg-[#D6E3FA]"
         onClick={() => navigator.clipboard?.writeText(draft)}
       >
         Copy to clipboard
@@ -373,7 +373,7 @@ function EscalationPanel({ itemId, onSaved, onOpenComparison }) {
       <button
         type="button"
         onClick={onOpenComparison}
-        className="mt-4 inline-flex h-10 items-center rounded-lg border border-[#0F172A] bg-transparent px-4 text-sm font-semibold text-[#0F172A] hover:bg-slate-100"
+        className="mt-4 inline-flex h-10 items-center rounded-lg border border-[#B4C8EC] bg-[#E6EEFC] px-4 text-sm font-semibold text-[#0F172A] hover:bg-[#D6E3FA]"
       >
         Open document comparison
       </button>
@@ -446,7 +446,7 @@ function ReopenIssueButton({ itemId, onSaved }) {
   return (
     <button
       type="button"
-      className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg border border-[#0F172A] bg-transparent text-sm font-semibold text-[#0F172A] transition-colors hover:bg-slate-100 disabled:opacity-60"
+      className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg border border-[#B4C8EC] bg-[#E6EEFC] text-sm font-semibold text-[#0F172A] transition-colors hover:bg-[#D6E3FA] disabled:opacity-60"
       onClick={reopen}
       disabled={saving}
     >
@@ -526,7 +526,7 @@ export function ReviewItemDetailPage({ navigate, itemId }) {
       <button
         type="button"
         onClick={() => navigate('/review')}
-        className="mb-6 inline-flex h-10 items-center gap-2 rounded-lg border border-[#0F172A] bg-transparent px-4 text-sm font-semibold text-[#0F172A] hover:bg-white/60"
+        className="mb-6 inline-flex h-10 items-center gap-2 rounded-lg border border-[#B4C8EC] bg-[#E6EEFC] px-4 text-sm font-semibold text-[#0F172A] hover:bg-[#D6E3FA]"
       >
         <ArrowLeft size={16} />
         Human review
@@ -549,6 +549,7 @@ export function ReviewItemDetailPage({ navigate, itemId }) {
         {email?.subject || item.email_id}
       </h1>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-[#475569]">Received {formatDate(email?.received_at)}</p>
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
@@ -558,15 +559,15 @@ export function ReviewItemDetailPage({ navigate, itemId }) {
             <EnvelopeSimple size={17} aria-hidden="true" />
             Go to email content
           </button>
-          <p className="text-sm text-[#475569]">Received {formatDate(email?.received_at)}</p>
+          <button
+            type="button"
+            onClick={() => navigate(`/docs-comparison/${item.email_id}`)}
+            className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#0F172A] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#1E293B]"
+          >
+            <FileText size={17} aria-hidden="true" />
+            Go to document comparison
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => navigate(`/docs-comparison/${item.email_id}`)}
-          className="inline-flex h-10 items-center rounded-lg border border-[#0F172A] bg-transparent px-4 text-sm font-semibold text-[#0F172A] transition-colors hover:bg-white/70"
-        >
-          Go to document comparison
-        </button>
       </div>
 
       <div className="mt-6 flex gap-4 rounded-2xl border border-[#FDE68A] bg-[#FEF3C7] p-6">
@@ -584,25 +585,10 @@ export function ReviewItemDetailPage({ navigate, itemId }) {
 
       <div className="mt-7 grid gap-7 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="space-y-5">
-          {item.status === 'open' && <UploadMissingPanel itemId={item.id} onSaved={handleSaved} />}
-          {item.status === 'open' && item.reason === 'manual_escalation' && (
-            <EscalationPanel
-              itemId={item.id}
-              onSaved={handleSaved}
-              onOpenComparison={() => navigate(`/docs-comparison/${item.email_id}`)}
-            />
+          {item.status === 'open' && (
+            <UploadReplacementPanel itemId={item.id} onSaved={handleSaved} />
           )}
-          {item.status === 'open' && item.reason === 'processing_failed' && (
-            <RetryPanel itemId={item.id} onSaved={handleSaved} />
-          )}
-          {item.status === 'open' &&
-            (item.reason === 'unreadable' || item.reason === 'missing_value') && (
-              <ResolveIssueButton itemId={item.id} onSaved={handleSaved} />
-            )}
-          {item.status === 'open' && item.reason === 'wrong_doc_type' && (
-            <ReassignRolesPanel itemId={item.id} email={email} onSaved={handleSaved} />
-          )}
-          {item.status === 'open' && item.reason === 'missing_attachment' && (
+          {item.status === 'open' && (
             <>
               <ReclassifyPanel
                 itemId={item.id}
@@ -612,6 +598,14 @@ export function ReviewItemDetailPage({ navigate, itemId }) {
               <DraftReplyPanel email={email} />
             </>
           )}
+          {item.status === 'open' && item.reason === 'processing_failed' && (
+            <RetryPanel itemId={item.id} onSaved={handleSaved} />
+          )}
+          {item.status === 'open' && item.reason === 'wrong_doc_type' && (
+            <ReassignRolesPanel itemId={item.id} email={email} onSaved={handleSaved} />
+          )}
+          {/* Every open item can be resolved by a person, whatever the reason. */}
+          {item.status === 'open' && <ResolveIssueButton itemId={item.id} onSaved={handleSaved} />}
           {item.status === 'resolved' && (
             <section className="rounded-2xl bg-white p-6 border border-slate-200">
               <h2 className="font-display text-lg font-semibold text-[#1E293B]">Resolution</h2>

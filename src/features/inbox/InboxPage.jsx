@@ -216,7 +216,7 @@ export function InboxPage({ navigate }) {
             className="min-w-0 flex-1 bg-transparent text-sm text-[#0F172A] outline-none placeholder:text-[#94A3B8]"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search subject, sender or ID"
+            placeholder="Search subject, sender or email ID"
           />
         </label>
       </header>
@@ -236,7 +236,7 @@ export function InboxPage({ navigate }) {
             'inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-semibold transition-colors',
             showAll
               ? 'bg-[#0F172A] text-white'
-              : 'border border-slate-200 bg-white text-[#475569] hover:bg-[#F8FAFC]',
+              : 'border border-[#B4C8EC] bg-[#E6EEFC] text-[#0F172A] hover:bg-[#D6E3FA]',
           )}
         >
           All emails
@@ -260,7 +260,7 @@ export function InboxPage({ navigate }) {
               'inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-semibold transition-colors',
               !showAll
                 ? 'bg-[#0F172A] text-white'
-                : 'border border-slate-200 bg-white text-[#475569] hover:bg-[#F8FAFC]',
+                : 'border border-[#B4C8EC] bg-[#E6EEFC] text-[#0F172A] hover:bg-[#D6E3FA]',
             )}
           >
             <Funnel size={17} aria-hidden="true" />
@@ -337,8 +337,8 @@ export function InboxPage({ navigate }) {
             className={cn(
               'inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-semibold transition-colors',
               periodsFiltered
-                ? 'bg-[#0E5A66] text-white shadow-sm'
-                : 'bg-white text-[#46555E] shadow-sm hover:bg-[#FBF9F4]',
+                ? 'bg-[#0F172A] text-white'
+                : 'border border-[#B4C8EC] bg-[#E6EEFC] text-[#0F172A] hover:bg-[#D6E3FA]',
             )}
           >
             <CalendarBlank size={17} aria-hidden="true" />

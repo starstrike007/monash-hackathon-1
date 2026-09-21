@@ -133,6 +133,38 @@ export function submissionUrl() {
   return `${API_BASE}/api/export/submission`
 }
 
+/** Fetch the evaluator-shaped submission and save it to the user's computer as a .json file. */
+export async function downloadSubmission(filename = 'submission.json') {
+  let response
+  try {
+    response = await fetch(submissionUrl())
+  } catch (error) {
+    throw new ApiError('Backend unreachable. Start the FastAPI service and try again.', {
+      backendUnavailable: true,
+      cause: error,
+    })
+  }
+  if (!response.ok) {
+    throw new ApiError(`The export failed (${response.status}).`, { status: response.status })
+  }
+  const submission = await response.json()
+  const blob = new Blob(
+    [
+      `${JSON.stringify(submission, null, 2)}
+`,
+    ],
+    { type: 'application/json' },
+  )
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 function relativeAttachmentPath(path) {
   return path.replace(/^attachments\//, '')
 }

@@ -57,7 +57,7 @@ export function FilterMenu({
           'inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-semibold transition-colors',
           filtered
             ? 'bg-[#0F172A] text-white'
-            : 'border border-slate-200 bg-white text-[#475569] hover:bg-[#F8FAFC]',
+            : 'border border-[#B4C8EC] bg-[#E6EEFC] text-[#0F172A] hover:bg-[#D6E3FA]',
         )}
       >
         {Icon && <Icon size={17} aria-hidden="true" />}

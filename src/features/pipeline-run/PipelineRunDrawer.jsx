@@ -126,7 +126,7 @@ export function PipelineRunDrawer({ runId, onClose }) {
       />
       <aside className="relative flex h-full w-full max-w-[440px] flex-col bg-[#F8FAFC] px-4 py-4 shadow-xl sm:px-5">
         <button
-          className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-lg border border-[#0F172A] bg-transparent text-[#0F172A] hover:bg-slate-100 transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100"
+          className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-lg border border-[#B4C8EC] bg-[#E6EEFC] text-[#0F172A] hover:bg-[#D6E3FA] transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100"
           onClick={onClose}
           aria-label="Close"
         >
@@ -181,7 +181,7 @@ export function PipelineRunDrawer({ runId, onClose }) {
         ) : null}
         <div className="mt-2 flex gap-2">
           <button
-            className="inline-flex h-10 w-full shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 text-sm font-semibold leading-none transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100 border border-[#0F172A] bg-transparent text-[#0F172A] hover:bg-slate-100"
+            className="inline-flex h-10 w-full shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 text-sm font-semibold leading-none transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100 border border-[#B4C8EC] bg-[#E6EEFC] text-[#0F172A] hover:bg-[#D6E3FA]"
             onClick={onClose}
           >
             Close

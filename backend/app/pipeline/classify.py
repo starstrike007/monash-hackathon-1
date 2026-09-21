@@ -161,7 +161,11 @@ def _rule_classify(email: dict[str, Any]) -> _RuleDecision | None:
         has_si_term
         and has_bl_term
         or bool(re.search(r"\bsi\s*(?:and|&|/)\s*(?:the\s+)?(?:draft\s+)?bl\b", text))
-        or bool(re.search(r"\b(?:si|shipping instruction).*\b(?:bl|bill of lading)\b", text))
+        # Keep the SI token boundary on both sides.  Without the trailing
+        # boundary, booking numbers such as ``SIN832764835`` were read as the
+        # standalone document token ``SI`` and draft-BL requests with no
+        # comparison request were escalated as BL comparisons.
+        or bool(re.search(r"\b(?:si\b|shipping instruction).*\b(?:bl|bill of lading)\b", text))
     )
     comparison_intent = _has_any(
         text,
@@ -178,6 +182,19 @@ def _rule_classify(email: dict[str, Any]) -> _RuleDecision | None:
             "matches",
         ),
     )
+    explicit_comparison_intent = _has_any(
+        text,
+        (
+            "compare",
+            "against",
+            "verify",
+            "verification",
+            "reconcile",
+            "discrepancy",
+            "match",
+            "matches",
+        ),
+    ) or ("check" in text and has_si_term and has_bl_term)
     document_confirmation = _has_any(
         text,
         (
@@ -192,6 +209,17 @@ def _rule_classify(email: dict[str, Any]) -> _RuleDecision | None:
             "confirm bl",
         ),
     )
+    draft_bl_request = bool(
+        re.search(
+            r"\b(?:assist\s+to\s+)?(?:send|provide|share|forward)\b.{0,80}\bdraft\s+(?:bl|bill of lading)\b",
+            text,
+        )
+    )
+    if draft_bl_request and not attachment_pair and not explicit_comparison_intent:
+        return _RuleDecision(
+            EmailCategory.GENERAL,
+            reason="A draft BL was requested without an explicit SI/BL comparison request.",
+        )
     if (comparison_intent or document_confirmation) and (
         attachment_pair
         or (document_pair and _has_any(text, ("document", "docs", "details", "draft", "attached")))

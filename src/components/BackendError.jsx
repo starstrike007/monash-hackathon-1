@@ -16,7 +16,7 @@ export function BackendError({ error, onRetry, compact = false }) {
             <button
               type="button"
               onClick={onRetry}
-              className="mt-3 inline-flex h-9 items-center gap-2 rounded-lg border border-[#0F172A] bg-transparent px-3 text-sm font-semibold text-[#0F172A] hover:bg-slate-100"
+              className="mt-3 inline-flex h-9 items-center gap-2 rounded-lg border border-[#B4C8EC] bg-[#E6EEFC] px-3 text-sm font-semibold text-[#0F172A] hover:bg-[#D6E3FA]"
             >
               <ArrowClockwise size={15} />
               Try again

@@ -47,6 +47,34 @@ def test_classifier_requires_comparison_language_for_draft_bl_without_attachment
     ) == EmailCategory.BL_COMPARISON
 
 
+def test_classifier_does_not_treat_si_booking_prefix_as_document_term():
+    assert classify_email(
+        {
+            "subject": "RE: TO CONFIRM DOCS 5AAT-03056 SIN525534192",
+            "body": "Please assist to send the draft BL for SIN832764835 for checking asap.",
+            "attachments": [],
+        }
+    ) == EmailCategory.GENERAL
+
+    assert classify_email(
+        {
+            "subject": "TO CONFIRM DOCS 5AAT-03056",
+            "body": "Please assist to send the draft BL for SIN832764835 for checking asap.",
+            "attachments": [],
+        }
+    ) == EmailCategory.GENERAL
+
+
+def test_classifier_keeps_explicit_compare_request_with_dropped_attachments():
+    assert classify_email(
+        {
+            "subject": "AFRT - LONG BEACH - draft documents",
+            "body": "Please compare the SI and draft BL and confirm; attachments appear to have been dropped.",
+            "attachments": [],
+        }
+    ) == EmailCategory.BL_COMPARISON
+
+
 def test_classifier_identifies_si_requests_and_document_instruction_labels():
     assert classify_email(
         {

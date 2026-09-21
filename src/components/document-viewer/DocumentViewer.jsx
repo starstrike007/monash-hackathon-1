@@ -35,7 +35,7 @@ function ViewerShell({ label, path, children, style }) {
           <a
             href={attachmentUrl(path)}
             download
-            className="flex shrink-0 items-center gap-1 rounded border border-[#0F172A] px-2 py-1 text-xs font-medium text-[#0F172A] hover:bg-[#0F172A] hover:text-white"
+            className="flex shrink-0 items-center gap-1 rounded border border-[#B4C8EC] bg-[#E6EEFC] px-2 py-1 text-xs font-medium text-[#0F172A] hover:bg-[#D6E3FA]"
           >
             <DownloadSimple size={14} weight="bold" />
             Download original

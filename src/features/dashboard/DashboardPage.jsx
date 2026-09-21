@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowDown, ArrowRight, Clock, Play, WarningCircle } from '@phosphor-icons/react'
+import { ArrowDown, ArrowRight, Clock } from '@phosphor-icons/react'
 
 import { CategoryPie } from '@/components/charts/CategoryPie'
 import { BackendError } from '@/components/BackendError'
@@ -12,9 +12,7 @@ import {
   getEmails,
   getPipelineRun,
   getPipelineBootstrapStatus,
-  notifyDataChanged,
-  runPipeline,
-  submissionUrl,
+  downloadSubmission,
   startPipelineBootstrap,
 } from '@/lib/api'
 import { formatBusinessDay, relativeTime } from '@/lib/time'
@@ -28,11 +26,11 @@ function SummaryCard({ label, value, caption, warning = false, compact = false, 
       type={onClick ? 'button' : undefined}
       onClick={onClick}
       className={cn(
-        'relative rounded-2xl border bg-gradient-to-b from-[#34558F] to-[#28457D] text-left text-white',
-        warning ? 'border-[#B08A2E]' : 'border-[#4A6BAA]',
+        'relative rounded-2xl border bg-[#1E3A5F] text-left text-white',
+        warning ? 'border-[#B08A2E]' : 'border-[#33507D]',
         compact ? 'p-5' : 'p-6',
         onClick
-          ? 'group cursor-pointer transition-all duration-200 ease-out hover:z-10 hover:scale-[1.03] hover:border-[#7D9AD2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0B3FA8] motion-reduce:transition-none motion-reduce:hover:scale-100'
+          ? 'group cursor-pointer transition-all duration-200 ease-out hover:z-10 hover:scale-[1.03] hover:border-[#6B87B8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0B3FA8] motion-reduce:transition-none motion-reduce:hover:scale-100'
           : 'cursor-default',
       )}
     >
@@ -229,7 +227,7 @@ function SummaryBrief({ data, navigate, lastRunAt, onOpenComparisons, onOpenMism
           </div>
 
           <button
-            className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[#1D4ED8] px-5 text-sm font-semibold text-white transition hover:bg-[#1A44BC]"
+            className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[#0F172A] px-5 text-sm font-semibold text-white transition hover:bg-[#1E293B]"
             onClick={() => navigate('/review')}
           >
             Open human review
@@ -431,11 +429,26 @@ function DefectsByFieldSelectable({ defects, onSelect }) {
   )
 }
 
+// The loading wording changes every few seconds, in the spirit of a CLI spinner. The first one is
+// what shows initially, so it stays the plain "Loading dashboard".
+const DASHBOARD_LOADING_PHRASES = [
+  'Loading dashboard',
+  'Reading the inbox',
+  'Sorting the shipments',
+  'Checking SI against BL',
+  'Counting containers',
+  'Weighing the cargo',
+  'Spotting mismatches',
+  'Stamping the paperwork',
+  'Reading the manifest',
+  'Clearing customs',
+]
+
 export function DashboardPage({ navigate, initialRunId = null }) {
   const [data, setData] = useState(null)
   const [lastRunAt, setLastRunAt] = useState(null)
   const [runId, setRunId] = useState(initialRunId)
-  const [running, setRunning] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [error, setError] = useState(null)
   const [loadingProgress, setLoadingProgress] = useState({
     status: 'queued',
@@ -503,18 +516,14 @@ export function DashboardPage({ navigate, initialRunId = null }) {
     )
   }, [data])
 
-  async function startPipeline() {
-    setRunning(true)
-    setError(null)
+  async function exportSubmission() {
+    setExporting(true)
     try {
-      const run = await runPipeline()
-      setRunId(run.run_id)
-      notifyDataChanged()
-      await loadDashboard()
+      await downloadSubmission()
     } catch (reason) {
       setError(reason)
     } finally {
-      setRunning(false)
+      setExporting(false)
     }
   }
 
@@ -568,8 +577,8 @@ export function DashboardPage({ navigate, initialRunId = null }) {
           </div>
           <LoadingBoat
             label="Loading dashboard"
+            phrases={DASHBOARD_LOADING_PHRASES}
             percentage={loadingProgress.percentage}
-            message={`${loadingProgress.stage || 'Working'} - ${loadingProgress.message || 'Preparing saved results...'}`}
           />
           <p className="mt-5 text-xs leading-relaxed text-[#94A3B8]">
             The first load may take longer while the backend prepares the email results. This page
@@ -582,7 +591,7 @@ export function DashboardPage({ navigate, initialRunId = null }) {
   return (
     <>
       <div className="mx-auto max-w-7xl px-5 py-10 lg:px-14">
-        <header className="relative px-0 py-6 text-[#0F172A] sm:flex sm:items-center sm:justify-between sm:gap-6">
+        <header className="relative px-0 pb-2 pt-6 text-[#0F172A] sm:flex sm:items-center sm:justify-between sm:gap-6">
           <div className="relative">
             <p className="text-xs font-medium uppercase tracking-[0.14em] text-[#475569]">
               {formatBusinessDay()}
@@ -592,22 +601,14 @@ export function DashboardPage({ navigate, initialRunId = null }) {
             </h1>
           </div>
           <div className="relative mt-6 flex flex-wrap gap-3 sm:mt-0">
-            <a
-              href={submissionUrl()}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full border border-[#6C8AC4] bg-[#2A4682] px-6 text-sm font-semibold leading-none text-white transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-[#33569A] active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+            <button
+              type="button"
+              onClick={exportSubmission}
+              disabled={exporting}
+              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-[#0F172A] px-6 text-sm font-semibold leading-none text-white transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-[#1E293B] active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0 disabled:opacity-60 disabled:hover:translate-y-0"
             >
               <ArrowDown size={16} className="shrink-0" />
-              Export submission JSON
-            </a>
-            <button
-              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-[#1D4ED8] px-6 text-sm font-semibold leading-none text-white transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-[#1A44BC] active:translate-y-0 disabled:opacity-60 disabled:hover:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
-              onClick={startPipeline}
-              disabled={running}
-            >
-              <Play size={16} weight="fill" className="shrink-0" />
-              {running ? 'Running pipeline…' : 'Run pipeline'}
+              {exporting ? 'Exporting…' : 'Export submission JSON'}
             </button>
           </div>
         </header>
@@ -618,7 +619,7 @@ export function DashboardPage({ navigate, initialRunId = null }) {
           </div>
         )}
 
-        <div className="mt-10">
+        <div className="mt-4">
           <SummaryBrief
             data={data}
             navigate={navigate}
@@ -671,12 +672,6 @@ export function DashboardPage({ navigate, initialRunId = null }) {
 
         {runId && <PipelineRunDrawer runId={runId} onClose={() => setRunId(null)} />}
       </div>
-      {running && (
-        <div className="fixed bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-[#0F172A] px-5 py-3 text-sm font-semibold text-white shadow-lg">
-          <WarningCircle size={18} />
-          Processing the inbox…
-        </div>
-      )}
     </>
   )
 }
