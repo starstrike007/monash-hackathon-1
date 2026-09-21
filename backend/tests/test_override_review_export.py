@@ -162,6 +162,35 @@ def test_review_resolution_recomputes_status_and_closes_item(api_client):
     assert after["review_reason"] is None
 
 
+def test_comparison_result_override_recomputes_and_audits(api_client):
+    api_client.post("/api/pipeline/run", json={"email_ids": ["email_fixture_ok"]})
+    before = api_client.get("/api/emails/email_fixture_ok").json()
+    assert before["status"] == "OK"
+    version = before["result"]["version"]
+
+    response = api_client.post(
+        "/api/emails/email_fixture_ok/comparison-override",
+        json={
+            "field_name": "shipper",
+            "result": "mismatch",
+            "reviewer_id": "qa",
+            "expected_version": version,
+        },
+    )
+
+    assert response.status_code == 200
+    after = api_client.get("/api/emails/email_fixture_ok").json()
+    assert after["status"] == "MISMATCH"
+    assert after["result"]["has_defect"] is True
+    assert "shipper" in after["defect_fields"]
+    assert after["result"]["result_overrides"]["shipper"] == "mismatch"
+    assert any(
+        entry["action"] == "comparison_result_override"
+        and entry.get("after", {}).get("result") == "mismatch"
+        for entry in app.state.store.list_audit_log("email_fixture_ok")
+    )
+
+
 def test_existing_results_backfill_missing_review_items(api_client):
     api_client.post("/api/pipeline/run", json={})
     store = app.state.store

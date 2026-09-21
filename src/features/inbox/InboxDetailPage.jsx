@@ -134,7 +134,7 @@ function ComparisonSummaryCard({ navigate, detail }) {
           onClick={() => navigate(`/docs-comparison/${detail.email_id}`)}
           className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg bg-[#0F172A] px-4 text-sm font-semibold text-white hover:bg-[#1E293B]"
         >
-          Open in Docs Comparison
+          Open in Document Comparison
         </button>
       )}
       {reviewError && <BackendError error={reviewError} compact />}
@@ -256,10 +256,6 @@ export function InboxDetailPage({ navigate, emailId }) {
       <h1 className="mt-3 text-4xl font-semibold text-[#0F172A]">{detail.subject}</h1>
       <p className="mt-2 text-sm text-[#475569]">
         From {detail.sender} · Received {formatDate(detail.received_at)}
-      </p>
-      <p className="mt-1 text-xs text-[#475569]">
-        Classified by {detail.classification_method === 'llm' ? 'LLM fallback' : 'rules'}
-        {detail.classification_reason ? ` — ${detail.classification_reason}` : ''}
       </p>
       {error && (
         <div className="mt-5">

@@ -46,12 +46,34 @@ function ViewerShell({ label, path, children, style }) {
   )
 }
 
+function normalizeEvidenceText(value) {
+  return String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+}
+
+function findTxtEvidenceLine(view, location) {
+  const explicitLine = Number(location?.line)
+  if (Number.isInteger(explicitLine) && explicitLine > 0) return explicitLine
+
+  const snippet = normalizeEvidenceText(location?.snippet)
+  if (!snippet) return null
+
+  const index = view.lines.findIndex((line) => {
+    const normalizedLine = normalizeEvidenceText(line)
+    return normalizedLine && (normalizedLine.includes(snippet) || snippet.includes(normalizedLine))
+  })
+  return index >= 0 ? index + 1 : null
+}
+
 function TxtView({ view, location, highlightRef }) {
+  const evidenceLine = findTxtEvidenceLine(view, location)
   return (
     <pre className="font-mono text-xs leading-5">
       {view.lines.map((line, index) => {
         const lineNumber = index + 1
-        const isHighlighted = location?.line === lineNumber
+        const isHighlighted = evidenceLine === lineNumber
         return (
           <div
             key={index}

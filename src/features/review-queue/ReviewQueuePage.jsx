@@ -1,33 +1,76 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowRight } from '@phosphor-icons/react'
+import { CalendarBlank, Funnel, MagnifyingGlass } from '@phosphor-icons/react'
 
 import { BackendError } from '@/components/BackendError'
+import { FilterMenu } from '@/components/FilterMenu'
+import { ReceivedAt } from '@/components/ReceivedAt'
 import { reasonLabel } from '@/features/review-queue/reasons'
 import { getAllEmails, getReviewItems } from '@/lib/api'
-import { formatDate } from '@/lib/types'
+import {
+  persistVisitedEmailIds,
+  readSession,
+  readVisitedEmailIds,
+  saveScrollAnchor,
+  useRestoreScroll,
+  writeSession,
+} from '@/lib/listViewState'
+import { GROUP_ORDER, groupFor } from '@/lib/time'
 import { cn } from '@/lib/utils'
 
-const REASON_ORDER = [
-  'unreadable',
-  'missing_attachment',
-  'missing_value',
-  'wrong_doc_type',
-  'processing_failed',
+const REASON_FILTERS = [
+  { key: 'wrong_doc_type', label: 'Wrong document type' },
+  { key: 'missing_attachment', label: 'Missing attachment' },
+  { key: 'unreadable', label: 'Unreadable' },
+  { key: 'missing_value', label: 'Missing value' },
 ]
+const ALL_REASON_KEYS = REASON_FILTERS.map((filter) => filter.key)
+const VIEW_STATE_STORAGE_KEY = 'clearance:review-queue-view-state'
+const SCROLL_RESTORE_STORAGE_KEY = 'clearance:review-queue-scroll-restore'
+
+function reasonFilterKey(reason) {
+  return reason === 'processing_failed' ? 'unreadable' : reason
+}
+
+function readViewState(initialReason) {
+  const normalizedReason = reasonFilterKey(initialReason)
+  const defaultReasons = ALL_REASON_KEYS.includes(normalizedReason)
+    ? [normalizedReason]
+    : ALL_REASON_KEYS
+  const stored = readSession(VIEW_STATE_STORAGE_KEY)
+  if (!stored) return { selectedReasons: defaultReasons, selectedPeriods: GROUP_ORDER, query: '' }
+
+  const onlyKnown = (values, allowed, fallback) =>
+    Array.isArray(values) ? values.filter((value) => allowed.includes(value)) : fallback
+  return {
+    selectedReasons: onlyKnown(stored.selectedReasons, ALL_REASON_KEYS, defaultReasons),
+    selectedPeriods: onlyKnown(stored.selectedPeriods, GROUP_ORDER, GROUP_ORDER),
+    query: typeof stored.query === 'string' ? stored.query : '',
+  }
+}
 
 export function ReviewQueuePage({ navigate, initialReason = '' }) {
+  const [initialView] = useState(() => readViewState(initialReason))
   const [statusFilter, setStatusFilter] = useState('open')
-  const [reasonFilter, setReasonFilter] = useState(initialReason || '')
+  const [selectedReasons, setSelectedReasons] = useState(initialView.selectedReasons)
+  const [selectedPeriods, setSelectedPeriods] = useState(initialView.selectedPeriods)
+  const [query, setQuery] = useState(initialView.query)
   const [items, setItems] = useState([])
   const [emailsById, setEmailsById] = useState({})
+  const [emailsReady, setEmailsReady] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [retryNonce, setRetryNonce] = useState(0)
+  const [visitedEmailIds, setVisitedEmailIds] = useState(readVisitedEmailIds)
+
+  useEffect(() => {
+    writeSession(VIEW_STATE_STORAGE_KEY, { selectedReasons, selectedPeriods, query })
+  }, [selectedPeriods, selectedReasons, query])
 
   useEffect(() => {
     getAllEmails({})
       .then((data) => {
         setEmailsById(Object.fromEntries((data.items || []).map((item) => [item.email_id, item])))
+        setEmailsReady(true)
       })
       .catch(setError)
   }, [retryNonce])
@@ -45,22 +88,100 @@ export function ReviewQueuePage({ navigate, initialReason = '' }) {
       })
   }, [statusFilter, retryNonce])
 
+  // Search subject, sender or ID. Counts in the filter menus follow the search, as in the inbox.
+  const searched = useMemo(() => {
+    const needle = query.trim().toLowerCase()
+    if (!needle) return items
+    return items.filter((item) => {
+      const email = emailsById[item.email_id]
+      return [email?.subject, email?.sender, email?.display_id, item.email_id].some((value) =>
+        String(value || '')
+          .toLowerCase()
+          .includes(needle),
+      )
+    })
+  }, [items, emailsById, query])
+
   const reasonCounts = useMemo(() => {
-    const counts = {}
-    for (const item of items) counts[item.reason] = (counts[item.reason] || 0) + 1
+    const counts = Object.fromEntries(ALL_REASON_KEYS.map((reason) => [reason, 0]))
+    for (const item of searched) {
+      const key = reasonFilterKey(item.reason)
+      if (key in counts) counts[key] += 1
+    }
     return counts
-  }, [items])
+  }, [searched])
+
+  const reasonFiltered = useMemo(() => {
+    if (selectedReasons.length === ALL_REASON_KEYS.length) return searched
+    return searched.filter((item) => selectedReasons.includes(reasonFilterKey(item.reason)))
+  }, [searched, selectedReasons])
+
+  const periodCounts = useMemo(() => {
+    const counts = Object.fromEntries(GROUP_ORDER.map((period) => [period, 0]))
+    const now = new Date()
+    for (const item of reasonFiltered) {
+      const period = groupFor(emailsById[item.email_id]?.received_at || item.created_at, now)
+      counts[period] += 1
+    }
+    return counts
+  }, [emailsById, reasonFiltered])
 
   const visible = useMemo(() => {
-    const filtered = reasonFilter ? items.filter((item) => item.reason === reasonFilter) : items
-    return [...filtered].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
-  }, [items, reasonFilter])
+    const now = new Date()
+    return reasonFiltered.filter((item) =>
+      selectedPeriods.includes(
+        groupFor(emailsById[item.email_id]?.received_at || item.created_at, now),
+      ),
+    )
+  }, [emailsById, reasonFiltered, selectedPeriods])
+
+  // Group under Today, Yesterday, ... newest first, like the inbox and Document Comparison.
+  const grouped = useMemo(() => {
+    const now = new Date()
+    const receivedOf = (item) => emailsById[item.email_id]?.received_at || item.created_at
+    const buckets = Object.fromEntries(GROUP_ORDER.map((key) => [key, []]))
+    for (const item of visible) buckets[groupFor(receivedOf(item), now)].push(item)
+    for (const key of GROUP_ORDER) {
+      buckets[key].sort((a, b) => new Date(receivedOf(b) || 0) - new Date(receivedOf(a) || 0))
+    }
+    return buckets
+  }, [emailsById, visible])
+
+  const ready = !loading && emailsReady && !error
+
+  // After returning from a review item, put its row back where it was on screen.
+  useRestoreScroll(SCROLL_RESTORE_STORAGE_KEY, ready)
+
+  function openItem(item, row) {
+    saveScrollAnchor(SCROLL_RESTORE_STORAGE_KEY, item.id, row)
+    const nextVisitedEmailIds = new Set(visitedEmailIds)
+    nextVisitedEmailIds.add(item.email_id)
+    setVisitedEmailIds(nextVisitedEmailIds)
+    persistVisitedEmailIds(nextVisitedEmailIds)
+    navigate(`/review/${item.id}`)
+  }
+
+  const periodsFiltered = selectedPeriods.length < GROUP_ORDER.length
 
   return (
     <div className="mx-auto max-w-7xl px-5 py-10 lg:px-14">
-      <header>
-        <p className="text-sm font-medium text-[#475569]">{items.length} items</p>
-        <h1 className="mt-1 text-5xl font-semibold tracking-tight text-[#0F172A]">Review queue</h1>
+      <header className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
+        <div>
+          <p className="text-sm font-medium text-[#475569]">{visible.length} items</p>
+          <h1 className="mt-1 text-5xl font-semibold tracking-tight text-[#0F172A]">
+            Review queue
+          </h1>
+        </div>
+        <label className="flex h-14 w-full items-center gap-3 rounded-xl border border-[#CBD5E1] bg-white px-5 text-[#64748B] sm:max-w-[420px]">
+          <MagnifyingGlass size={20} />
+          <span className="sr-only">Search review queue</span>
+          <input
+            className="min-w-0 flex-1 bg-transparent text-sm text-[#0F172A] outline-none placeholder:text-[#94A3B8]"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search subject, sender or ID"
+          />
+        </label>
       </header>
 
       {error && (
@@ -88,73 +209,95 @@ export function ReviewQueuePage({ navigate, initialReason = '' }) {
             </button>
           ))}
         </div>
-        <button
-          type="button"
-          onClick={() => setReasonFilter('')}
-          className={cn(
-            'inline-flex h-9 items-center rounded-lg px-3 text-sm font-medium',
-            reasonFilter === ''
-              ? 'bg-[#0F172A] text-white'
-              : 'border border-slate-200 bg-white text-[#475569]',
-          )}
-        >
-          All
-        </button>
-        {REASON_ORDER.filter((reason) => reasonCounts[reason]).map((reason) => (
-          <button
-            key={reason}
-            type="button"
-            onClick={() => setReasonFilter(reason)}
-            className={cn(
-              'inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium',
-              reasonFilter === reason ? 'bg-[#D97706] text-white' : 'bg-[#FEF3C7] text-amber-700',
-            )}
-          >
-            {reasonLabel(reason)}
-            <span className="rounded-full bg-white/60 px-1.5 text-xs">{reasonCounts[reason]}</span>
-          </button>
-        ))}
+        <FilterMenu
+          id="review-reason-filter"
+          label="Categories"
+          title="Show review categories"
+          icon={Funnel}
+          options={REASON_FILTERS.map((filter) => ({
+            ...filter,
+            count: reasonCounts[filter.key],
+          }))}
+          selected={selectedReasons}
+          onChange={setSelectedReasons}
+        />
+
+        <FilterMenu
+          id="review-period-filter"
+          label="Time period"
+          title="Show time periods"
+          icon={CalendarBlank}
+          options={GROUP_ORDER.map((period) => ({
+            key: period,
+            label: period,
+            count: periodCounts[period],
+          }))}
+          selected={selectedPeriods}
+          onChange={setSelectedPeriods}
+          align="right"
+          className="sm:ml-auto"
+        />
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white">
-        <div className="hidden grid-cols-[120px_150px_minmax(220px,1.6fr)_170px_minmax(220px,1.6fr)_32px] gap-4 bg-[#F8FAFC] px-6 py-4 text-xs font-semibold uppercase tracking-[0.08em] text-[#64748B] lg:grid">
-          <span>Email</span>
-          <span>Received</span>
-          <span>Subject</span>
-          <span>Reason</span>
-          <span>Description</span>
-          <span />
-        </div>
-        {loading && <div className="px-6 py-14 text-center text-sm text-[#64748B]">Loading…</div>}
-        {!loading &&
-          !error &&
-          visible.map((item) => {
-            const email = emailsById[item.email_id]
-            return (
-              <button
-                key={item.id}
-                onClick={() => navigate(`/review/${item.id}`)}
-                className="grid w-full grid-cols-1 gap-3 border-t border-[#E2E8F0] px-6 py-5 text-left transition-colors hover:bg-[#F8FAFC] lg:grid-cols-[120px_150px_minmax(220px,1.6fr)_170px_minmax(220px,1.6fr)_32px] lg:items-center lg:gap-4"
-              >
-                <span className="font-mono text-sm text-[#64748B]">
-                  {email?.display_id || item.email_id}
-                </span>
-                <span className="text-sm text-[#64748B]">{formatDate(email?.received_at)}</span>
-                <strong className="min-w-0 truncate text-[15px] text-[#1E293B]">
-                  {email?.subject || item.email_id}
-                </strong>
-                <span className="inline-flex w-fit items-center rounded-md bg-[#FEF3C7] px-2 py-1 font-mono text-xs font-medium text-amber-700">
-                  {reasonLabel(item.reason)}
-                </span>
-                <span className="truncate text-sm text-[#64748B]">{item.description}</span>
-                <ArrowRight size={18} className="hidden text-[#64748B] lg:block" />
-              </button>
-            )
-          })}
-        {!loading && !error && !visible.length && (
-          <div className="px-6 py-14 text-center text-sm text-[#64748B]">
-            Nothing here.{' '}
-            {statusFilter === 'open' ? 'The review queue is clear.' : 'No resolved items yet.'}
+      <div className="mt-6 space-y-8">
+        {!ready && !error && (
+          <div className="py-14 text-center text-sm text-[#64748B]">Loading…</div>
+        )}
+        {ready &&
+          GROUP_ORDER.filter((key) => grouped[key].length).map((key) => (
+            <section key={key}>
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.1em] text-[#475569]">
+                {key}
+              </h2>
+              <div className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white">
+                {grouped[key].map((item) => {
+                  const email = emailsById[item.email_id]
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      data-email-id={item.id}
+                      onClick={(event) => openItem(item, event.currentTarget)}
+                      className={cn(
+                        'grid w-full grid-cols-1 gap-2 border-t border-[#E2E8F0] px-6 py-4 text-left transition-colors first:border-t-0 lg:grid-cols-[90px_minmax(0,1.4fr)_170px_minmax(0,1.2fr)_100px] lg:items-start lg:gap-4',
+                        visitedEmailIds.has(item.email_id)
+                          ? 'bg-[#F1F5F9] hover:bg-[#E2E8F0]'
+                          : 'bg-white hover:bg-[#F8FAFC]',
+                      )}
+                    >
+                      <span className="font-mono text-xs text-[#64748B]">
+                        {email?.display_id || item.email_id}
+                      </span>
+                      <span className="min-w-0">
+                        <strong className="line-clamp-2 text-[15px] leading-snug text-[#1E293B]">
+                          {email?.subject || item.email_id}
+                        </strong>
+                        {email?.sender && (
+                          <span className="mt-1 block truncate text-sm text-[#64748B]">
+                            {email.sender}
+                          </span>
+                        )}
+                      </span>
+                      <span>
+                        <span className="inline-flex w-fit items-center rounded-md bg-slate-100 px-2 py-1 font-mono text-xs font-medium text-slate-600">
+                          {reasonLabel(item.reason)}
+                        </span>
+                      </span>
+                      <span className="line-clamp-2 text-sm text-[#64748B]">
+                        {item.description}
+                      </span>
+                      <ReceivedAt value={email?.received_at || item.created_at} />
+                    </button>
+                  )
+                })}
+              </div>
+            </section>
+          ))}
+        {ready && !visible.length && (
+          <div className="rounded-2xl border border-[#E2E8F0] bg-white py-14 text-center text-sm text-[#64748B]">
+            {query.trim()
+              ? 'No review items match your search.'
+              : `Nothing here. ${statusFilter === 'open' ? 'The review queue is clear.' : 'No resolved items yet.'}`}
           </div>
         )}
       </div>

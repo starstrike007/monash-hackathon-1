@@ -78,7 +78,7 @@ it shows a visible "Backend unavailable" state with a retry action.
   attachments (with an inline viewer and download), the classification
   method/reason, and a category override dropdown ("Originally classified
   as X" + Revert once overridden).
-- **Docs Comparison** (`/docs-comparison`, `/docs-comparison/:emailId`) —
+- **Document Comparison** (`/docs-comparison`, `/docs-comparison/:emailId`) —
   every `BL_COMPARISON` email's comparison result: a filterable list, and a
   detail page with a state-aware banner, the seven-field SI/BL table, two
   document viewers scrolled and highlighted to the selected field's
@@ -114,7 +114,7 @@ else (results, categories, review state) untouched.
 
 A category is either the pipeline's own decision (`category_machine`) or a
 reviewer's `category_override`; the *effective* category (override if set)
-is what every downstream reader uses — dashboard counts, Docs Comparison's
+is what every downstream reader uses — dashboard counts, Document Comparison's
 list, and the submission export. Overriding an email into
 `BL_COMPARISON` reprocesses it immediately (creating a `missing_attachment`
 review item if it has fewer than two usable attachments); overriding it

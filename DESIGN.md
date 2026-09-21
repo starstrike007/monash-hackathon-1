@@ -14,8 +14,10 @@
 > | Verified / no mismatch | `#059669` | `emerald-600` |
 > | Mismatch / error (confirmed SI vs BL discrepancies only) | `#DC2626` | `red-600` |
 >
-> - Fonts: Inter for UI text, JetBrains Mono for identifiers, raw email subjects and system
->   tags. `tabular-nums` is applied globally so counters do not shift.
+> - Fonts (self-hosted via `@fontsource`, defined once as `--font-sans` / `--font-serif` /
+>   `--font-mono` in `src/index.css`): Source Sans 3 for UI text, Fraunces for large headings,
+>   IBM Plex Mono for identifiers, raw email subjects and system tags. `tabular-nums` is
+>   applied globally so counters do not shift.
 > - Sidebar is fixed, `#0F172A`, inactive text `slate-400`, active item white on `slate-700` (`#334155`).
 >   Sidebar counters are `rounded-full` pills.
 > - Main content sits in a `max-w-7xl` container. Cards are white with `border-slate-200`;

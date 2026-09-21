@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, CaretDown } from '@phosphor-icons/react'
+import { ArrowLeft, Check, EnvelopeSimple } from '@phosphor-icons/react'
 
 import { DocumentViewer } from '@/components/document-viewer/DocumentViewer'
 import { BackendError } from '@/components/BackendError'
-import { CategoryBadge, StatusBadge } from '@/components/layout/StatusBadge'
+import { CategoryBadge } from '@/components/layout/StatusBadge'
 import { fieldLabels, summarizeComparison } from '@/features/docs-comparison/summary'
-import { getEmail, getReviewItems } from '@/lib/api'
+import { getEmail, getReviewItems, notifyDataChanged, overrideComparisonResult } from '@/lib/api'
 import { formatDate } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -33,10 +33,17 @@ function ValueCell({ extraction }) {
   )
 }
 
-function ComparisonTable({ comparisons, activeField, onSelectField }) {
+function ComparisonTable({
+  comparisons,
+  pendingResults,
+  savingField,
+  onSelectField,
+  onChangeResult,
+  onSaveResult,
+}) {
   return (
     <div className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white">
-      <div className="grid grid-cols-[1.1fr_1.3fr_1.3fr_110px] gap-4 bg-[#F8FAFC] px-6 py-4 text-xs font-semibold uppercase tracking-[0.08em] text-[#64748B]">
+      <div className="grid grid-cols-[1.1fr_1.3fr_1.3fr_170px] gap-4 bg-[#F8FAFC] px-6 py-4 text-xs font-semibold uppercase tracking-[0.08em] text-[#64748B]">
         <span>Field</span>
         <span>Shipping instruction</span>
         <span>Draft bill of lading</span>
@@ -44,18 +51,27 @@ function ComparisonTable({ comparisons, activeField, onSelectField }) {
       </div>
       {comparisons.map((comparison) => {
         const field = fieldLabels[comparison.field_name] || { label: comparison.field_name }
-        const mismatch = comparison.result === 'mismatch'
-        const uncertain = comparison.result === 'skipped'
-        const active = comparison.field_name === activeField
+        const pendingResult = pendingResults[comparison.field_name] || comparison.result
+        const mismatch = pendingResult === 'mismatch'
+        const uncertain = pendingResult === 'skipped'
+        const hasChanges = pendingResult !== comparison.result
         return (
-          <button
+          <div
             key={comparison.field_name}
+            role="button"
+            tabIndex={0}
             onClick={() => onSelectField(comparison.field_name)}
+            onKeyDown={(event) => {
+              if (event.target !== event.currentTarget) return
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                onSelectField(comparison.field_name)
+              }
+            }}
             className={cn(
-              'grid w-full grid-cols-[1.1fr_1.3fr_1.3fr_110px] gap-4 border-t border-[#E2E8F0] px-6 py-4 text-left transition-colors hover:bg-[#F8FAFC]',
+              'grid w-full grid-cols-[1.1fr_1.3fr_1.3fr_170px] gap-4 border-t border-[#E2E8F0] px-6 py-4 text-left transition-colors hover:bg-[#F8FAFC]',
               mismatch && 'bg-[#FEF2F2]',
               uncertain && 'bg-[#FFFBEB]',
-              active && 'ring-2 ring-inset ring-[#0F172A]',
             )}
           >
             <p
@@ -68,78 +84,41 @@ function ComparisonTable({ comparisons, activeField, onSelectField }) {
             </p>
             <ValueCell extraction={comparison.si} />
             <ValueCell extraction={comparison.bl} />
-            <div>
-              {mismatch ? (
-                <StatusBadge status="MISMATCH" />
-              ) : uncertain ? (
-                <span className="inline-flex items-center rounded-md bg-[#FEF3C7] px-2 py-1 font-mono text-xs font-medium text-amber-700">
-                  Uncertain
-                </span>
-              ) : (
-                <StatusBadge status="OK" />
-              )}
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                aria-label={`Result for ${field.label}`}
+                value={pendingResult}
+                disabled={savingField === comparison.field_name}
+                onClick={(event) => event.stopPropagation()}
+                onChange={(event) => onChangeResult(comparison.field_name, event.target.value)}
+                className={cn(
+                  'h-9 rounded-md border bg-white px-2 text-xs font-semibold text-[#1E293B] outline-none focus:ring-2 focus:ring-[#0E5A66]/20',
+                  mismatch && 'border-[#FECACA] text-[#B91C1C]',
+                  uncertain && 'border-[#FDE68A] text-[#B45309]',
+                  !mismatch && !uncertain && 'border-[#A7F3D0] text-[#047857]',
+                )}
+              >
+                <option value="match">Match</option>
+                <option value="mismatch">Mismatch</option>
+                <option value="skipped">Uncertain</option>
+              </select>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onSaveResult(comparison.field_name)
+                }}
+                disabled={!hasChanges || savingField === comparison.field_name}
+                className="inline-flex h-9 items-center gap-1 rounded-md bg-[#0F172A] px-2.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#E2E8F0] disabled:text-[#94A3B8]"
+              >
+                <Check size={14} aria-hidden="true" />
+                {savingField === comparison.field_name ? 'Saving...' : 'Save'}
+              </button>
             </div>
-          </button>
+          </div>
         )
       })}
     </div>
-  )
-}
-
-function DecisionSection({ result }) {
-  const [open, setOpen] = useState(false)
-  const comparisons = result?.comparisons || []
-  return (
-    <section className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center justify-between px-6 py-4 text-left"
-        aria-expanded={open}
-      >
-        <span className="text-sm font-semibold text-[#1E293B]">How this was decided</span>
-        <CaretDown
-          size={16}
-          className={cn('text-[#64748B] transition-transform', open && 'rotate-180')}
-        />
-      </button>
-      {open && (
-        <div className="border-t border-[#E2E8F0] px-6 py-4">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="text-xs uppercase tracking-wide text-[#64748B]">
-                <th className="py-1 pr-4">Field</th>
-                <th className="py-1 pr-4">SI source</th>
-                <th className="py-1 pr-4">BL source</th>
-                <th className="py-1">Outcome</th>
-              </tr>
-            </thead>
-            <tbody>
-              {comparisons.map((comparison) => (
-                <tr key={comparison.field_name} className="border-t border-[#E2E8F0]">
-                  <td className="py-2 pr-4 text-[#1E293B]">
-                    {fieldLabels[comparison.field_name]?.label || comparison.field_name}
-                  </td>
-                  <td className="py-2 pr-4 font-mono text-xs text-[#64748B]">
-                    {comparison.si?.source || '—'}
-                  </td>
-                  <td className="py-2 pr-4 font-mono text-xs text-[#64748B]">
-                    {comparison.bl?.source || '—'}
-                  </td>
-                  <td className="py-2 text-[#64748B]">{comparison.result}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {result?.skipped_fields?.length > 0 && (
-            <p className="mt-3 text-xs text-[#B45309]">
-              Skipped:{' '}
-              {result.skipped_fields.map((key) => fieldLabels[key]?.label || key).join(', ')}
-            </p>
-          )}
-        </div>
-      )}
-    </section>
   )
 }
 
@@ -149,13 +128,21 @@ export function DocsComparisonDetailPage({ navigate, emailId }) {
   const [activeField, setActiveField] = useState(null)
   const [error, setError] = useState(null)
   const [reviewError, setReviewError] = useState(null)
+  const [pendingResults, setPendingResults] = useState({})
+  const [savingField, setSavingField] = useState(null)
+  const [resultSaveError, setResultSaveError] = useState(null)
 
   useEffect(() => {
     setError(null)
+    setResultSaveError(null)
+    setPendingResults({})
     getEmail(emailId)
       .then((data) => {
         setDetail(data)
         const comparisons = data.result?.comparisons || []
+        setPendingResults(
+          Object.fromEntries(comparisons.map((comparison) => [comparison.field_name, comparison.result])),
+        )
         const firstMismatch = comparisons.find((item) => item.result === 'mismatch')
         setActiveField((firstMismatch || comparisons[0])?.field_name || null)
       })
@@ -179,10 +166,54 @@ export function DocsComparisonDetailPage({ navigate, emailId }) {
     () => comparisons.find((item) => item.field_name === activeField) || null,
     [comparisons, activeField],
   )
+  const activeMismatch = activeComparison?.result === 'mismatch' ? activeComparison : null
   const documents = result?.documents || []
   const siDoc = documents.find((document) => document.role === 'SI') || documents[0]
   const blDoc = documents.find((document) => document.role === 'BL') || documents[1]
   const summary = summarizeComparison(result)
+
+  function handleResultChange(fieldName, value) {
+    setPendingResults((current) => ({ ...current, [fieldName]: value }))
+    setResultSaveError(null)
+  }
+
+  async function saveResultOverride(fieldName) {
+    const comparison = comparisons.find((item) => item.field_name === fieldName)
+    const nextResult = pendingResults[fieldName] || comparison?.result
+    if (!comparison || !nextResult || nextResult === comparison.result) return
+
+    setSavingField(fieldName)
+    setResultSaveError(null)
+    try {
+      await overrideComparisonResult(emailId, {
+        field_name: fieldName,
+        result: nextResult,
+        reviewer_id: 'local-reviewer',
+        expected_version: result?.version,
+      })
+      const refreshed = await getEmail(emailId)
+      const refreshedComparisons = refreshed.result?.comparisons || []
+      setDetail(refreshed)
+      setPendingResults(
+        Object.fromEntries(
+          refreshedComparisons.map((item) => [item.field_name, item.result]),
+        ),
+      )
+      setActiveField(fieldName)
+      if (refreshed.result?.status === 'NEEDS_REVIEW') {
+        getReviewItems({ email_id: emailId, status: 'open' })
+          .then((data) => setReviewItem(data.items?.[0] || null))
+          .catch(setReviewError)
+      } else {
+        setReviewItem(null)
+      }
+      notifyDataChanged()
+    } catch (reason) {
+      setResultSaveError(reason)
+    } finally {
+      setSavingField(null)
+    }
+  }
 
   if (error && !detail) {
     return (
@@ -209,28 +240,37 @@ export function DocsComparisonDetailPage({ navigate, emailId }) {
         className="mb-6 inline-flex h-10 items-center gap-2 rounded-lg border border-[#0F172A] bg-transparent px-4 text-sm font-semibold text-[#0F172A] hover:bg-white/60"
       >
         <ArrowLeft size={16} />
-        Docs Comparison
+        Document Comparison
       </button>
 
       <header className="flex flex-wrap items-center gap-3 text-sm font-medium text-[#475569]">
         <span className="font-mono text-[#475569]">{detail.display_id}</span>
-        <StatusBadge status={result?.status} />
         <CategoryBadge category={result?.category} />
       </header>
-      <h1 className="mt-3 text-4xl font-semibold tracking-tight text-[#0F172A] sm:text-5xl">
+      <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[#0F172A] sm:text-4xl">
         {detail.subject}
       </h1>
-      <p className="mt-3 text-sm text-[#475569]">
-        From {detail.sender} · Received {formatDate(detail.received_at)}
-      </p>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-[#475569]">
+          From {detail.sender} · Received {formatDate(detail.received_at)}
+        </p>
+        <button
+          type="button"
+          onClick={() => navigate(`/inbox/${emailId}`)}
+          className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#0F172A] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#1E293B]"
+        >
+          <EnvelopeSimple size={17} aria-hidden="true" />
+          Go to email content
+        </button>
+      </div>
 
-      <div className={cn('mt-7 rounded-2xl border p-6', BANNER_TONE[summary.tone])}>
+      <div className={cn('mt-7 rounded-2xl border px-6 py-3', BANNER_TONE[summary.tone])}>
         <p className="text-2xl font-semibold">{summary.text}</p>
         {result?.status === 'NEEDS_REVIEW' && reviewItem && (
           <button
             type="button"
             onClick={() => navigate(`/review/${reviewItem.id}`)}
-            className="mt-3 inline-flex items-center gap-2 rounded-lg bg-white/70 px-3 py-1.5 text-sm font-semibold underline"
+            className="mb-1 mt-2 inline-flex items-center gap-2 rounded-lg bg-white/70 px-3 py-1.5 text-sm font-semibold underline"
           >
             Open in Review queue
           </button>
@@ -240,24 +280,29 @@ export function DocsComparisonDetailPage({ navigate, emailId }) {
             <BackendError error={reviewError} compact />
           </div>
         )}
+        {resultSaveError && (
+          <div className="mt-3">
+            <BackendError error={resultSaveError} compact />
+          </div>
+        )}
       </div>
 
-      <div className="mt-7 grid gap-7 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-        <div className="space-y-7">
-          <ComparisonTable
-            comparisons={comparisons}
-            activeField={activeField}
-            onSelectField={setActiveField}
-          />
-          <DecisionSection result={result} />
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-2 xl:gap-4">
+      <div className="mt-7 space-y-7">
+        <ComparisonTable
+          comparisons={comparisons}
+          pendingResults={pendingResults}
+          savingField={savingField}
+          onSelectField={setActiveField}
+          onChangeResult={handleResultChange}
+          onSaveResult={saveResultOverride}
+        />
+        <div className="grid gap-4 sm:grid-cols-2">
           <div className="h-[520px]">
             <DocumentViewer
               path={siDoc?.path}
               label="Shipping instruction"
-              location={activeComparison?.si?.evidence}
-              tone={activeComparison?.result === 'mismatch' ? 'mismatch' : 'review'}
+              location={activeMismatch?.si?.evidence}
+              tone={activeMismatch ? 'mismatch' : 'review'}
               readable={siDoc?.readable}
             />
           </div>
@@ -265,8 +310,8 @@ export function DocsComparisonDetailPage({ navigate, emailId }) {
             <DocumentViewer
               path={blDoc?.path}
               label="Draft bill of lading"
-              location={activeComparison?.bl?.evidence}
-              tone={activeComparison?.result === 'mismatch' ? 'mismatch' : 'review'}
+              location={activeMismatch?.bl?.evidence}
+              tone={activeMismatch ? 'mismatch' : 'review'}
               readable={blDoc?.readable}
             />
           </div>
