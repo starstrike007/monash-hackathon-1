@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, CaretDown } from '@phosphor-icons/react'
 
 import { DocumentViewer } from '@/components/document-viewer/DocumentViewer'
+import { BackendError } from '@/components/BackendError'
 import { CategoryBadge, StatusBadge } from '@/components/layout/StatusBadge'
 import { fieldLabels, summarizeComparison } from '@/features/docs-comparison/summary'
 import { getEmail, getReviewItems } from '@/lib/api'
@@ -20,10 +21,14 @@ function ValueCell({ extraction }) {
   }
   return (
     <div>
-      <p className="text-[15px] text-[#26353D]">{extraction.raw_value || '—'}</p>
-      {extraction.normalized_value && extraction.normalized_value !== extraction.raw_value && (
-        <p className="mt-1 font-mono text-xs text-[#71808A]">{extraction.normalized_value}</p>
-      )}
+      <p className="font-mono text-xs text-[#71808A]">
+        <span className="mr-1 font-sans uppercase tracking-wide text-[#9AA4A8]">Normalized</span>
+        {extraction.normalized_value || '—'}
+      </p>
+      <p className="text-[15px] text-[#26353D]">
+        <span className="mr-1 text-xs uppercase tracking-wide text-[#9AA4A8]">Raw</span>
+        {extraction.raw_value || '—'}
+      </p>
     </div>
   )
 }
@@ -142,21 +147,27 @@ export function DocsComparisonDetailPage({ navigate, emailId }) {
   const [detail, setDetail] = useState(null)
   const [reviewItem, setReviewItem] = useState(null)
   const [activeField, setActiveField] = useState(null)
+  const [error, setError] = useState(null)
+  const [reviewError, setReviewError] = useState(null)
 
   useEffect(() => {
-    getEmail(emailId).then((data) => {
-      setDetail(data)
-      const comparisons = data.result?.comparisons || []
-      const firstMismatch = comparisons.find((item) => item.result === 'mismatch')
-      setActiveField((firstMismatch || comparisons[0])?.field_name || null)
-    })
+    setError(null)
+    getEmail(emailId)
+      .then((data) => {
+        setDetail(data)
+        const comparisons = data.result?.comparisons || []
+        const firstMismatch = comparisons.find((item) => item.result === 'mismatch')
+        setActiveField((firstMismatch || comparisons[0])?.field_name || null)
+      })
+      .catch(setError)
   }, [emailId])
 
   useEffect(() => {
     if (detail?.result?.status === 'NEEDS_REVIEW') {
-      getReviewItems({ email_id: emailId, status: 'open' }).then((data) =>
-        setReviewItem(data.items?.[0] || null),
-      )
+      setReviewError(null)
+      getReviewItems({ email_id: emailId, status: 'open' })
+        .then((data) => setReviewItem(data.items?.[0] || null))
+        .catch(setReviewError)
     } else {
       setReviewItem(null)
     }
@@ -168,9 +179,18 @@ export function DocsComparisonDetailPage({ navigate, emailId }) {
     () => comparisons.find((item) => item.field_name === activeField) || null,
     [comparisons, activeField],
   )
-  const siDoc = result?.documents?.find((document) => document.role === 'SI')
-  const blDoc = result?.documents?.find((document) => document.role === 'BL')
+  const documents = result?.documents || []
+  const siDoc = documents.find((document) => document.role === 'SI') || documents[0]
+  const blDoc = documents.find((document) => document.role === 'BL') || documents[1]
   const summary = summarizeComparison(result)
+
+  if (error && !detail) {
+    return (
+      <div className="mx-auto max-w-[900px] px-5 py-10 lg:px-14">
+        <BackendError error={error} onRetry={() => window.location.reload()} />
+      </div>
+    )
+  }
 
   if (!detail) {
     return (
@@ -215,6 +235,7 @@ export function DocsComparisonDetailPage({ navigate, emailId }) {
             Open in Review queue
           </button>
         )}
+        {reviewError && <div className="mt-3"><BackendError error={reviewError} compact /></div>}
       </div>
 
       <div className="mt-7 grid gap-7 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
@@ -226,19 +247,21 @@ export function DocsComparisonDetailPage({ navigate, emailId }) {
           />
           <DecisionSection result={result} />
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 xl:gap-4">
-          <div className="h-[420px]">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-2 xl:gap-4">
+          <div className="h-[520px]">
             <DocumentViewer
               path={siDoc?.path}
               label="Shipping instruction"
               location={activeComparison?.si?.evidence}
+              readable={siDoc?.readable}
             />
           </div>
-          <div className="h-[420px]">
+          <div className="h-[520px]">
             <DocumentViewer
               path={blDoc?.path}
               label="Draft bill of lading"
               location={activeComparison?.bl?.evidence}
+              readable={blDoc?.readable}
             />
           </div>
         </div>

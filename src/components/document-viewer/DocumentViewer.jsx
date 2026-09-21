@@ -60,7 +60,7 @@ function TxtView({ view, location, highlightRef }) {
   )
 }
 
-function PdfView({ view, path, location, page, onPageChange, highlightRef }) {
+function PdfView({ view, path, location, page, onPageChange, highlightRef, readable }) {
   if (!view.page_count) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 py-10 text-center text-sm text-[#8A7F68]">
@@ -72,7 +72,14 @@ function PdfView({ view, path, location, page, onPageChange, highlightRef }) {
 
   const pageCount = view.page_count
   const bbox = location?.page === page ? location.bbox : null
-  const quotedText = location?.page === page && !bbox ? location.quoted_text : null
+  const scanned = readable === false
+  const quotedText = scanned
+    ? location?.page === page
+      ? location.quoted_text || 'No text layer was available; inspect this page image manually.'
+      : 'No text layer was available; inspect this page image manually.'
+    : location?.page === page && !bbox
+      ? location.quoted_text || null
+      : null
 
   return (
     <div className="flex flex-col items-center gap-3">
@@ -251,7 +258,7 @@ function DocxView({ view, location, highlightRef }) {
  * pdf.js, so scanned and text PDFs use one code path with no fabricated
  * bounding boxes for vision-only evidence.
  */
-export function DocumentViewer({ path, label, location, className }) {
+export function DocumentViewer({ path, label, location, readable, className }) {
   const [view, setView] = useState(null)
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(Boolean(path))
@@ -327,6 +334,7 @@ export function DocumentViewer({ path, label, location, className }) {
           page={page}
           onPageChange={setPage}
           highlightRef={highlightRef}
+          readable={readable}
         />
       )}
       {path && !loading && !error && view?.type === 'xlsx' && (

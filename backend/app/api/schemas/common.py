@@ -66,6 +66,7 @@ class ExtractionSource(str, Enum):
     RULE = "rule"
     LLM = "llm"
     VISION = "vision"
+    HUMAN = "human"
 
 
 class Confidence(str, Enum):
@@ -92,6 +93,7 @@ class PipelineStageStatus(str, Enum):
 class ReviewAction(str, Enum):
     CONFIRM = "confirm"
     CORRECT = "correct"
+    CONFIRM_ABSENT = "confirm_absent"
 
 
 class AttachmentMeta(BaseModel):
@@ -109,6 +111,7 @@ class FieldEvidence(BaseModel):
     cell: str | None = None
     table_index: int | None = None
     row_index: int | None = None
+    paragraph_index: int | None = None
     bbox: dict[str, float] | None = None
     quoted_text: str | None = None
     source_path: str | None = None

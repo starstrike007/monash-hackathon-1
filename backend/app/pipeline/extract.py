@@ -61,7 +61,16 @@ FIELD_PATTERNS: dict[CanonicalField, tuple[str, ...]] = {
 PLACEHOLDERS = {"", "TBA", "TBC", "N/A", "NA", "-", "_", "UNKNOWN", "TO BE ADVISED"}
 
 
-_LOCATION_KEYS = {"page", "line", "sheet", "cell", "table_index", "row_index", "bbox"}
+_LOCATION_KEYS = {
+    "page",
+    "line",
+    "sheet",
+    "cell",
+    "table_index",
+    "row_index",
+    "paragraph_index",
+    "bbox",
+}
 
 
 def _effective_lines(parsed: ParsedDocument) -> tuple[list[str], list[dict]]:
