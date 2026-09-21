@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { AppShell } from '@/components/layout/AppShell'
 import { getDashboard } from '@/lib/api'
-import { CaseDetailPage } from '@/features/case-detail/CaseDetailPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
+import { InboxDetailPage } from '@/features/inbox/InboxDetailPage'
 import { InboxPage } from '@/features/inbox/InboxPage'
 import { DocsComparisonDetailPage } from '@/features/docs-comparison/DocsComparisonDetailPage'
 import { DocsComparisonListPage } from '@/features/docs-comparison/DocsComparisonListPage'
@@ -21,7 +21,7 @@ function routeFor(location) {
   const parts = pathname.split('/').filter(Boolean)
   if (parts[0] === 'dashboard') return { name: 'dashboard', pathname, search }
   if (parts[0] === 'inbox' && parts[1])
-    return { name: 'case', emailId: parts[1], mode: 'inbox', pathname, search }
+    return { name: 'inbox-detail', emailId: parts[1], pathname, search }
   if (parts[0] === 'inbox') return { name: 'inbox', pathname, search }
   if (parts[0] === 'docs-comparison' && parts[1])
     return { name: 'docs-comparison-detail', emailId: parts[1], pathname, search }
@@ -57,16 +57,9 @@ export function Router() {
   let content
   if (route.name === 'dashboard')
     content = <DashboardPage navigate={navigate} initialRunId={route.search.get('runId')} />
-  else if (route.name === 'inbox')
-    content = (
-      <InboxPage
-        navigate={navigate}
-        initialStatus={route.search.get('status')}
-        from={route.search.get('from')}
-      />
-    )
-  else if (route.name === 'case')
-    content = <CaseDetailPage navigate={navigate} emailId={route.emailId} mode={route.mode} />
+  else if (route.name === 'inbox') content = <InboxPage navigate={navigate} />
+  else if (route.name === 'inbox-detail')
+    content = <InboxDetailPage navigate={navigate} emailId={route.emailId} />
   else if (route.name === 'docs-comparison')
     content = (
       <DocsComparisonListPage navigate={navigate} initialStatus={route.search.get('status')} />

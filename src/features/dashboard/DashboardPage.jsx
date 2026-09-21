@@ -260,7 +260,7 @@ function OutcomeBreakdown({ outcomes, navigate }) {
     ['NEEDS_REVIEW', 'Needs review', '#C47A00', 'a person decides'],
   ]
   const total = rows.reduce((sum, [key]) => sum + (outcomes?.[key] || 0), 0) || 1
-  const openInbox = (key) => navigate(`/inbox?status=${OUTCOME_INBOX_FILTER[key]}&from=outcomes`)
+  const openComparisons = (key) => navigate(`/docs-comparison?status=${OUTCOME_INBOX_FILTER[key]}`)
   const dimmed = (key) => activeKey !== null && activeKey !== key
   const highlight = (key) => ({
     onMouseEnter: () => setActiveKey(key),
@@ -290,8 +290,8 @@ function OutcomeBreakdown({ outcomes, navigate }) {
             >
               <button
                 type="button"
-                onClick={() => openInbox(key)}
-                aria-label={`${label}: ${value} of ${total} (${percent}%). Open in inbox`}
+                onClick={() => openComparisons(key)}
+                aria-label={`${label}: ${value} of ${total} (${percent}%). Open in Docs Comparison`}
                 className={cn(
                   'block h-full w-full cursor-pointer outline-none',
                   index === 0 && 'rounded-l-lg',
@@ -325,7 +325,7 @@ function OutcomeBreakdown({ outcomes, navigate }) {
           return (
             <button
               type="button"
-              onClick={() => openInbox(key)}
+              onClick={() => openComparisons(key)}
               className={cn(
                 'flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm outline-none transition-all duration-200 ease-out motion-reduce:transition-none',
                 active && 'scale-[1.02] shadow-sm',
@@ -367,11 +367,10 @@ function AttentionList({ items, navigate }) {
             key={item.email_id}
             className="flex w-full items-center gap-4 py-4 text-left hover:bg-[#FCFAF4]"
             onClick={() =>
-              navigate(
-                item.status === STATUS.NEEDS_REVIEW
-                  ? `/review/${item.email_id}`
-                  : `/inbox/${item.email_id}`,
-              )
+              // Every attention item is a NEEDS_REVIEW comparison; Docs
+              // Comparison shows the state-aware banner with a link into
+              // the review queue item (which has its own id, not email_id).
+              navigate(`/docs-comparison/${item.email_id}`)
             }
           >
             <span className="w-20 shrink-0 font-mono text-sm text-[#71808A]">
@@ -467,7 +466,7 @@ export function DashboardPage({ navigate, initialRunId = null }) {
   async function openFirst(filter, fallback) {
     const { items } = await getEmails(filter.params)
     const first = items.find(filter.match)
-    navigate(first ? `/inbox/${first.email_id}` : fallback)
+    navigate(first ? `/docs-comparison/${first.email_id}` : fallback)
   }
 
   async function openDefect(fieldKey) {
@@ -480,7 +479,7 @@ export function DashboardPage({ navigate, initialRunId = null }) {
       ),
     )
     const target = mismatches[index] || mismatches[0]
-    navigate(target ? `/inbox/${target.email_id}` : '/inbox?status=mismatch')
+    navigate(target ? `/docs-comparison/${target.email_id}` : '/docs-comparison?status=mismatch')
   }
 
   if (!data)
@@ -530,7 +529,7 @@ export function DashboardPage({ navigate, initialRunId = null }) {
             onOpenComparisons={() =>
               openFirst(
                 { params: {}, match: (item) => item.category === 'BL_COMPARISON' },
-                '/inbox',
+                '/docs-comparison',
               )
             }
             onOpenMismatches={() =>
@@ -539,7 +538,7 @@ export function DashboardPage({ navigate, initialRunId = null }) {
                   params: { status: 'mismatch' },
                   match: (item) => item.status === STATUS.MISMATCH,
                 },
-                '/inbox?status=mismatch',
+                '/docs-comparison?status=mismatch',
               )
             }
           />
