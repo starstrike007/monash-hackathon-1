@@ -27,6 +27,11 @@ class Settings:
         self.openai_reasoning_effort_classify = (
             os.getenv("OPENAI_REASONING_EFFORT_CLASSIFY", "").strip() or None
         )
+        self.order_mode_policy = os.getenv("ORDER_MODE_POLICY", "review").strip().lower()
+        if self.order_mode_policy not in {"review", "same_party_match", "always_mismatch"}:
+            raise ValueError(
+                "ORDER_MODE_POLICY must be review, same_party_match, or always_mismatch"
+            )
         self.supabase_url = os.getenv("SUPABASE_URL", "")
         self.supabase_service_role_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
         allowed_origins = os.getenv("ALLOWED_ORIGINS") or os.getenv("CORS_ORIGINS")

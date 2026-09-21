@@ -1,3 +1,5 @@
+import pytest
+
 from app.api.schemas.common import (
     CanonicalField,
     ComparisonStatus,
@@ -124,6 +126,42 @@ def test_order_mode_consignee_is_explicit_and_comparable():
     assert consignee.raw_value.startswith("To the Order of")
     comparison = next(item for item in compare_documents(si, bl) if item.field_name == CanonicalField.CONSIGNEE)
     assert comparison.result == "match"
+
+
+@pytest.mark.parametrize(
+    ("policy", "bl_party", "expected"),
+    [
+        ("review", "Harbour Line Trading Ltd", "skipped"),
+        ("same_party_match", "Harbour Line Trading Ltd", "match"),
+        ("same_party_match", "Different Trading Ltd", "mismatch"),
+        ("always_mismatch", "Harbour Line Trading Ltd", "mismatch"),
+    ],
+)
+def test_named_and_order_mode_consignee_policy(policy, bl_party, expected):
+    si = extract_document(
+        ParsedDocument(
+            path="si.txt",
+            text="SHIPPING INSTRUCTION\nConsignee: Harbour Line Trading Limited",
+            document_type=DocumentType.SHIPPING_INSTRUCTION,
+        ),
+        DocumentRole.SI,
+    )
+    bl = extract_document(
+        ParsedDocument(
+            path="bl.txt",
+            text=f"BILL OF LADING\nTo the Order of: {bl_party}",
+            document_type=DocumentType.BILL_OF_LADING,
+        ),
+        DocumentRole.BL,
+    )
+
+    comparison = next(
+        item
+        for item in compare_documents(si, bl, order_mode_policy=policy)
+        if item.field_name == CanonicalField.CONSIGNEE
+    )
+
+    assert comparison.result == expected
 
 
 def test_one_field_difference_is_a_mismatch():

@@ -173,6 +173,7 @@ Set these environment variables on Render:
 ```text
 OPENAI_API_KEY
 OPENAI_MODEL
+ORDER_MODE_POLICY=review
 SUPABASE_URL
 SUPABASE_SERVICE_ROLE_KEY
 DATA_DIR=../data
@@ -182,6 +183,12 @@ ALLOWED_ORIGINS=https://your-vercel-domain.example
 `ALLOWED_ORIGINS` is a comma-separated list when more than one frontend origin
 is needed. The service listens on Render's `PORT` value and serves the bundled
 `../data` directory from the repository.
+
+`ORDER_MODE_POLICY` controls a named consignee versus `To the Order of`
+consignee. The safe default is `review`. The alternatives are
+`same_party_match` (match only when deterministic party normalization is equal,
+otherwise mismatch) and `always_mismatch` (any named/order-mode difference is a
+consignee mismatch). No fuzzy name matching is used.
 
 Render's free tier spins the service down when idle. Open the app a few
 minutes before a demo so the API has time to wake up.

@@ -10,7 +10,7 @@ In progress. Final results, recommended settings, retained changes, and user dec
 
 - Branch: `overnight/improve-2`, created from `main` at `c52305a`.
 - No push, merge, deployment, account creation, or modification of `main` is permitted.
-- Scorer budget: 2/14 used; full OpenAI exports: 1/2 used.
+- Scorer budget: 5/14 used; full OpenAI exports: 1/2 used.
 - The task-specified interpreter path `backend.venv\Scripts\python.exe` does not exist. The repository venv exists at `backend\.venv\Scripts\python.exe`; all Python and scorer commands use that interpreter. The scorer command is otherwise unchanged.
 - Runtime and output directories are fresh children of `C:\Users\User\monash-hackathon.runtime`.
 - The scorer is used only on complete 520-entry exports. Only aggregate scorer output is recorded.
@@ -22,6 +22,9 @@ In progress. Final results, recommended settings, retained changes, and user dec
 | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | 1 | 0 | Rules-only baseline | 0.6726 | 0.7229 | 1.0000 | 0.6087 | 28/46 | 57 |
 | 2 | 0 | Full baseline, OpenAI enabled | 0.7012 | 0.8183 | 1.0000 | 0.6087 | 28/46 | 57 |
+| 3 | 1 | `ORDER_MODE_POLICY=review`, rules-only | 0.6726 | 0.7229 | 1.0000 | 0.6087 | 28/46 | 57 |
+| 4 | 1 | `ORDER_MODE_POLICY=same_party_match`, rules-only | 0.9038 | 0.7229 | 1.0000 | 0.9783 | 45/46 | 19 |
+| 5 | 1 | `ORDER_MODE_POLICY=always_mismatch`, rules-only | 0.7145 | 0.7229 | 0.6818 | 0.9783 | 31/46 | 19 |
 
 ## Step 0 — Baseline
 
@@ -32,7 +35,41 @@ In progress. Final results, recommended settings, retained changes, and user dec
 
 ## Step 1 — Order-mode consignee policy
 
-Pending.
+Evidence review completed before implementation. The problem statement does not state a legal rule for named-versus-order-mode consignees; it says insufficient evidence should be escalated. Fifteen raw SI/BL pairs were inspected directly. Thirteen printed the same party with order mode on exactly one document; two printed different parties.
+
+| Case | SI raw consignee | BL raw consignee | Finding |
+| --- | --- | --- | --- |
+| `email_004` | EAST BRIGHT FZ-LLC | To the Order of UAB NOVAKOPA | Different party |
+| `email_032` | TOPKOPY MIDDLE EAST FZE | To the Order of TOPKOPY MIDDLE EAST FZE | Same party |
+| `email_040` | TOPKOPY MIDDLE EAST FZE | To the Order of TOPKOPY MIDDLE EAST FZE | Same party |
+| `email_052` | BALL & DOGGETT AUSTRALIA PTY LTD | To the Order of BALL & DOGGETT AUSTRALIA PTY LTD | Same party |
+| `email_065` | INTERNATIONAL FOREST PRODUCTS LLC | To the Order of INTERNATIONAL FOREST PRODUCTS LLC | Same party |
+| `email_068` | PACIFIC OFFICE (M) SDN BHD | To the Order of PACIFIC OFFICE (M) SDN BHD | Same party |
+| `email_091` | To the Order of ORIENT LINKS CO (LLC) | ORIENT LINKS CO (LLC) | Same party |
+| `email_096` | 3S PAPER PRODUCTS SDN BHD | To the Order of 3S PAPER PRODUCTS SDN BHD | Same party |
+| `email_107` | KTP CO., LTD | To the Order of VITAL SOLUTIONS PTE. LTD. | Different party; XLSX/DOCX pair |
+| `email_113` | CERIEX | To the Order of CERIEX | Same party |
+| `email_128` | To the Order of BALL & DOGGETT AUSTRALIA PTY LTD | BALL & DOGGETT AUSTRALIA PTY LTD | Same party |
+| `email_133` | To the Order of MOORIM SP CO., LTD | MOORIM SP CO., LTD | Same party |
+| `email_146` | To the Order of SAFQA LIMITED | SAFQA LIMITED | Same party |
+| `email_174` | To the Order of TOAN LUC PAPER JOINT STOCK COMPANY | TOAN LUC PAPER JOINT STOCK COMPANY | Same party |
+| `email_198` | To the Order of UAB NOVAKOPA | UAB NOVAKOPA | Same party |
+
+Implemented documented `ORDER_MODE_POLICY` values with `review` retained as the default. Party equality uses only the existing deterministic legal-suffix normalization; no fuzzy matching is used.
+
+- `review`: keeps the current conservative escalation. Risk: high false-alarm workload when the named party is identical, but no legal-semantic difference is silently approved.
+- `same_party_match`: treats equal normalized parties as a match and different parties as a consignee mismatch. Risk: the same printed party may still represent a meaningful negotiability change that the name comparison cannot capture.
+- `always_mismatch`: treats any named/order-mode difference as a consignee defect. Risk: maximizes detection but creates defects for formatting/negotiability differences even when the party is identical.
+
+Policy results:
+
+| Policy | Final score | Defect precision | NEEDS_REVIEW | Consignee defects | Outcome |
+| --- | ---: | ---: | ---: | ---: | --- |
+| `review` | 0.6726 | 1.0000 | 57 | 5 | Safe default retained |
+| `same_party_match` | 0.9038 | 1.0000 | 19 | 8 | Best score; recommended if the business accepts the negotiability risk |
+| `always_mismatch` | 0.7145 | 0.6818 | 19 | 45 | Vetoed: defect precision fell below the 1.0000 baseline |
+
+Recommendation: `same_party_match` is the measured best policy and preserves defect precision, but changing the default requires a business decision because identical party text does not prove that named and order-mode consignees are legally interchangeable. The code default remains `review` exactly as requested.
 
 ## Step 2 — Draft-BL request rule
 
