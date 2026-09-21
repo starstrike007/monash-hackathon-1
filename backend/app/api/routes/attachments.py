@@ -42,6 +42,11 @@ def attachment_page_image(path: str, page_number: int, request: Request) -> Resp
         png_bytes = render_pdf_page_png(target.read_bytes(), page_number)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        # A corrupt/unsupported PDF is an expected operational condition
+        # (the same files are already marked unreadable during extraction);
+        # surface it as a clean error rather than a raw 500.
+        raise HTTPException(status_code=422, detail=f"This page could not be rendered: {exc}") from exc
     return Response(content=png_bytes, media_type="image/png")
 
 

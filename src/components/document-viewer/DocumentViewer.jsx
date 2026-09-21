@@ -61,7 +61,16 @@ function TxtView({ view, location, highlightRef }) {
 }
 
 function PdfView({ view, path, location, page, onPageChange, highlightRef }) {
-  const pageCount = view.page_count || 1
+  if (!view.page_count) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-2 py-10 text-center text-sm text-[#8A7F68]">
+        <FileX size={28} />
+        <p>This PDF could not be rendered - it may be corrupt or an unsupported format.</p>
+      </div>
+    )
+  }
+
+  const pageCount = view.page_count
   const bbox = location?.page === page ? location.bbox : null
   const quotedText = location?.page === page && !bbox ? location.quoted_text : null
 

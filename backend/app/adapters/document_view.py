@@ -16,8 +16,14 @@ def _view_txt(raw: bytes) -> dict[str, Any]:
 def _view_pdf(raw: bytes, route_path: str) -> dict[str, Any]:
     import pdfplumber
 
-    with pdfplumber.open(io.BytesIO(raw)) as pdf:
-        page_count = len(pdf.pages)
+    try:
+        with pdfplumber.open(io.BytesIO(raw)) as pdf:
+            page_count = len(pdf.pages)
+    except Exception:
+        # A corrupt or unsupported PDF is an expected operational condition
+        # here (same class of failure that already marks the document
+        # unreadable during extraction) - degrade gracefully, don't 500.
+        return {"type": "pdf", "page_count": 0, "pages": [], "readable": False}
     return {
         "type": "pdf",
         "page_count": page_count,
