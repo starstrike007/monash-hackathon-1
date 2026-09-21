@@ -104,8 +104,13 @@ class AttachmentMeta(BaseModel):
 class FieldEvidence(BaseModel):
     snippet: str = ""
     page: int | None = None
+    line: int | None = None
     sheet: str | None = None
     cell: str | None = None
+    table_index: int | None = None
+    row_index: int | None = None
+    bbox: dict[str, float] | None = None
+    quoted_text: str | None = None
     source_path: str | None = None
 
 
