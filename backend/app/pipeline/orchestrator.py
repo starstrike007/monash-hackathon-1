@@ -52,12 +52,20 @@ class PipelineOrchestrator:
         llm: OpenAIClient | None = None,
         max_workers: int = 4,
         output_dir: str | Path | None = None,
+        classification_cache_path: str | Path | None = None,
+        ignore_classification_cache: bool = False,
     ) -> None:
         self.loader = loader
         self.store = store
         self.llm = llm
         self.max_workers = max(1, int(max_workers))
         self.output_dir = Path(output_dir).resolve() if output_dir else None
+        self.classification_cache_path = (
+            Path(classification_cache_path).resolve()
+            if classification_cache_path is not None
+            else None
+        )
+        self.ignore_classification_cache = bool(ignore_classification_cache)
         self.last_classification_metrics: dict[str, Any] = {}
         self._bootstrap_lock = Lock()
         self._bootstrap_state: dict[str, Any] | None = None
@@ -337,7 +345,12 @@ class PipelineOrchestrator:
         failures: list[dict[str, Any]] = []
         stage_counts = {number: 0 for number, _ in STAGES}
         classification_report: dict[str, dict[str, Any]] = {}
-        classifier = ClassificationService(self.llm, rules_only=rules_only)
+        classifier = ClassificationService(
+            self.llm,
+            rules_only=rules_only,
+            cache_path=self.classification_cache_path,
+            ignore_disk_cache=self.ignore_classification_cache,
+        )
 
         # An email with an active category_override keeps that category on
         # every rerun (retry, full run, etc.) without re-invoking the

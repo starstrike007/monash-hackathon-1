@@ -27,6 +27,13 @@ class Settings:
         load_dotenv(dotenv_path=self.env_file_path, override=False)
         self.data_dir = Path(os.getenv("DATA_DIR", self.root_dir / "data")).resolve()
         self.runtime_dir = Path(os.getenv("RUNTIME_DIR", self.root_dir / ".runtime")).resolve()
+        self.stage1_llm_cache_path = Path(
+            os.getenv(
+                "STAGE1_LLM_CACHE_PATH",
+                self.runtime_dir / "stage1_llm_cache.json",
+            )
+        ).resolve()
+        self.ignore_stage1_llm_cache = _env_bool("IGNORE_STAGE1_LLM_CACHE", False)
         self.openai_api_key = os.getenv("OPENAI_API_KEY", "")
         if api_key_from_environment:
             self.openai_key_source = "env"

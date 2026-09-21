@@ -42,7 +42,13 @@ async def lifespan(app: FastAPI):
     app.state.loader = loader
     app.state.store = store
     app.state.openai = openai
-    app.state.orchestrator = PipelineOrchestrator(loader, store, openai)
+    app.state.orchestrator = PipelineOrchestrator(
+        loader,
+        store,
+        openai,
+        classification_cache_path=settings.stage1_llm_cache_path,
+        ignore_classification_cache=settings.ignore_stage1_llm_cache,
+    )
     yield
 
 

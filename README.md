@@ -175,6 +175,8 @@ OPENAI_API_KEY
 OPENAI_MODEL
 ORDER_MODE_POLICY=review
 DRAFT_BL_REQUEST_RULE_ENABLED=true
+STAGE1_LLM_CACHE_PATH=.runtime/stage1_llm_cache.json
+IGNORE_STAGE1_LLM_CACHE=false
 SUPABASE_URL
 SUPABASE_SERVICE_ROLE_KEY
 DATA_DIR=../data
@@ -195,6 +197,12 @@ consignee mismatch). No fuzzy name matching is used.
 requests without explicit SI/BL comparison intent as deterministic `GENERAL`.
 Set it to `false` to leave those requests unresolved for the Stage 1 OpenAI
 fallback. The default remains `true`.
+
+Validated Stage 1 LLM decisions are persisted in `STAGE1_LLM_CACHE_PATH`, keyed
+by the normalized classification input, prompt version, and model ID. This
+makes repeated exports reproducible and avoids repeat provider calls. Set
+`IGNORE_STAGE1_LLM_CACHE=true` to bypass both cache reads and writes for a run.
+Model failures are never cached.
 
 Render's free tier spins the service down when idle. Open the app a few
 minutes before a demo so the API has time to wake up.

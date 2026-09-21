@@ -191,6 +191,49 @@ def test_cache_key_changes_with_model_and_prompt_version():
     assert model_a != version_b
 
 
+def test_classification_cache_persists_and_can_be_ignored(tmp_path):
+    email = {
+        "subject": "Unresolved operational request",
+        "body": "Please advise on the next step.",
+        "attachments": [],
+    }
+    cache_path = tmp_path / "stage1-cache.json"
+
+    class FakeLlm:
+        available = True
+        model = "synthetic-model"
+
+        def __init__(self, category):
+            self.category = category
+            self.calls = 0
+
+        def propose_classification(self, context):
+            self.calls += 1
+            return self.category
+
+    first_llm = FakeLlm("GENERAL")
+    first = ClassificationService(first_llm, cache_path=cache_path).classify(email)
+    assert first.category == EmailCategory.GENERAL
+    assert first_llm.calls == 1
+    assert cache_path.exists()
+
+    cached_llm = FakeLlm("SPAM")
+    cached_service = ClassificationService(cached_llm, cache_path=cache_path)
+    cached = cached_service.classify(email)
+    assert cached.category == EmailCategory.GENERAL
+    assert cached_llm.calls == 0
+    assert cached_service.metrics["disk_cache_hits"] == 1
+
+    ignored_llm = FakeLlm("SPAM")
+    ignored = ClassificationService(
+        ignored_llm,
+        cache_path=cache_path,
+        ignore_disk_cache=True,
+    ).classify(email)
+    assert ignored.category == EmailCategory.SPAM
+    assert ignored_llm.calls == 1
+
+
 def test_report_row_records_classification_trace_and_failure_code():
     proposal = ClassificationProposal(
         category=EmailCategory.GENERAL,

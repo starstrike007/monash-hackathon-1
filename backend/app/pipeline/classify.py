@@ -4,6 +4,7 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 import hashlib
 import json
+from pathlib import Path
 import re
 import threading
 import time
@@ -353,6 +354,8 @@ class ClassificationService:
         llm: Any | None = None,
         rules_only: bool = False,
         draft_bl_request_rule_enabled: bool | None = None,
+        cache_path: str | Path | None = None,
+        ignore_disk_cache: bool | None = None,
     ) -> None:
         self.llm = llm
         self.rules_only = rules_only
@@ -361,11 +364,17 @@ class ClassificationService:
             if draft_bl_request_rule_enabled is None
             else bool(draft_bl_request_rule_enabled)
         )
+        self.cache_path = Path(cache_path).resolve() if cache_path is not None else None
+        self.ignore_disk_cache = bool(ignore_disk_cache)
         self._cache: dict[str, ClassificationDecision] = {}
+        self._loaded_disk_keys: set[str] = set()
         self._inflight: dict[str, Future[ClassificationDecision]] = {}
         self._lock = threading.RLock()
         self.llm_calls = 0
         self.cache_hits = 0
+        self.disk_cache_hits = 0
+        self.disk_cache_write_failures = 0
+        self.disk_cache_load_error: str | None = None
         self.failures = 0
         self._usage_totals = {
             "input_tokens": 0,
@@ -374,6 +383,64 @@ class ClassificationService:
         }
         self._latency_seconds = 0.0
         self._failure_reason_counts: dict[str, int] = {}
+        if not self.rules_only and self.cache_path is not None and not self.ignore_disk_cache:
+            self._load_disk_cache()
+
+    @staticmethod
+    def _cached_decision(value: Any) -> ClassificationDecision | None:
+        if not isinstance(value, dict):
+            return None
+        try:
+            return ClassificationDecision(
+                category=EmailCategory(value["category"]),
+                decided_by="llm",
+                confidence=Confidence(value["confidence"]),
+                reason=_safe_reason(value.get("reason"), "Model classified the main request."),
+            )
+        except (KeyError, TypeError, ValueError):
+            return None
+
+    def _load_disk_cache(self) -> None:
+        if self.cache_path is None:
+            return
+        if not self.cache_path.exists():
+            return
+        try:
+            payload = json.loads(self.cache_path.read_text(encoding="utf-8"))
+            entries = payload.get("entries", {}) if isinstance(payload, dict) else {}
+            if not isinstance(entries, dict):
+                raise ValueError("cache entries must be an object")
+            for cache_key, raw_decision in entries.items():
+                decision = self._cached_decision(raw_decision)
+                if decision is not None:
+                    self._cache[str(cache_key)] = decision
+                    self._loaded_disk_keys.add(str(cache_key))
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            self.disk_cache_load_error = type(exc).__name__
+
+    def _persist_disk_cache_locked(self) -> None:
+        if self.ignore_disk_cache or self.cache_path is None:
+            return
+        entries = {
+            cache_key: {
+                "category": decision.category.value,
+                "confidence": decision.confidence.value,
+                "reason": decision.reason,
+            }
+            for cache_key, decision in self._cache.items()
+            if decision.decided_by == "llm" and not decision.model_failure
+        }
+        payload = {"version": 1, "entries": entries}
+        temporary_path = self.cache_path.with_name(f"{self.cache_path.name}.tmp")
+        try:
+            self.cache_path.parent.mkdir(parents=True, exist_ok=True)
+            temporary_path.write_text(
+                json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            temporary_path.replace(self.cache_path)
+        except OSError:
+            self.disk_cache_write_failures += 1
 
     @property
     def metrics(self) -> dict[str, Any]:
@@ -390,6 +457,11 @@ class ClassificationService:
             "provider_attempts": provider_attempts,
             "provider_retries": provider_retries,
             "cache_hits": self.cache_hits,
+            "disk_cache_hits": self.disk_cache_hits,
+            "disk_cache_entries": len(self._loaded_disk_keys),
+            "disk_cache_ignored": self.ignore_disk_cache or self.cache_path is None,
+            "disk_cache_load_error": self.disk_cache_load_error,
+            "disk_cache_write_failures": self.disk_cache_write_failures,
             "failures": self.failures,
             "llm_input_tokens": usage_totals["input_tokens"],
             "llm_output_tokens": usage_totals["output_tokens"],
@@ -444,6 +516,8 @@ class ClassificationService:
             cached = self._cache.get(cache_key)
             if cached is not None:
                 self.cache_hits += 1
+                if cache_key in self._loaded_disk_keys:
+                    self.disk_cache_hits += 1
                 return cached
             future = self._inflight.get(cache_key)
             if future is None:
@@ -462,6 +536,7 @@ class ClassificationService:
         with self._lock:
             if decision.decided_by == "llm":
                 self._cache[cache_key] = decision
+                self._persist_disk_cache_locked()
             self._inflight.pop(cache_key, None)
             future.set_result(decision)
         return decision

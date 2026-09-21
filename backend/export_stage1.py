@@ -38,6 +38,8 @@ def main() -> None:
         llm,
         max_workers=args.max_workers,
         output_dir=args.output_dir,
+        classification_cache_path=settings.stage1_llm_cache_path,
+        ignore_classification_cache=settings.ignore_stage1_llm_cache,
     )
     run = orchestrator.run(rules_only=args.rules_only)
     output_dir = orchestrator._default_output_dir()

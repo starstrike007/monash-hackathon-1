@@ -88,7 +88,11 @@ Recommendation: retain the enabled default for the product because it avoids 43 
 
 ## Step 3 — Persistent Stage 1 LLM cache
 
-Pending.
+Implemented a versioned JSON cache for validated Stage 1 LLM decisions. The existing key includes normalized subject/body, prompt version and fingerprint, model ID, and normalized attachment metadata; sender and email ID are excluded. Writes use an atomic temporary-file replacement. Provider failures are not cached. `IGNORE_STAGE1_LLM_CACHE=true` bypasses both reads and writes. Tests use `tmp_path` to prove a second service instance reuses the first decision without a provider call and that ignore mode calls the provider instead.
+
+No full export was run for this step because the two-export OpenAI cap was exhausted in Steps 0 and 2.
+
+The disk cache is injected only at the application/export orchestration boundary. Standalone classifier instances remain memory-only unless given an explicit cache path, preventing shared-cache contamination in tests. Full backend check: 79 passed, 1 xfailed, 2 xpassed.
 
 ## Step 4 — Field-state analysis and evidence-backed fixes
 
