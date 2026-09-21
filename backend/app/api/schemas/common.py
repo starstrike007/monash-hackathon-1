@@ -78,6 +78,7 @@ class PipelineRunStatus(str, Enum):
     QUEUED = "queued"
     RUNNING = "running"
     COMPLETE = "complete"
+    DEGRADED = "degraded"
     FAILED = "failed"
 
 

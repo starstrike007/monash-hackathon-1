@@ -59,6 +59,13 @@ uses `.runtime/shipcheck_store.json` for local results. Set the variables in
 `backend/.env.example` in the environment before starting the API; the
 frontend example is the root `.env.example`.
 
+The Stage 2 text fallback is disabled by default. `LLM_CONSECUTIVE_FAILURE_THRESHOLD`
+(default `5`) stops new classification calls after repeated connection or
+authentication failures and labels skipped calls `llm_unavailable`.
+`LLM_DEGRADED_FAILURE_SHARE` (default `0.10`) controls when a completed run is
+reported as `degraded` instead of `complete`. Provider failures retain distinct
+connection, authentication, rate-limit, bad-request, and timeout reason codes.
+
 ## Architecture
 
 The browser talks only to the FastAPI API. FastAPI reads the email corpus and
@@ -103,6 +110,8 @@ Set these environment variables on Render:
 OPENAI_API_KEY
 OPENAI_MODEL
 STAGE2_LLM_FALLBACK=0
+LLM_CONSECUTIVE_FAILURE_THRESHOLD=5
+LLM_DEGRADED_FAILURE_SHARE=0.10
 SUPABASE_URL
 SUPABASE_SERVICE_ROLE_KEY
 DATA_DIR=../data
@@ -143,6 +152,23 @@ refresh on `/dashboard`, `/inbox`, or `/review/...` is handled by the Vite app.
   root-level frontend.
 
 Never commit `.env` files, service-role keys, OpenAI keys, or other secrets.
+
+## Fresh export and scoring commands
+
+Run an export into a new runtime/output directory and verify its summary says
+`run_status` is `complete` (or explicitly `degraded`) and `entries` is `520`
+before scoring that same submission:
+
+```powershell
+$env:STAGE2_LLM_FALLBACK='0'
+& C:\Users\User\monash-hackathon\backend\.venv\Scripts\python.exe C:\Users\User\monash-hackathon\backend\export_stage1.py --rules-only --data-dir C:\Users\User\monash-hackathon\data --runtime-dir C:\Users\User\monash-hackathon\.runtime\fresh-rules-runtime --output-dir C:\Users\User\monash-hackathon\.runtime\fresh-rules-output
+$env:PYTHONIOENCODING='utf-8'
+& C:\Users\User\monash-hackathon\backend\.venv\Scripts\python.exe C:\Users\User\sdoc-eval\server\score_cli.py C:\Users\User\monash-hackathon\.runtime\fresh-rules-output\submission.json --json
+```
+
+The scorer is external to this repository and must only be run against the
+fresh output after the 520-entry check. The checked-in backend is hosted on
+Render, the frontend on Vercel, and deployed results use Supabase.
 
 ## Checks
 

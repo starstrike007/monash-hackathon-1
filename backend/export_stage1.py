@@ -39,6 +39,8 @@ def main() -> None:
         max_workers=args.max_workers,
         output_dir=args.output_dir,
         stage2_llm_fallback=settings.stage2_llm_fallback,
+        llm_consecutive_failure_threshold=settings.llm_consecutive_failure_threshold,
+        llm_degraded_failure_share=settings.llm_degraded_failure_share,
     )
     run = orchestrator.run(rules_only=args.rules_only)
     output_dir = orchestrator._default_output_dir()

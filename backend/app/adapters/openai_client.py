@@ -129,6 +129,12 @@ def failure_reason_code(error: Exception) -> str:
 
     name = type(error).__name__
     status_code = _status_code(error)
+    if status_code in {401, 403} or name in {
+        "AuthenticationError",
+        "PermissionDeniedError",
+        "UnauthorizedError",
+    }:
+        return "llm_authentication"
     if status_code == 429 or name in {"RateLimitError", "RateLimitException"}:
         return "llm_rate_limited"
     if (
@@ -145,6 +151,14 @@ def failure_reason_code(error: Exception) -> str:
         return "llm_timeout"
     if status_code == 400 or name in {"BadRequestError", "InvalidRequestError"}:
         return "llm_bad_request"
+    if isinstance(error, (ConnectionError, OSError)) or name in {
+        "APIConnectionError",
+        "ConnectError",
+        "ConnectTimeout",
+        "InternalServerError",
+        "ServiceUnavailableError",
+    }:
+        return "llm_connection"
     return "llm_error"
 
 
@@ -161,16 +175,14 @@ def safe_exception_message(error: Exception) -> str:
         return "OpenAI API request timed out"
     if reason == "llm_bad_request":
         return "OpenAI API rejected the request"
+    if reason == "llm_authentication":
+        return "OpenAI API authentication failed"
+    if reason == "llm_connection":
+        return "OpenAI API connection failed"
     if name == "ClassificationOutputError":
         return "Structured classification response was empty or unusable"
     if name in {"ValidationError", "JSONDecodeError", "APIResponseValidationError"}:
         return "Structured classification response failed validation"
-    if isinstance(error, (ConnectionError, OSError)) or name in {
-        "APIConnectionError",
-        "InternalServerError",
-        "ServiceUnavailableError",
-    }:
-        return "OpenAI API connection failed"
     status_code = _status_code(error)
     if status_code is not None:
         return f"OpenAI API request failed (HTTP {status_code})"

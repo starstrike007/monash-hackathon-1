@@ -47,6 +47,8 @@ async def lifespan(app: FastAPI):
         store,
         openai,
         stage2_llm_fallback=settings.stage2_llm_fallback,
+        llm_consecutive_failure_threshold=settings.llm_consecutive_failure_threshold,
+        llm_degraded_failure_share=settings.llm_degraded_failure_share,
     )
     yield
 

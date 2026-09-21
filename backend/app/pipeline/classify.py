@@ -310,9 +310,15 @@ def _safe_reason(value: Any, fallback: str) -> str:
 class ClassificationService:
     """Rules-first Stage 1 classifier with bounded, deduplicated LLM calls."""
 
-    def __init__(self, llm: Any | None = None, rules_only: bool = False) -> None:
+    def __init__(
+        self,
+        llm: Any | None = None,
+        rules_only: bool = False,
+        consecutive_failure_threshold: int = 5,
+    ) -> None:
         self.llm = llm
         self.rules_only = rules_only
+        self.consecutive_failure_threshold = max(1, int(consecutive_failure_threshold))
         self._cache: dict[str, ClassificationDecision] = {}
         self._inflight: dict[str, Future[ClassificationDecision]] = {}
         self._lock = threading.RLock()
@@ -326,6 +332,9 @@ class ClassificationService:
         }
         self._latency_seconds = 0.0
         self._failure_reason_counts: dict[str, int] = {}
+        self._consecutive_provider_failures = 0
+        self._provider_halted = False
+        self._provider_halt_count = 0
 
     @property
     def metrics(self) -> dict[str, Any]:
@@ -335,6 +344,9 @@ class ClassificationService:
             usage_totals = dict(self._usage_totals)
             latency_seconds = round(self._latency_seconds, 6)
             failure_reason_counts = dict(self._failure_reason_counts)
+            consecutive_provider_failures = self._consecutive_provider_failures
+            provider_halted = self._provider_halted
+            provider_halt_count = self._provider_halt_count
         return {
             "rules_only": self.rules_only,
             "llm_calls": self.llm_calls,
@@ -348,6 +360,10 @@ class ClassificationService:
             "llm_latency_seconds": latency_seconds,
             "llm_usage_totals": usage_totals,
             "failure_reason_counts": failure_reason_counts,
+            "consecutive_failure_threshold": self.consecutive_failure_threshold,
+            "consecutive_provider_failures": consecutive_provider_failures,
+            "provider_halted": provider_halted,
+            "provider_halt_count": provider_halt_count,
         }
 
     def classify_many(
@@ -386,6 +402,17 @@ class ClassificationService:
                 exception_message=getattr(self.llm, "unavailable_exception_message", None),
             )
 
+        with self._lock:
+            if self._provider_halted:
+                self._provider_halt_count += 1
+                return self._fallback(
+                    "llm_unavailable",
+                    model_failure=True,
+                    failure_reason_code="llm_unavailable",
+                    exception_class="ProviderCircuitOpen",
+                    exception_message="OpenAI provider unavailable after consecutive failures",
+                )
+
         cache_key = classification_cache_key(email, model_id=str(getattr(self.llm, "model", "")))
         owner = False
         with self._lock:
@@ -407,12 +434,31 @@ class ClassificationService:
         with self._lock:
             self.llm_calls += 1
         decision = self._call_llm(email)
+        self._record_provider_result(decision)
         with self._lock:
             if decision.decided_by == "llm":
                 self._cache[cache_key] = decision
             self._inflight.pop(cache_key, None)
             future.set_result(decision)
         return decision
+
+    def _record_provider_result(self, decision: ClassificationDecision) -> None:
+        """Open the provider circuit after repeated connection/auth failures.
+
+        A successful call or a different failure class breaks the consecutive
+        sequence. The guard is intentionally narrow: rate limits, bad requests,
+        and timeouts remain visible per call and do not masquerade as a
+        connection/authentication outage.
+        """
+
+        failure_code = decision.failure_reason_code
+        with self._lock:
+            if failure_code in {"llm_connection", "llm_authentication"}:
+                self._consecutive_provider_failures += 1
+                if self._consecutive_provider_failures >= self.consecutive_failure_threshold:
+                    self._provider_halted = True
+            else:
+                self._consecutive_provider_failures = 0
 
     def _record_call_metrics(
         self,

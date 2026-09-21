@@ -13,6 +13,20 @@ def _env_bool(name: str, default: bool = False) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _env_int(name: str, default: int) -> int:
+    try:
+        return int(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        return default
+
+
+def _env_float(name: str, default: float) -> float:
+    try:
+        return float(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        return default
+
+
 class Settings:
     def __init__(self) -> None:
         self.backend_dir = Path(__file__).resolve().parents[1]
@@ -31,6 +45,12 @@ class Settings:
             self.openai_key_source = None
         self.openai_model = os.getenv("OPENAI_MODEL", "gpt-5.6-luna")
         self.openai_timeout_seconds = float(os.getenv("OPENAI_TIMEOUT_SECONDS", "20"))
+        self.llm_consecutive_failure_threshold = max(
+            1, _env_int("LLM_CONSECUTIVE_FAILURE_THRESHOLD", 5)
+        )
+        self.llm_degraded_failure_share = min(
+            1.0, max(0.0, _env_float("LLM_DEGRADED_FAILURE_SHARE", 0.10))
+        )
         self.stage2_llm_fallback = _env_bool("STAGE2_LLM_FALLBACK", default=False)
         self.openai_reasoning_effort_classify = (
             os.getenv("OPENAI_REASONING_EFFORT_CLASSIFY", "").strip() or None

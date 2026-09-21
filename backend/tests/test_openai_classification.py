@@ -3,11 +3,15 @@ from __future__ import annotations
 from types import SimpleNamespace
 from typing import Any
 
+import pytest
+
 from app.adapters.openai_client import (
     ClassificationOutputError,
     ClassificationProposal,
     OpenAIClient,
+    failure_reason_code,
 )
+from app.adapters.local_store import LocalStore
 from app.api.schemas.common import Confidence, EmailCategory
 from app.pipeline.classify import ClassificationService, classification_cache_key
 from app.pipeline.orchestrator import PipelineOrchestrator
@@ -61,6 +65,14 @@ class BadRequestError(Exception):
 
 class RetryableProviderError(Exception):
     retryable = True
+
+
+class AuthenticationError(Exception):
+    status_code = 401
+
+
+class ConnectionProviderError(ConnectionError):
+    pass
 
 
 def test_classification_schema_is_strict_and_all_fields_are_required():
@@ -167,6 +179,20 @@ def test_permanent_bad_request_does_not_retry():
     assert len(mock.responses.calls) == 1
 
 
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (ConnectionProviderError("offline"), "llm_connection"),
+        (AuthenticationError("unauthorized"), "llm_authentication"),
+        (RateLimitError(), "llm_rate_limited"),
+        (BadRequestError("invalid"), "llm_bad_request"),
+        (TimeoutError("slow"), "llm_timeout"),
+    ],
+)
+def test_provider_failures_have_distinct_safe_reason_codes(error, expected):
+    assert failure_reason_code(error) == expected
+
+
 def test_missing_key_is_recorded_without_calling_provider():
     client = OpenAIClient("", "synthetic-model")
 
@@ -250,3 +276,91 @@ def test_report_row_records_safe_failure_diagnostics():
     assert row["exception_class"] == "APIConnectionError"
     assert row["exception_message"] == "OpenAI API connection failed"
     assert "secret body" not in row["exception_message"]
+
+
+class _AlwaysUnavailable:
+    available = True
+    model = "synthetic-model"
+
+    def __init__(self, reason_codes: list[str]) -> None:
+        self.reason_codes = list(reason_codes)
+        self.calls = 0
+
+    def propose_classification_result(self, context: dict[str, Any]) -> Any:
+        self.calls += 1
+        reason = self.reason_codes[min(self.calls - 1, len(self.reason_codes) - 1)]
+        return SimpleNamespace(
+            proposal=None,
+            failure_reason_code=reason,
+            attempts=1,
+            exception_class="SyntheticProviderError",
+            exception_message="synthetic provider failure",
+        )
+
+
+def test_connection_auth_circuit_stops_remaining_calls_with_llm_unavailable():
+    provider = _AlwaysUnavailable(
+        ["llm_connection", "llm_authentication", "llm_connection"]
+    )
+    service = ClassificationService(provider, consecutive_failure_threshold=3)
+    emails = [
+        {
+            "email_id": f"synthetic-{index}",
+            "subject": f"Unresolved question {index}",
+            "body": "Could you help with this booking?",
+            "attachments": [],
+        }
+        for index in range(7)
+    ]
+
+    decisions = service.classify_many(emails, max_workers=1)
+
+    assert provider.calls == 3
+    assert [decision.failure_reason_code for decision in decisions[:3]] == [
+        "llm_connection",
+        "llm_authentication",
+        "llm_connection",
+    ]
+    assert all(decision.decided_by == "fallback_default" for decision in decisions)
+    assert all(decision.reason == "llm_unavailable" for decision in decisions[3:])
+    assert all(
+        decision.failure_reason_code == "llm_unavailable" for decision in decisions[3:]
+    )
+    assert service.metrics["provider_halted"] is True
+    assert service.metrics["provider_halt_count"] == 4
+
+
+class _SyntheticLoader:
+    def __init__(self, emails: list[dict[str, Any]]) -> None:
+        self.emails = emails
+        self.data_dir = None
+
+    def list_emails(self) -> list[dict[str, Any]]:
+        return list(self.emails)
+
+
+def test_run_is_degraded_when_llm_failure_share_exceeds_threshold(tmp_path):
+    emails = [
+        {
+            "email_id": f"synthetic-{index}",
+            "subject": f"Unresolved question {index}",
+            "body": "Could you help with this booking?",
+            "attachments": [],
+        }
+        for index in range(20)
+    ]
+    orchestrator = PipelineOrchestrator(
+        _SyntheticLoader(emails),
+        LocalStore(tmp_path / "runtime"),
+        _AlwaysUnavailable(["llm_connection"]),
+        max_workers=1,
+        output_dir=tmp_path / "output",
+        llm_consecutive_failure_threshold=2,
+        llm_degraded_failure_share=0.10,
+    )
+
+    run = orchestrator.run()
+
+    assert run["status"] == "degraded"
+    assert orchestrator.last_classification_metrics["failure_share"] == 1.0
+    assert run["error_summary"]["llm_failed_items"] == 20

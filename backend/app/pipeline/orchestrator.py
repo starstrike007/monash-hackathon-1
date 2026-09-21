@@ -60,6 +60,8 @@ class PipelineOrchestrator:
         max_workers: int = 4,
         output_dir: str | Path | None = None,
         stage2_llm_fallback: bool = False,
+        llm_consecutive_failure_threshold: int = 5,
+        llm_degraded_failure_share: float = 0.10,
     ) -> None:
         self.loader = loader
         self.store = store
@@ -67,6 +69,8 @@ class PipelineOrchestrator:
         self.max_workers = max(1, int(max_workers))
         self.output_dir = Path(output_dir).resolve() if output_dir else None
         self.stage2_llm_fallback = bool(stage2_llm_fallback)
+        self.llm_consecutive_failure_threshold = max(1, int(llm_consecutive_failure_threshold))
+        self.llm_degraded_failure_share = min(1.0, max(0.0, float(llm_degraded_failure_share)))
         self.last_classification_metrics: dict[str, Any] = {}
         self.last_stage2_metrics: dict[str, Any] = {
             "stage2_llm_fallback": self.stage2_llm_fallback,
@@ -139,7 +143,11 @@ class PipelineOrchestrator:
         failures: list[dict[str, Any]] = []
         stage_counts = {number: 0 for number, _ in STAGES}
         classification_report: dict[str, dict[str, Any]] = {}
-        classifier = ClassificationService(self.llm, rules_only=rules_only)
+        classifier = ClassificationService(
+            self.llm,
+            rules_only=rules_only,
+            consecutive_failure_threshold=self.llm_consecutive_failure_threshold,
+        )
         decisions = classifier.classify_many(emails, max_workers=self.max_workers)
         for email, decision in zip(emails, decisions):
             email_id = email["email_id"]
@@ -155,6 +163,23 @@ class PipelineOrchestrator:
             except Exception as exc:
                 logger.exception("Stage 1 failed for %s", email_id)
                 failures.append({"email_id": email_id, "message": str(exc), "retryable": True})
+
+        classification_metrics = classifier.metrics
+        classification_failure_count = int(classification_metrics.get("failures", 0))
+        classification_failure_share = classification_failure_count / max(1, len(emails))
+        classification_metrics.update(
+            {
+                "failure_share": round(classification_failure_share, 6),
+                "degraded_failure_share_threshold": self.llm_degraded_failure_share,
+            }
+        )
+        self.last_classification_metrics = classification_metrics
+        if failures:
+            run_status = "failed"
+        elif classification_failure_share > self.llm_degraded_failure_share:
+            run_status = "degraded"
+        else:
+            run_status = "complete"
 
         for stage_number, stage_name in STAGES:
             status = "partial" if failures else "complete"
@@ -175,15 +200,19 @@ class PipelineOrchestrator:
                     ),
                 ).model_dump(mode="json"),
             )
+        error_summary: dict[str, int] = {}
+        if failures:
+            error_summary["failed_items"] = len(failures)
+        if classification_failure_count:
+            error_summary["llm_failed_items"] = classification_failure_count
         self.store.update_run(
             run_id,
-            status="complete" if not failures else "failed",
+            status=run_status,
             finished_at=datetime.now(timezone.utc).isoformat(),
             summary=dict(counters),
-            error_summary={"failed_items": len(failures)} if failures else {},
+            error_summary=error_summary,
         )
         self.store.save_failures(run_id, failures)
-        self.last_classification_metrics = classifier.metrics
         if run_full_dataset:
             self.export_outputs(classification_report)
         return self.store.get_run(run_id) or run
