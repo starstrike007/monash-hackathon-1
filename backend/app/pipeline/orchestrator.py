@@ -24,11 +24,17 @@ from app.api.schemas.common import (
     dump_model,
 )
 from app.api.schemas.pipeline import PipelineStageProgress
+from app.services.review_queue_service import (
+    clear_processing_failure,
+    sync_processing_failure,
+    sync_review_item,
+)
 from app.services.submission_service import build_submission
+from app.services.timestamps import ensure_received_timestamps, generate_received_at
 from app.pipeline.classify import ClassificationDecision, ClassificationService, classify_email
 from app.pipeline.compare import compare_documents
 from app.pipeline.decide import decide_result
-from app.pipeline.extract import extract_document
+from app.pipeline.extract import _LOCATION_KEYS, extract_document, locate_value
 from app.pipeline.normalize import normalize_field, normalize_text
 
 
@@ -65,9 +71,25 @@ class PipelineOrchestrator:
         return Path(self.store.runtime_dir) / "output"
 
     def ensure_seeded(self) -> None:
-        if self.store.list_latest_results():
+        # A run can legitimately finish with no saved result for a failed
+        # item. The run record still proves the store has been initialized;
+        # reseeding here would erase the visible retryable failure.
+        if self.store.list_latest_results() or self.store.latest_run():
+            ensure_received_timestamps(self.store, self.loader)
             return
         self.run()
+        ensure_received_timestamps(self.store, self.loader)
+
+    def _with_runtime_attachments(self, email: dict[str, Any]) -> dict[str, Any]:
+        """Merge reviewer-uploaded attachments into the immutable dataset email."""
+
+        meta = self.store.get_email_meta(email["email_id"]) or {}
+        excluded = set(meta.get("excluded_attachments") or [])
+        paths: list[str] = []
+        for path in [*(email.get("attachments") or []), *(meta.get("uploaded_attachments") or [])]:
+            if path not in excluded and path not in paths:
+                paths.append(path)
+        return {**email, "attachments": paths}
 
     def run(
         self,
@@ -76,7 +98,7 @@ class PipelineOrchestrator:
         rules_only: bool = False,
     ) -> dict[str, Any]:
         run_full_dataset = email_ids is None and not retry_failed_only
-        emails = self.loader.list_emails()
+        emails = [self._with_runtime_attachments(email) for email in self.loader.list_emails()]
         if retry_failed_only and not email_ids:
             latest_run = self.store.latest_run()
             if latest_run:
@@ -108,12 +130,37 @@ class PipelineOrchestrator:
         stage_counts = {number: 0 for number, _ in STAGES}
         classification_report: dict[str, dict[str, Any]] = {}
         classifier = ClassificationService(self.llm, rules_only=rules_only)
-        decisions = classifier.classify_many(emails, max_workers=self.max_workers)
-        for email, decision in zip(emails, decisions):
+
+        # An email with an active category_override keeps that category on
+        # every rerun (retry, full run, etc.) without re-invoking the
+        # classifier - the override stands until a reviewer reverts it.
+        overridden: dict[str, ClassificationDecision] = {}
+        to_classify: list[dict[str, Any]] = []
+        for email in emails:
+            meta = self.store.get_email_meta(email["email_id"])
+            override = meta.get("category_override") if meta else None
+            if override:
+                overridden[email["email_id"]] = ClassificationDecision(
+                    category=EmailCategory(override),
+                    decided_by="override",
+                    confidence=Confidence.HIGH,
+                    reason="Category manually overridden by a reviewer.",
+                )
+            else:
+                to_classify.append(email)
+        classified = classifier.classify_many(to_classify, max_workers=self.max_workers) if to_classify else []
+        decision_by_email = dict(zip((email["email_id"] for email in to_classify), classified))
+        decision_by_email.update(overridden)
+
+        for email in emails:
             email_id = email["email_id"]
+            decision = decision_by_email[email_id]
+            self._record_email_meta(email_id, decision)
             try:
                 result = self.process_email(email, run_id, category=decision.category)
                 self.store.save_result(dump_model(result))
+                sync_review_item(self.store, dump_model(result))
+                clear_processing_failure(self.store, email_id)
                 counters[result.category.value] += 1
                 if result.status:
                     counters[result.status.value] += 1
@@ -123,6 +170,7 @@ class PipelineOrchestrator:
             except Exception as exc:
                 logger.exception("Stage 1 failed for %s", email_id)
                 failures.append({"email_id": email_id, "message": str(exc), "retryable": True})
+                sync_processing_failure(self.store, email_id, str(exc))
 
         for stage_number, stage_name in STAGES:
             status = "partial" if failures else "complete"
@@ -180,6 +228,21 @@ class PipelineOrchestrator:
         )
         return submission
 
+    def _record_email_meta(self, email_id: str, decision: ClassificationDecision) -> None:
+        meta = self.store.get_email_meta(email_id)
+        changes: dict[str, Any] = {}
+        if meta is None or meta.get("received_at") is None:
+            changes["received_at"] = generate_received_at(email_id)
+        if meta is None or meta.get("category_machine") is None:
+            # Set once, from a real rules/llm decision - an override decision
+            # must never overwrite the enduring "originally classified as X" label.
+            if decision.decided_by != "override":
+                changes["classification_method"] = "rules" if decision.decided_by == "rule" else "llm"
+                changes["classification_reason"] = decision.reason
+                changes["category_machine"] = decision.category.value
+        if changes:
+            self.store.upsert_email_meta(email_id, **changes)
+
     @staticmethod
     def _classification_report_row(
         email: dict[str, Any],
@@ -207,6 +270,7 @@ class PipelineOrchestrator:
         run_id: str,
         category: EmailCategory | None = None,
     ):
+        email = self._with_runtime_attachments(email)
         email_id = email["email_id"]
         category = category or self.classify_email(email)
         if category != EmailCategory.BL_COMPARISON:
@@ -231,6 +295,37 @@ class PipelineOrchestrator:
             )
 
         parsed_documents = [parse_attachment(self.loader, path) for path in attachment_paths]
+        readable_count = sum(1 for parsed in parsed_documents if parsed.readable)
+        if readable_count == 0:
+            return decide_result(
+                email_id=email_id,
+                run_id=run_id,
+                category=category,
+                comparisons=[],
+                documents=[self.extract_document(parsed, None) for parsed in parsed_documents],
+                document_reason=ReviewReason.UNREADABLE,
+                notes=["None of the referenced attachments produced readable text."],
+            )
+        if len(parsed_documents) < 2:
+            return decide_result(
+                email_id=email_id,
+                run_id=run_id,
+                category=category,
+                comparisons=[],
+                documents=[self.extract_document(parsed, None) for parsed in parsed_documents],
+                document_reason=ReviewReason.MISSING_ATTACHMENT,
+                notes=["Fewer than two usable attachments were available for the SI/BL pair."],
+            )
+        if readable_count < len(parsed_documents):
+            return decide_result(
+                email_id=email_id,
+                run_id=run_id,
+                category=category,
+                comparisons=[],
+                documents=[self.extract_document(parsed, None) for parsed in parsed_documents],
+                document_reason=ReviewReason.UNREADABLE,
+                notes=["At least one referenced attachment could not be read as text or an image."],
+            )
         documents = []
         for parsed in parsed_documents:
             role = None
@@ -246,8 +341,6 @@ class PipelineOrchestrator:
         notes: list[str] = []
         if len(si_documents) == 0 or len(bl_documents) == 0:
             reason = ReviewReason.WRONG_DOC_TYPE if all(document.readable for document in documents) else ReviewReason.UNREADABLE
-            if len(si_documents) == 0 and len(bl_documents) == 0:
-                reason = ReviewReason.MISSING_ATTACHMENT
             notes.append("The SI and BL could not be resolved unambiguously from the attachments.")
             return decide_result(
                 email_id=email_id,
@@ -277,6 +370,38 @@ class PipelineOrchestrator:
             comparisons=comparisons,
             documents=documents,
             notes=notes,
+        )
+
+    def process_email_with_roles(
+        self, email: dict[str, Any], run_id: str, si_path: str, bl_path: str
+    ):
+        """Reprocess one email with explicit SI/BL attachment roles, for the
+        review queue's `wrong_doc_type` action: a reviewer overrides which
+        attachment is which instead of trusting the detected document type."""
+
+        email = self._with_runtime_attachments(email)
+        email_id = email["email_id"]
+        attachment_paths = email.get("attachments", [])
+        if si_path not in attachment_paths or bl_path not in attachment_paths or si_path == bl_path:
+            return decide_result(
+                email_id=email_id,
+                run_id=run_id,
+                category=EmailCategory.BL_COMPARISON,
+                comparisons=[],
+                documents=[],
+                document_reason=ReviewReason.WRONG_DOC_TYPE,
+                notes=["The chosen SI/BL paths are not two distinct attachments on this email."],
+            )
+        si_document = self.extract_document(parse_attachment(self.loader, si_path), DocumentRole.SI)
+        bl_document = self.extract_document(parse_attachment(self.loader, bl_path), DocumentRole.BL)
+        comparisons = compare_documents(si_document, bl_document)
+        return decide_result(
+            email_id=email_id,
+            run_id=run_id,
+            category=EmailCategory.BL_COMPARISON,
+            comparisons=comparisons,
+            documents=[si_document, bl_document],
+            notes=["SI/BL roles reassigned by a reviewer."],
         )
 
     def classify_email(self, email: dict[str, Any]) -> EmailCategory:
@@ -321,8 +446,11 @@ class PipelineOrchestrator:
             field.state = ExtractionState.FOUND
             field.source = ExtractionSource.LLM
             field.confidence = Confidence.MEDIUM
+            location = {key: value for key, value in locate_value(parsed, proposed).items() if key in _LOCATION_KEYS}
             field.evidence = FieldEvidence(
                 snippet=f"Validated model value: {proposed}",
+                quoted_text=proposed,
                 source_path=parsed.path,
+                **location,
             )
         return document

@@ -1,0 +1,253 @@
+from __future__ import annotations
+
+import base64
+from datetime import datetime, timezone
+
+import pytest
+from fastapi.testclient import TestClient
+
+from app.main import app
+from app.pipeline.orchestrator import PipelineOrchestrator
+from app.services.timestamps import KUALA_LUMPUR, generate_received_at
+
+from .conftest import FIXTURE_DATA_DIR
+from app.settings import settings
+
+
+@pytest.fixture
+def api_client(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "data_dir", FIXTURE_DATA_DIR)
+    monkeypatch.setattr(settings, "runtime_dir", tmp_path / "runtime")
+    monkeypatch.setattr(PipelineOrchestrator, "_default_output_dir", lambda self: tmp_path / "output")
+    monkeypatch.setattr(settings, "openai_api_key", "")
+    monkeypatch.setattr(settings, "supabase_url", "")
+    monkeypatch.setattr(settings, "supabase_service_role_key", "")
+    with TestClient(app) as client:
+        yield client
+
+
+def test_timestamps_are_deterministic_and_in_business_hours() -> None:
+    now = datetime(2026, 9, 21, tzinfo=timezone.utc)
+    first = generate_received_at("email_001", now=now)
+    second = generate_received_at("email_001", now=now)
+    other = generate_received_at("email_002", now=now)
+
+    assert first == second, "the same email_id must always produce the same timestamp"
+    assert first != other
+
+    parsed = datetime.fromisoformat(first).astimezone(KUALA_LUMPUR)
+    assert 9 <= parsed.hour < 18
+
+
+def test_override_away_from_comparison_clears_status(api_client):
+    api_client.post("/api/pipeline/run", json={"email_ids": ["email_fixture_ok"]})
+    before = api_client.get("/api/emails/email_fixture_ok").json()
+    assert before["category"] == "BL_COMPARISON"
+    assert before["status"] == "OK"
+
+    response = api_client.post(
+        "/api/emails/email_fixture_ok/override",
+        json={"category": "SPAM", "actor": "qa"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["result"]["category"] == "SPAM"
+    assert body["result"]["status"] is None
+    assert body["email_meta"]["category_machine"] == "BL_COMPARISON"
+    assert body["email_meta"]["category_override"] == "SPAM"
+
+    after = api_client.get("/api/emails/email_fixture_ok").json()
+    assert after["category"] == "SPAM"
+    assert after["category_machine"] == "BL_COMPARISON"
+    assert any(
+        entry["action"] == "category_override"
+        and entry.get("after", {}).get("category") == "SPAM"
+        for entry in app.state.store.list_audit_log("email_fixture_ok")
+    )
+
+
+def test_override_into_comparison_with_no_attachments_opens_review_item(api_client):
+    api_client.post("/api/pipeline/run", json={})
+    before = api_client.get("/api/emails/email_fixture_general").json()
+    assert before["category"] != "BL_COMPARISON"
+
+    response = api_client.post(
+        "/api/emails/email_fixture_general/override",
+        json={"category": "BL_COMPARISON", "actor": "qa"},
+    )
+    assert response.status_code == 200
+    result = response.json()["result"]
+    assert result["category"] == "BL_COMPARISON"
+    assert result["status"] == "NEEDS_REVIEW"
+    assert result["review_reason"] == "missing_attachment"
+
+    items = api_client.get(
+        "/api/review/items", params={"status": "open", "reason": "missing_attachment"}
+    ).json()["items"]
+    assert any(item["email_id"] == "email_fixture_general" for item in items)
+
+    # Reverting (category: null) restores the machine category and closes the review item.
+    revert = api_client.post(
+        "/api/emails/email_fixture_general/override",
+        json={"category": None, "actor": "qa"},
+    )
+    assert revert.status_code == 200
+    reverted = revert.json()
+    assert reverted["result"]["category"] == reverted["email_meta"]["category_machine"]
+    assert reverted["email_meta"]["category_override"] is None
+
+    items_after = api_client.get(
+        "/api/review/items", params={"status": "open", "reason": "missing_attachment"}
+    ).json()["items"]
+    assert not any(item["email_id"] == "email_fixture_general" for item in items_after)
+
+
+def test_review_resolution_recomputes_status_and_closes_item(api_client):
+    api_client.post("/api/pipeline/run", json={"email_ids": ["email_fixture_placeholder"]})
+    detail = api_client.get("/api/emails/email_fixture_placeholder").json()
+    assert detail["status"] == "NEEDS_REVIEW"
+    assert detail["review_reason"] == "missing_value"
+
+    items = api_client.get(
+        "/api/review/items", params={"status": "open", "email_id": "email_fixture_placeholder"}
+    ).json()["items"]
+    assert len(items) == 1
+    item_id = items[0]["id"]
+
+    resolve = api_client.post(
+        f"/api/review/items/{item_id}/resolve",
+        json={"action": "confirm", "field_name": "gross_weight_kg", "reviewer_id": "qa"},
+    )
+    assert resolve.status_code == 200
+    body = resolve.json()
+    assert body["review_item"]["status"] == "resolved"
+
+    after = api_client.get("/api/emails/email_fixture_placeholder").json()
+    assert after["status"] in {"OK", "MISMATCH"}
+    assert after["review_reason"] is None
+
+
+def test_export_submission_uses_effective_category(api_client):
+    api_client.post("/api/pipeline/run", json={"email_ids": ["email_fixture_ok"]})
+    api_client.post(
+        "/api/emails/email_fixture_ok/override", json={"category": "INVOICE_QUERY", "actor": "qa"}
+    )
+
+    submission = api_client.get("/api/export/submission").json()
+    assert submission["email_fixture_ok"]["category"] == "INVOICE_QUERY"
+
+
+def test_dashboard_uses_effective_category_after_override(api_client):
+    api_client.post("/api/pipeline/run", json={})
+    before = api_client.get("/api/dashboard/summary").json()
+
+    api_client.post(
+        "/api/emails/email_fixture_mismatch/override",
+        json={"category": "GENERAL", "actor": "qa"},
+    )
+    after = api_client.get("/api/dashboard/summary").json()
+
+    assert after["comparison_requests"] == before["comparison_requests"] - 1
+    assert after["categories"]["GENERAL"] == before["categories"].get("GENERAL", 0) + 1
+
+
+def test_missing_attachment_upload_reruns_and_writes_audit(api_client):
+    api_client.post("/api/pipeline/run", json={"email_ids": ["email_fixture_missing_bl"]})
+    item = api_client.get(
+        "/api/review/items", params={"status": "open", "email_id": "email_fixture_missing_bl"}
+    ).json()["items"][0]
+    replacement = (FIXTURE_DATA_DIR / "attachments" / "fixture_ok_bl.txt").read_bytes()
+
+    response = api_client.post(
+        f"/api/review/items/{item['id']}/resolve",
+        json={
+            "action": "upload_missing",
+            "role": "BL",
+            "filename": "replacement-bl.txt",
+            "content_base64": base64.b64encode(replacement).decode("ascii"),
+            "reviewer_id": "qa",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["result"]["status"] == "OK"
+    assert body["review_item"]["status"] == "resolved"
+    assert any(document["role"] == "BL" for document in body["result"]["documents"])
+
+    audit = api_client.get("/api/emails/email_fixture_missing_bl").json()
+    assert audit["attachments"][-1]["filename"].endswith("replacement-bl.txt")
+    uploaded_path = audit["attachments"][-1]["path"]
+    assert api_client.get(f"/api/attachments/{uploaded_path}/view").status_code == 200
+    assert api_client.get(f"/api/attachments/{uploaded_path}").status_code == 200
+    assert any(
+        entry["action"] == "review_upload" and entry.get("evidence", {}).get("path") == uploaded_path
+        for entry in app.state.store.list_audit_log("email_fixture_missing_bl")
+    )
+
+
+def test_confirm_absent_is_a_human_mismatch_and_audited(api_client):
+    api_client.post("/api/pipeline/run", json={"email_ids": ["email_fixture_placeholder"]})
+    item = api_client.get(
+        "/api/review/items", params={"status": "open", "email_id": "email_fixture_placeholder"}
+    ).json()["items"][0]
+
+    response = api_client.post(
+        f"/api/review/items/{item['id']}/resolve",
+        json={
+            "action": "confirm_absent",
+            "field_name": "gross_weight_kg",
+            "reviewer_id": "qa",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["result"]["status"] == "MISMATCH"
+    assert body["result"]["has_defect"] is True
+    field = next(
+        field
+        for document in body["result"]["documents"]
+        if document["role"] == "BL"
+        for field in document["fields"]
+        if field["field_name"] == "gross_weight_kg"
+    )
+    assert field["source"] == "human"
+    assert body["review_item"]["status"] == "resolved"
+    assert any(
+        entry["action"] == "review_resolved"
+        and entry.get("evidence", {}).get("after", {}).get("quoted_text") == "Confirmed absent by reviewer"
+        for entry in app.state.store.list_audit_log("email_fixture_placeholder")
+    )
+
+
+def test_unreadable_attachment_view_is_a_clean_response(api_client):
+    response = api_client.get("/api/attachments/fixture_empty.pdf/view")
+    assert response.status_code in {200, 415, 422}
+    assert response.status_code != 500
+
+
+def test_processing_failure_stays_retryable_for_one_email(api_client, monkeypatch):
+    orchestrator = app.state.orchestrator
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            orchestrator,
+            "process_email",
+            lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("synthetic failure")),
+        )
+        failed = api_client.post(
+            "/api/pipeline/run", json={"email_ids": ["email_fixture_general"]}
+        )
+        assert failed.status_code == 200
+
+    items = api_client.get(
+        "/api/review/items", params={"status": "open", "email_id": "email_fixture_general"}
+    ).json()["items"]
+    assert len(items) == 1
+    assert items[0]["reason"] == "processing_failed"
+
+    retried = api_client.post(
+        f"/api/review/items/{items[0]['id']}/resolve", json={"action": "retry"}
+    )
+    assert retried.status_code == 200
+    assert retried.json()["review_item"]["status"] == "resolved"

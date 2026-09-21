@@ -61,8 +61,53 @@ FIELD_PATTERNS: dict[CanonicalField, tuple[str, ...]] = {
 PLACEHOLDERS = {"", "TBA", "TBC", "N/A", "NA", "-", "_", "UNKNOWN", "TO BE ADVISED"}
 
 
-def _find_value(text: str, patterns: tuple[str, ...]) -> tuple[str | None, str | None]:
-    lines = text.replace("\r", "").split("\n")
+_LOCATION_KEYS = {
+    "page",
+    "line",
+    "sheet",
+    "cell",
+    "table_index",
+    "row_index",
+    "paragraph_index",
+    "bbox",
+}
+
+
+def _effective_lines(parsed: ParsedDocument) -> tuple[list[str], list[dict]]:
+    """Location-tagged lines to search, falling back to a plain line split
+    (line numbers only) for ParsedDocuments built without parser-time
+    location metadata, e.g. fixtures/tests that construct ParsedDocument
+    directly from a text blob."""
+
+    if parsed.lines:
+        return parsed.lines, parsed.line_meta
+    raw_lines = parsed.text.replace("\r", "").split("\n")
+    return raw_lines, [{"line": index + 1} for index in range(len(raw_lines))]
+
+
+def _resolve_cell(location: dict, value: str | None) -> dict:
+    """Narrow a row-level xlsx location down to the specific cell that holds
+    `value`, when the row's per-cell values were captured at parse time."""
+
+    location = dict(location)
+    cells = location.pop("cells", None)
+    if cells and value:
+        target = value.strip().upper()
+        for cell in cells:
+            if cell.get("value", "").strip().upper() == target:
+                location["cell"] = cell.get("cell")
+                return location
+        for cell in cells:
+            cell_value = cell.get("value", "").strip().upper()
+            if target and cell_value and target in cell_value:
+                location["cell"] = cell.get("cell")
+                return location
+    return location
+
+
+def _find_value(
+    lines: list[str], line_meta: list[dict], patterns: tuple[str, ...]
+) -> tuple[str | None, str | None, dict]:
     for index, line in enumerate(lines):
         stripped = line.strip().strip("|").strip()
         for pattern in patterns:
@@ -76,16 +121,44 @@ def _find_value(text: str, patterns: tuple[str, ...]) -> tuple[str | None, str |
             value = match.group(1).strip(" .|;\t")
             if "|" in value:
                 value = next((part.strip(" .;\t") for part in value.split("|") if part.strip()), "")
+            location = dict(line_meta[index]) if index < len(line_meta) else {}
             if not value and index + 1 < len(lines):
                 value = lines[index + 1].strip(" .|;\t")
+                if index + 1 < len(line_meta):
+                    location = dict(line_meta[index + 1])
             if value and pattern.lower().startswith(r"to\s+the\s+order\s+of"):
                 value = f"To the Order of {value}"
-            return (value or None), stripped
-    return None, None
+            location = _resolve_cell(location, value)
+            return (value or None), stripped, location
+    return None, None, {}
+
+
+def locate_value(parsed: ParsedDocument, value: str) -> dict:
+    """Best-effort location lookup for a value accepted from an LLM/vision
+    proposal: search the parsed lines for it so the review UI can still
+    point at where it came from. Returns {} if no line matches."""
+
+    lines, line_meta = _effective_lines(parsed)
+    target = re.sub(r"[^a-z0-9]+", "", value.lower())
+    if not target:
+        return {}
+    for index, line in enumerate(lines):
+        candidate = re.sub(r"[^a-z0-9]+", "", line.lower())
+        if target and target in candidate:
+            location = dict(line_meta[index]) if index < len(line_meta) else {}
+            return _resolve_cell(location, value)
+    return {}
+
+
+def _evidence(snippet: str | None, raw_value: str | None, location: dict, path: str) -> FieldEvidence:
+    quoted = snippet or raw_value or ""
+    fields = {key: value for key, value in location.items() if key in _LOCATION_KEYS and value is not None}
+    return FieldEvidence(snippet=quoted, quoted_text=quoted or None, source_path=path, **fields)
 
 
 def extract_document(parsed: ParsedDocument, role: DocumentRole | None = None) -> DocumentExtraction:
     fields: list[FieldExtraction] = []
+    lines, line_meta = _effective_lines(parsed)
     for field_name, patterns in FIELD_PATTERNS.items():
         if not parsed.readable:
             fields.append(
@@ -97,14 +170,14 @@ def extract_document(parsed: ParsedDocument, role: DocumentRole | None = None) -
             )
             continue
 
-        raw_value, snippet = _find_value(parsed.text, patterns)
+        raw_value, snippet, location = _find_value(lines, line_meta, patterns)
         if raw_value is None:
             extraction = FieldExtraction(
                 field_name=field_name,
                 state=ExtractionState.MISSING,
                 source=ExtractionSource.RULE,
                 confidence=Confidence.HIGH,
-                evidence=FieldEvidence(snippet=snippet or "", source_path=parsed.path),
+                evidence=_evidence(snippet, None, location, parsed.path),
             )
         elif raw_value.strip().upper() in PLACEHOLDERS:
             extraction = FieldExtraction(
@@ -113,7 +186,7 @@ def extract_document(parsed: ParsedDocument, role: DocumentRole | None = None) -
                 raw_value=raw_value,
                 source=ExtractionSource.RULE,
                 confidence=Confidence.HIGH,
-                evidence=FieldEvidence(snippet=snippet or raw_value, source_path=parsed.path),
+                evidence=_evidence(snippet, raw_value, location, parsed.path),
             )
         else:
             extraction = FieldExtraction(
@@ -122,7 +195,7 @@ def extract_document(parsed: ParsedDocument, role: DocumentRole | None = None) -
                 raw_value=raw_value,
                 source=ExtractionSource.RULE,
                 confidence=Confidence.HIGH,
-                evidence=FieldEvidence(snippet=snippet or raw_value, source_path=parsed.path),
+                evidence=_evidence(snippet, raw_value, location, parsed.path),
             )
         fields.append(normalize_extraction(extraction))
 

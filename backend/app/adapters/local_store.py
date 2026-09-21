@@ -26,6 +26,9 @@ class LocalStore:
             "results": {},
             "reviews": [],
             "failures": {},
+            "email_meta": {},
+            "review_items": {},
+            "audit_log": [],
         }
         if self.path.is_file():
             try:
@@ -106,6 +109,75 @@ class LocalStore:
     def add_review(self, review: dict[str, Any]) -> None:
         self.state["reviews"].append(review)
         self.persist()
+
+    # -- Email metadata: classification provenance + category override -----
+
+    def get_email_meta(self, email_id: str) -> dict[str, Any] | None:
+        return self.state["email_meta"].get(email_id)
+
+    def list_email_meta(self) -> dict[str, dict[str, Any]]:
+        return dict(self.state["email_meta"])
+
+    def upsert_email_meta(self, email_id: str, **changes: Any) -> dict[str, Any]:
+        current = self.state["email_meta"].setdefault(email_id, {"email_id": email_id})
+        current.update(changes)
+        self.persist()
+        return current
+
+    def append_email_attachment(self, email_id: str, path: str) -> dict[str, Any]:
+        meta = self.get_email_meta(email_id) or {"email_id": email_id}
+        paths = list(meta.get("uploaded_attachments") or [])
+        if path not in paths:
+            paths.append(path)
+        return self.upsert_email_meta(email_id, uploaded_attachments=paths)
+
+    # -- Review queue --------------------------------------------------------
+
+    def add_review_item(self, item: dict[str, Any]) -> dict[str, Any]:
+        item = dict(item)
+        item.setdefault("id", str(uuid.uuid4()))
+        item.setdefault("status", "open")
+        item.setdefault("created_at", utc_now())
+        item.setdefault("resolved_at", None)
+        item.setdefault("resolution", None)
+        self.state["review_items"][item["id"]] = item
+        self.persist()
+        return item
+
+    def get_review_item(self, item_id: str) -> dict[str, Any] | None:
+        return self.state["review_items"].get(item_id)
+
+    def update_review_item(self, item_id: str, **changes: Any) -> dict[str, Any]:
+        current = self.state["review_items"].setdefault(item_id, {"id": item_id})
+        current.update(changes)
+        self.persist()
+        return current
+
+    def list_review_items(
+        self, status: str | None = None, email_id: str | None = None
+    ) -> list[dict[str, Any]]:
+        items = list(self.state["review_items"].values())
+        if status:
+            items = [item for item in items if item.get("status") == status]
+        if email_id:
+            items = [item for item in items if item.get("email_id") == email_id]
+        return sorted(items, key=lambda item: item.get("created_at") or "")
+
+    # -- Audit log (append-only) ---------------------------------------------
+
+    def add_audit_entry(self, entry: dict[str, Any]) -> dict[str, Any]:
+        entry = dict(entry)
+        entry.setdefault("id", str(uuid.uuid4()))
+        entry.setdefault("created_at", utc_now())
+        self.state["audit_log"].append(entry)
+        self.persist()
+        return entry
+
+    def list_audit_log(self, email_id: str | None = None) -> list[dict[str, Any]]:
+        entries = self.state["audit_log"]
+        if email_id:
+            entries = [entry for entry in entries if entry.get("email_id") == email_id]
+        return entries
 
 
 class SupabaseStore(LocalStore):
@@ -213,6 +285,22 @@ class SupabaseStore(LocalStore):
             if not role:
                 continue
             for field in document.get("fields", []):
+                evidence = field.get("evidence") or {}
+                location = {
+                    key: evidence.get(key)
+                    for key in (
+                        "page",
+                        "line",
+                        "sheet",
+                        "cell",
+                        "table_index",
+                        "row_index",
+                        "paragraph_index",
+                        "bbox",
+                        "quoted_text",
+                    )
+                    if evidence.get(key) is not None
+                }
                 self._mirror(
                     "field_extractions",
                     {
@@ -224,7 +312,8 @@ class SupabaseStore(LocalStore):
                         "normalized_value": field.get("normalized_value"),
                         "source": field.get("source"),
                         "confidence": field.get("confidence"),
-                        "evidence": field.get("evidence"),
+                        "evidence": evidence,
+                        "location": location or None,
                     },
                     "result_id,document_role,field_name",
                 )
@@ -245,5 +334,72 @@ class SupabaseStore(LocalStore):
                 "corrected_value": review.get("corrected_value"),
                 "reviewer_id": review.get("reviewer_id"),
                 "created_at": review.get("created_at"),
+                "metadata": {"evidence": review.get("evidence") or {}},
             },
         )
+
+    def upsert_email_meta(self, email_id: str, **changes: Any) -> dict[str, Any]:
+        meta = super().upsert_email_meta(email_id, **changes)
+        self._mirror(
+            "emails",
+            {
+                "email_id": email_id,
+                "received_at": meta.get("received_at"),
+                "classification_method": meta.get("classification_method"),
+                "classification_reason": meta.get("classification_reason"),
+                "category_machine": meta.get("category_machine"),
+                "category_override": meta.get("category_override"),
+                "override_by": meta.get("override_by"),
+                "override_at": meta.get("override_at"),
+                "uploaded_attachments": meta.get("uploaded_attachments", []),
+                "excluded_attachments": meta.get("excluded_attachments", []),
+            },
+            "email_id",
+        )
+        return meta
+
+    def add_review_item(self, item: dict[str, Any]) -> dict[str, Any]:
+        item = super().add_review_item(item)
+        self._mirror_review_item(item)
+        return item
+
+    def update_review_item(self, item_id: str, **changes: Any) -> dict[str, Any]:
+        item = super().update_review_item(item_id, **changes)
+        self._mirror_review_item(item)
+        return item
+
+    def _mirror_review_item(self, item: dict[str, Any]) -> None:
+        self._mirror(
+            "review_items",
+            {
+                "id": item.get("id"),
+                "email_id": item.get("email_id"),
+                "reason": item.get("reason"),
+                "status": item.get("status"),
+                "description": item.get("description"),
+                "evidence": item.get("evidence") or {},
+                "created_at": item.get("created_at"),
+                "resolved_at": item.get("resolved_at"),
+                "resolution": item.get("resolution"),
+            },
+            "id",
+        )
+
+    def add_audit_entry(self, entry: dict[str, Any]) -> dict[str, Any]:
+        entry = super().add_audit_entry(entry)
+        self._mirror(
+            "audit_log",
+            {
+                "id": entry.get("id"),
+                "email_id": entry.get("email_id"),
+                "action": entry.get("action"),
+                "before": entry.get("before"),
+                "after": entry.get("after"),
+                "actor": entry.get("actor"),
+                "evidence_ref": entry.get("evidence_ref"),
+                "evidence": entry.get("evidence"),
+                "created_at": entry.get("created_at"),
+            },
+            "id",
+        )
+        return entry

@@ -11,7 +11,7 @@ from app.adapters.local_store import LocalStore, SupabaseStore
 from app.adapters.openai_client import OpenAIClient
 from app.pipeline.orchestrator import PipelineOrchestrator
 from app.settings import settings
-from app.api.routes import attachments, dashboard, emails, export, health, pipeline
+from app.api.routes import admin, attachments, dashboard, emails, export, health, pipeline, review
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -31,8 +31,8 @@ def create_store():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    loader = DatasetLoader(settings.data_dir)
     store = create_store()
+    loader = DatasetLoader(settings.data_dir, store.runtime_dir)
     openai = OpenAIClient(
         settings.openai_api_key,
         settings.openai_model,
@@ -61,3 +61,5 @@ app.include_router(emails.router, prefix="/api")
 app.include_router(pipeline.router, prefix="/api")
 app.include_router(attachments.router, prefix="/api")
 app.include_router(export.router, prefix="/api")
+app.include_router(review.router, prefix="/api")
+app.include_router(admin.router, prefix="/api")

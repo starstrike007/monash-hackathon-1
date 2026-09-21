@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
-import { ArrowClockwise, CheckCircle, CircleNotch, Warning, X } from '@phosphor-icons/react'
+import { CheckCircle, CircleNotch, Warning, X } from '@phosphor-icons/react'
 
-import { getPipelineRun, retryEmail } from '@/lib/api'
+import { BackendError } from '@/components/BackendError'
+import { getPipelineRun, notifyDataChanged, retryEmail } from '@/lib/api'
+import { formatDate } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 function StageCard({ stage }) {
@@ -74,13 +76,21 @@ function StageCard({ stage }) {
 
 export function PipelineRunDrawer({ runId, onClose }) {
   const [run, setRun] = useState(null)
-  const [retrying, setRetrying] = useState(false)
+  const [retryingEmailId, setRetryingEmailId] = useState(null)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     let active = true
     async function load() {
-      const value = await getPipelineRun(runId)
-      if (active) setRun(value)
+      try {
+        const value = await getPipelineRun(runId)
+        if (active) {
+          setError(null)
+          setRun(value)
+        }
+      } catch (reason) {
+        if (active) setError(reason)
+      }
     }
     load()
     const timer = window.setInterval(load, 2500)
@@ -90,14 +100,20 @@ export function PipelineRunDrawer({ runId, onClose }) {
     }
   }, [runId])
 
-  async function retry() {
-    const failure = run?.failures?.[0]
+  async function retry(failure) {
     if (!failure) return
-    setRetrying(true)
-    const retried = await retryEmail(failure.email_id)
-    const updated = await getPipelineRun(retried.run_id || runId)
-    setRun(updated)
-    setRetrying(false)
+    setRetryingEmailId(failure.email_id)
+    setError(null)
+    try {
+      const retried = await retryEmail(failure.email_id)
+      notifyDataChanged()
+      const updated = await getPipelineRun(retried.run_id || runId)
+      setRun(updated)
+    } catch (reason) {
+      setError(reason)
+    } finally {
+      setRetryingEmailId(null)
+    }
   }
 
   return (
@@ -115,10 +131,17 @@ export function PipelineRunDrawer({ runId, onClose }) {
         >
           <X size={16} />
         </button>
-        <p className="text-xs text-[#62757D]">Started 09:41 · {run?.total_emails || 520} emails</p>
+        <p className="text-xs text-[#62757D]">
+          Started {run?.started_at ? formatDate(run.started_at) : '—'} · {run?.total_emails ?? '—'} emails
+        </p>
         <h1 className="mt-0.5 font-serif text-2xl font-semibold tracking-tight text-[#16232B]">
           Pipeline run
         </h1>
+        {error && (
+          <div className="mt-3">
+            <BackendError error={error} compact onRetry={() => setError(null)} />
+          </div>
+        )}
         {run?.status === 'failed' && (
           <div className="mt-2 flex items-center gap-2 rounded-lg border border-[#EBCB83] bg-[#FBEBCF] p-2 text-xs text-[#5A3A08]">
             <Warning size={16} />
@@ -133,24 +156,30 @@ export function PipelineRunDrawer({ runId, onClose }) {
           )}
         </div>
         {run?.failures?.length ? (
-          <div className="mt-1.5 rounded-lg border border-[#F2C2BC] bg-[#F8E3E0] p-2">
-            <p className="text-xs font-semibold text-[#A32720]">
-              {run.failures[0].email_id.toUpperCase()} failed
-            </p>
-            <p className="line-clamp-2 text-xs text-[#8C2A24]">{run.failures[0].message}</p>
+          <div className="mt-1.5 space-y-2 rounded-lg border border-[#F2C2BC] bg-[#F8E3E0] p-2">
+            {run.failures.map((failure) => (
+              <div key={failure.email_id} className="flex items-start gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-[#A32720]">
+                    {failure.email_id.toUpperCase()} failed
+                  </p>
+                  <p className="line-clamp-2 text-xs text-[#8C2A24]">{failure.message}</p>
+                </div>
+                <button
+                  type="button"
+                  className="shrink-0 rounded-md bg-white px-2 py-1 text-xs font-semibold text-[#8C2A24] disabled:opacity-60"
+                  onClick={() => retry(failure)}
+                  disabled={retryingEmailId !== null}
+                >
+                  {retryingEmailId === failure.email_id ? 'Retrying…' : 'Retry'}
+                </button>
+              </div>
+            ))}
           </div>
         ) : null}
         <div className="mt-2 flex gap-2">
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 text-sm font-semibold leading-none transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100 flex-1 bg-[#0E5A66] text-white hover:bg-[#0B4B55] disabled:opacity-60 disabled:hover:scale-100 disabled:hover:shadow-none"
-            onClick={retry}
-            disabled={retrying || !run?.failures?.length}
-          >
-            <ArrowClockwise size={16} className="shrink-0" />
-            {retrying ? 'Retrying…' : `Retry failed (${run?.failures?.length || 0})`}
-          </button>
-          <button
-            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 text-sm font-semibold leading-none transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100 bg-white text-[#26353D] shadow-sm"
+            className="inline-flex h-10 w-full shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 text-sm font-semibold leading-none transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100 bg-white text-[#26353D] shadow-sm"
             onClick={onClose}
           >
             Close

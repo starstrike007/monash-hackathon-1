@@ -59,6 +59,69 @@ uses `.runtime/shipcheck_store.json` for local results. Set the variables in
 `backend/.env.example` in the environment before starting the API; the
 frontend example is the root `.env.example`.
 
+CORS always allows `http://localhost:*`/`http://127.0.0.1:*` in addition to
+whatever `ALLOWED_ORIGINS`/`CORS_ORIGINS` is set to, so a deployed
+`ALLOWED_ORIGINS` (e.g. the Vercel URL) never blocks a local Vite dev
+server. The UI does not substitute fixture data when the API is unavailable;
+it shows a visible "Backend unavailable" state with a retry action.
+
+## Screens
+
+- **Dashboard** (`/dashboard`) — key figures, category/outcome breakdowns,
+  needs-attention list, defects by field, Run pipeline, Export submission
+  JSON, and the pipeline run drawer. Counts always reflect the *effective*
+  category (a manual override if one is set, otherwise the pipeline's own
+  decision) and open review-queue resolutions.
+- **Inbox** (`/inbox`, `/inbox/:emailId`) — what arrived and how it was
+  classified, grouped by Today/Yesterday/This week/This month/Earlier. No
+  comparison status here by design; a detail page shows the message,
+  attachments (with an inline viewer and download), the classification
+  method/reason, and a category override dropdown ("Originally classified
+  as X" + Revert once overridden).
+- **Docs Comparison** (`/docs-comparison`, `/docs-comparison/:emailId`) —
+  every `BL_COMPARISON` email's comparison result: a filterable list, and a
+  detail page with a state-aware banner, the seven-field SI/BL table, two
+  document viewers scrolled and highlighted to the selected field's
+  evidence, and a collapsed "how this was decided" section.
+- **Review queue** (`/review`, `/review/:itemId`) — everything a person
+  must resolve (its own id, not an email id), oldest first, filterable by
+  reason, with reason-specific actions: confirm/correct a value
+  (unreadable, missing_value), confirm an absent value as a discrepancy,
+  upload a replacement SI/BL or reclassify/copy a draft reply
+  (missing_attachment), reassign SI/BL roles or mark a document missing
+  (wrong_doc_type), or retry (processing_failed). The sidebar badge shows
+  the live open count.
+
+## Simulated timestamps
+
+The dataset has no real receipt times, so each email's `received_at` is
+generated once, deterministically, from a hash of its `email_id` (business
+hours in Asia/Kuala_Lumpur, spread over the last ~45 days and weighted
+toward recent days). It's stored in `email_meta` and never regenerated on
+page load. To re-anchor the demo so "Today"/"Yesterday" line up with the
+day you're presenting, call:
+
+```powershell
+curl -X POST http://localhost:8000/api/admin/rebase-timestamps
+```
+
+This regenerates every email's timestamp relative to now and leaves
+everything else (results, categories, review state) untouched.
+
+## Category override and the review queue
+
+A category is either the pipeline's own decision (`category_machine`) or a
+reviewer's `category_override`; the *effective* category (override if set)
+is what every downstream reader uses — dashboard counts, Docs Comparison's
+list, and the submission export. Overriding an email into
+`BL_COMPARISON` reprocesses it immediately (creating a `missing_attachment`
+review item if it has fewer than two usable attachments); overriding it
+away closes any open review item for it with resolution `reclassified`.
+Every override and review resolution is written to an append-only
+`audit_log`. Internal review reasons are slightly richer than the four the
+evaluator accepts; `processing_failed` maps to `unreadable` at export time
+only (see `backend/app/services/review_queue_service.py`).
+
 ## Architecture
 
 The browser talks only to the FastAPI API. FastAPI reads the email corpus and
@@ -78,8 +141,14 @@ frontend is hosted on Vercel, and Supabase is the deployed results store.
 ## Supabase setup
 
 1. Create a Supabase project.
-2. Run [`supabase/migrations/001_initial_schema.sql`](supabase/migrations/001_initial_schema.sql)
-   in the Supabase SQL editor.
+2. Run [`supabase/migrations/001_initial_schema.sql`](supabase/migrations/001_initial_schema.sql),
+   [`supabase/migrations/002_review_location_audit.sql`](supabase/migrations/002_review_location_audit.sql),
+   [`supabase/migrations/003_review_uploads.sql`](supabase/migrations/003_review_uploads.sql),
+   and [`supabase/migrations/004_human_review_compatibility.sql`](supabase/migrations/004_human_review_compatibility.sql)
+   in the Supabase SQL editor, in that order. Migrations 002 and 003 add
+   provenance/override/location columns, review/audit tables, and
+   reviewer-upload columns; migration 004 only widens validation for human
+   review values/actions without deleting or renaming existing data.
 3. Copy the project URL and service-role key into the Render environment.
 
 The service-role key is backend-only. The browser never connects to Supabase
@@ -127,7 +196,8 @@ Node build environment:
 - Environment variable: `VITE_API_URL=https://your-render-api.example`
 
 [`vercel.json`](vercel.json) rewrites client-side routes to `index.html` so a
-refresh on `/dashboard`, `/inbox`, or `/review/...` is handled by the Vite app.
+refresh on `/dashboard`, `/inbox`, `/docs-comparison`, or `/review/...` is
+handled by the Vite app.
 
 ## Environment files
 

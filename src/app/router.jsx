@@ -2,9 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { AppShell } from '@/components/layout/AppShell'
 import { getDashboard } from '@/lib/api'
-import { CaseDetailPage } from '@/features/case-detail/CaseDetailPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
+import { InboxDetailPage } from '@/features/inbox/InboxDetailPage'
 import { InboxPage } from '@/features/inbox/InboxPage'
+import { DocsComparisonDetailPage } from '@/features/docs-comparison/DocsComparisonDetailPage'
+import { DocsComparisonListPage } from '@/features/docs-comparison/DocsComparisonListPage'
+import { ReviewItemDetailPage } from '@/features/review-queue/ReviewItemDetailPage'
+import { ReviewQueuePage } from '@/features/review-queue/ReviewQueuePage'
 
 function currentLocation() {
   const url = new URL(window.location.href)
@@ -17,32 +21,42 @@ function routeFor(location) {
   const parts = pathname.split('/').filter(Boolean)
   if (parts[0] === 'dashboard') return { name: 'dashboard', pathname, search }
   if (parts[0] === 'inbox' && parts[1])
-    return { name: 'case', emailId: parts[1], mode: 'inbox', pathname, search }
+    return { name: 'inbox-detail', emailId: parts[1], pathname, search }
   if (parts[0] === 'inbox') return { name: 'inbox', pathname, search }
+  if (parts[0] === 'docs-comparison' && parts[1])
+    return { name: 'docs-comparison-detail', emailId: parts[1], pathname, search }
+  if (parts[0] === 'docs-comparison') return { name: 'docs-comparison', pathname, search }
   if (parts[0] === 'review' && parts[1])
-    return { name: 'case', emailId: parts[1], mode: 'review', pathname, search }
-  if (parts[0] === 'review')
-    return {
-      name: 'inbox',
-      pathname: '/review',
-      search: new URLSearchParams('status=needs_review'),
-    }
+    return { name: 'review-item', itemId: parts[1], pathname, search }
+  if (parts[0] === 'review') return { name: 'review-queue', pathname, search }
   return { name: 'not-found', pathname, search }
 }
 
 export function Router() {
   const [location, setLocation] = useState(currentLocation)
-  const [reviewCount, setReviewCount] = useState(14)
+  const [reviewCount, setReviewCount] = useState(null)
   const route = useMemo(() => routeFor(location), [location])
 
   useEffect(() => {
     const onPopState = () => setLocation(currentLocation())
     window.addEventListener('popstate', onPopState)
     if (location.pathname === '/') navigate('/dashboard', true)
-    getDashboard()
-      .then((data) => setReviewCount(data.needs_review || 0))
-      .catch(() => {})
-    return () => window.removeEventListener('popstate', onPopState)
+    let active = true
+    const refreshReviewCount = () =>
+      getDashboard()
+        .then((data) => {
+          if (active) setReviewCount(data.review_queue_open ?? 0)
+        })
+        .catch(() => {
+          if (active) setReviewCount(null)
+        })
+    refreshReviewCount()
+    window.addEventListener('shipcheck:data-changed', refreshReviewCount)
+    return () => {
+      active = false
+      window.removeEventListener('popstate', onPopState)
+      window.removeEventListener('shipcheck:data-changed', refreshReviewCount)
+    }
   }, [])
 
   function navigate(path, replace = false) {
@@ -55,16 +69,19 @@ export function Router() {
   let content
   if (route.name === 'dashboard')
     content = <DashboardPage navigate={navigate} initialRunId={route.search.get('runId')} />
-  else if (route.name === 'inbox')
+  else if (route.name === 'inbox') content = <InboxPage navigate={navigate} />
+  else if (route.name === 'inbox-detail')
+    content = <InboxDetailPage navigate={navigate} emailId={route.emailId} />
+  else if (route.name === 'docs-comparison')
     content = (
-      <InboxPage
-        navigate={navigate}
-        initialStatus={route.search.get('status')}
-        from={route.search.get('from')}
-      />
+      <DocsComparisonListPage navigate={navigate} initialStatus={route.search.get('status')} />
     )
-  else if (route.name === 'case')
-    content = <CaseDetailPage navigate={navigate} emailId={route.emailId} mode={route.mode} />
+  else if (route.name === 'docs-comparison-detail')
+    content = <DocsComparisonDetailPage navigate={navigate} emailId={route.emailId} />
+  else if (route.name === 'review-queue')
+    content = <ReviewQueuePage navigate={navigate} initialReason={route.search.get('reason')} />
+  else if (route.name === 'review-item')
+    content = <ReviewItemDetailPage navigate={navigate} itemId={route.itemId} />
   else
     content = (
       <div className="p-12">

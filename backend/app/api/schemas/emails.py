@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 from .common import (
     AttachmentMeta,
+    CanonicalField,
     ComparisonStatus,
     EmailCategory,
     ResultRecord,
@@ -20,8 +21,13 @@ class EmailListItem(BaseModel):
     received_at: datetime | None = None
     attachments: list[AttachmentMeta] = Field(default_factory=list)
     category: EmailCategory | None = None
+    category_machine: EmailCategory | None = None
+    category_override: EmailCategory | None = None
+    classification_method: str | None = None
+    classification_reason: str | None = None
     status: ComparisonStatus | None = None
     review_reason: str | None = None
+    defect_fields: list[CanonicalField] = Field(default_factory=list)
     attention: str | None = None
 
 
