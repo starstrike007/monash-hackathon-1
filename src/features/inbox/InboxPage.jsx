@@ -37,12 +37,20 @@ const ALL_CATEGORY_KEYS = CATEGORY_FILTERS.map((filter) => filter.key)
 const VIEW_STATE_STORAGE_KEY = 'clearance:inbox-view-state'
 const SCROLL_RESTORE_STORAGE_KEY = 'clearance:inbox-scroll-restore'
 
-function readViewState() {
+function readViewState(initialCategory) {
   const fallback = {
     selectedCategories: ALL_CATEGORY_KEYS,
     showAll: true,
     selectedPeriods: GROUP_ORDER,
     query: '',
+  }
+  // A ?category= link (from the Dashboard) shows exactly that category, or everything for
+  // "all", with no leftover time-period or search filter. Coming back from an email keeps the
+  // filters the person had instead.
+  const returning = readSession(SCROLL_RESTORE_STORAGE_KEY) !== null
+  if (!returning && initialCategory === 'all') return fallback
+  if (!returning && ALL_CATEGORY_KEYS.includes(initialCategory)) {
+    return { ...fallback, selectedCategories: [initialCategory], showAll: false }
   }
   try {
     const stored = readSession(VIEW_STATE_STORAGE_KEY)
@@ -65,8 +73,8 @@ function filterByCategories(items, selectedCategories, showAll) {
   return items.filter((item) => selectedCategories.includes(item.category))
 }
 
-export function InboxPage({ navigate }) {
-  const [initialView] = useState(readViewState)
+export function InboxPage({ navigate, initialCategory = '' }) {
+  const [initialView] = useState(() => readViewState(initialCategory))
   const [selectedCategories, setSelectedCategories] = useState(initialView.selectedCategories)
   const [showAll, setShowAll] = useState(initialView.showAll)
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false)
@@ -411,50 +419,49 @@ export function InboxPage({ navigate }) {
         {loading && <LoadingBoat label="Loading inbox" />}
         {!loading &&
           !error &&
-          GROUP_ORDER.filter((key) => selectedPeriods.includes(key)).map((key) => (
-            <section key={key}>
-              <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.1em] text-[#475569]">
-                {key}
-              </h2>
-              <div className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white">
-                {grouped[key].map((item) => (
-                  <button
-                    key={item.email_id}
-                    type="button"
-                    data-email-id={item.email_id}
-                    onClick={(event) => openEmail(item.email_id, event.currentTarget)}
-                    className={cn(
-                      'grid w-full grid-cols-1 gap-2 border-t border-[#E2E8F0] px-6 py-4 text-left transition-colors first:border-t-0 sm:grid-cols-[90px_minmax(0,1fr)_190px_70px_100px] sm:items-start sm:gap-4',
-                      visitedEmailIds.has(item.email_id)
-                        ? 'bg-[#F1F5F9] hover:bg-[#E2E8F0]'
-                        : 'bg-white hover:bg-[#F8FAFC]',
-                    )}
-                  >
-                    <span className="font-mono text-xs text-[#64748B]">{item.display_id}</span>
-                    <span className="min-w-0">
-                      <strong className="line-clamp-2 text-[15px] leading-snug text-[#1E293B]">
-                        {item.subject}
-                      </strong>
-                      <span className="mt-1 block truncate text-sm text-[#64748B]">
-                        {item.sender}
+          GROUP_ORDER.filter((key) => selectedPeriods.includes(key) && grouped[key].length).map(
+            (key) => (
+              <section key={key}>
+                <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.1em] text-[#475569]">
+                  {key}
+                </h2>
+                <div className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white">
+                  {grouped[key].map((item) => (
+                    <button
+                      key={item.email_id}
+                      type="button"
+                      data-email-id={item.email_id}
+                      onClick={(event) => openEmail(item.email_id, event.currentTarget)}
+                      className={cn(
+                        'grid w-full grid-cols-1 gap-2 border-t border-[#E2E8F0] px-6 py-4 text-left transition-colors first:border-t-0 sm:grid-cols-[90px_minmax(0,1fr)_190px_70px_100px] sm:items-start sm:gap-4',
+                        visitedEmailIds.has(item.email_id)
+                          ? 'bg-[#F1F5F9] hover:bg-[#E2E8F0]'
+                          : 'bg-white hover:bg-[#F8FAFC]',
+                      )}
+                    >
+                      <span className="font-mono text-xs text-[#64748B]">{item.display_id}</span>
+                      <span className="min-w-0">
+                        <strong className="line-clamp-2 text-[15px] leading-snug text-[#1E293B]">
+                          {item.subject}
+                        </strong>
+                        <span className="mt-1 block truncate text-sm text-[#64748B]">
+                          {item.sender}
+                        </span>
                       </span>
-                    </span>
-                    <span>
-                      <CategoryBadge category={item.category} />
-                    </span>
-                    <span className="flex items-center gap-1.5 text-sm text-[#64748B]">
-                      <Paperclip size={16} />
-                      {item.attachments?.length || 0}
-                    </span>
-                    <ReceivedAt value={item.received_at} />
-                  </button>
-                ))}
-                {!grouped[key].length && (
-                  <p className="px-6 py-4 text-sm text-[#94A3B8]">No emails in this period.</p>
-                )}
-              </div>
-            </section>
-          ))}
+                      <span>
+                        <CategoryBadge category={item.category} />
+                      </span>
+                      <span className="flex items-center gap-1.5 text-sm text-[#64748B]">
+                        <Paperclip size={16} />
+                        {item.attachments?.length || 0}
+                      </span>
+                      <ReceivedAt value={item.received_at} />
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ),
+          )}
         {!loading && !error && !shownCount && (
           <div className="rounded-2xl border border-[#E2E8F0] bg-white py-14 text-center text-sm text-[#64748B]">
             No emails match this filter.

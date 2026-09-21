@@ -33,19 +33,20 @@ const SCROLL_RESTORE_STORAGE_KEY = 'clearance:docs-comparison-scroll-restore'
 
 function readViewState(initialStatus) {
   const fallback = { selectedStatuses: ALL_STATUS_KEYS, selectedPeriods: GROUP_ORDER, query: '' }
-  const stored = readSession(VIEW_STATE_STORAGE_KEY)
-  // A ?status= link (from the dashboard) picks the status, unless we are coming back from an
-  // email, in which case the filters the person had are kept as they were.
+  // A ?status= link (from the Dashboard) shows exactly that status, or everything for "all",
+  // with no leftover time-period or search filter. Coming back from an email keeps the
+  // filters the person had instead.
   const returning = readSession(SCROLL_RESTORE_STORAGE_KEY) !== null
-  const linkedStatus = ALL_STATUS_KEYS.includes(initialStatus) && !returning ? initialStatus : null
-  if (!stored)
-    return { ...fallback, selectedStatuses: linkedStatus ? [linkedStatus] : ALL_STATUS_KEYS }
+  if (!returning && initialStatus === 'all') return fallback
+  if (!returning && ALL_STATUS_KEYS.includes(initialStatus)) {
+    return { ...fallback, selectedStatuses: [initialStatus] }
+  }
+  const stored = readSession(VIEW_STATE_STORAGE_KEY)
+  if (!stored) return fallback
   const onlyKnown = (values, allowed) =>
     Array.isArray(values) ? values.filter((value) => allowed.includes(value)) : allowed
   return {
-    selectedStatuses: linkedStatus
-      ? [linkedStatus]
-      : onlyKnown(stored.selectedStatuses, ALL_STATUS_KEYS),
+    selectedStatuses: onlyKnown(stored.selectedStatuses, ALL_STATUS_KEYS),
     selectedPeriods: onlyKnown(stored.selectedPeriods, GROUP_ORDER),
     query: typeof stored.query === 'string' ? stored.query : '',
   }

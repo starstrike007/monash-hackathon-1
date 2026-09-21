@@ -59,7 +59,7 @@ function buildSlices(categories) {
   return slices
 }
 
-export function CategoryPie({ categories }) {
+export function CategoryPie({ categories, onSelect }) {
   const [active, setActive] = useState(null)
 
   const slices = buildSlices(categories)
@@ -99,6 +99,7 @@ export function CategoryPie({ categories }) {
             strokeWidth="2"
             opacity={!focused || focused.key === arc.key ? 1 : 0.32}
             className="cursor-pointer transition-opacity"
+            onClick={() => arc.key !== 'OTHER' && onSelect?.(arc.key)}
             onMouseEnter={() => setActive(arc.key)}
             onFocus={() => setActive(arc.key)}
             tabIndex={0}
@@ -142,6 +143,8 @@ export function CategoryPie({ categories }) {
               className={`flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm transition-colors ${
                 focused?.key === arc.key ? 'bg-[#F1F5F9]' : 'hover:bg-[#F8FAFC]'
               }`}
+              onClick={() => arc.key !== 'OTHER' && onSelect?.(arc.key)}
+              title={arc.key === 'OTHER' ? undefined : `Show ${arc.label} in the inbox`}
               onMouseEnter={() => setActive(arc.key)}
               onMouseLeave={() => setActive(null)}
               onFocus={() => setActive(arc.key)}

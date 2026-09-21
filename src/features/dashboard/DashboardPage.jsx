@@ -148,7 +148,7 @@ function buildInsights(data) {
   return insights
 }
 
-function SummaryBrief({ data, navigate, lastRunAt, onOpenComparisons, onOpenMismatches }) {
+function SummaryBrief({ data, navigate, lastRunAt }) {
   const insights = buildInsights(data)
   const lastRun = useRelativeTime(lastRunAt)
 
@@ -201,20 +201,20 @@ function SummaryBrief({ data, navigate, lastRunAt, onOpenComparisons, onOpenMism
               label="Emails processed"
               value={data.emails_processed}
               caption={`${data.comparison_requests} with attachments`}
+              onClick={() => navigate('/inbox?category=all')}
             />
             <SummaryCard
               compact
               label="Comparison requests"
               value={data.comparison_requests}
               caption={`${(data.outcomes?.OK || 0) + (data.outcomes?.MISMATCH || 0)} fully compared`}
-              onClick={onOpenComparisons}
+              onClick={() => navigate('/docs-comparison?status=all')}
             />
             <SummaryCard
               compact
               label="Mismatches found"
               value={data.mismatches_found}
               caption={`Across ${data.outcomes?.MISMATCH || 0} compared pairs`}
-              onClick={onOpenMismatches}
             />
             <SummaryCard
               compact
@@ -225,14 +225,6 @@ function SummaryBrief({ data, navigate, lastRunAt, onOpenComparisons, onOpenMism
               onClick={() => navigate('/review')}
             />
           </div>
-
-          <button
-            className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[#0F172A] px-5 text-sm font-semibold text-white transition hover:bg-[#1E293B]"
-            onClick={() => navigate('/review')}
-          >
-            Open human review
-            <ArrowRight size={16} />
-          </button>
         </div>
       </div>
     </section>
@@ -527,16 +519,6 @@ export function DashboardPage({ navigate, initialRunId = null }) {
     }
   }
 
-  async function openFirst(filter, fallback) {
-    try {
-      const { items } = await getEmails(filter.params)
-      const first = items.find(filter.match)
-      navigate(first ? `/docs-comparison/${first.email_id}` : fallback)
-    } catch (reason) {
-      setError(reason)
-    }
-  }
-
   async function openDefect(fieldKey) {
     try {
       const { items } = await getEmails({ status: 'mismatch' })
@@ -620,26 +602,7 @@ export function DashboardPage({ navigate, initialRunId = null }) {
         )}
 
         <div className="mt-4">
-          <SummaryBrief
-            data={data}
-            navigate={navigate}
-            lastRunAt={lastRunAt}
-            onOpenComparisons={() =>
-              openFirst(
-                { params: {}, match: (item) => item.category === 'BL_COMPARISON' },
-                '/docs-comparison',
-              )
-            }
-            onOpenMismatches={() =>
-              openFirst(
-                {
-                  params: { status: 'mismatch' },
-                  match: (item) => item.status === STATUS.MISMATCH,
-                },
-                '/docs-comparison?status=mismatch',
-              )
-            }
-          />
+          <SummaryBrief data={data} navigate={navigate} lastRunAt={lastRunAt} />
         </div>
 
         <section className="mt-7 grid gap-6 xl:grid-cols-2">
@@ -647,7 +610,10 @@ export function DashboardPage({ navigate, initialRunId = null }) {
             title="Inbox by category"
             subtitle="Every email is classified. Only comparison requests continue to checking."
           >
-            <CategoryPie categories={data.categories} />
+            <CategoryPie
+              categories={data.categories}
+              onSelect={(key) => navigate(`/inbox?category=${key}`)}
+            />
           </SectionCard>
           <SectionCard
             id="comparison-outcomes"

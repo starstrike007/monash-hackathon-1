@@ -69,7 +69,8 @@ export function Router() {
   let content
   if (route.name === 'dashboard')
     content = <DashboardPage navigate={navigate} initialRunId={route.search.get('runId')} />
-  else if (route.name === 'inbox') content = <InboxPage navigate={navigate} />
+  else if (route.name === 'inbox')
+    content = <InboxPage navigate={navigate} initialCategory={route.search.get('category')} />
   else if (route.name === 'inbox-detail')
     content = <InboxDetailPage navigate={navigate} emailId={route.emailId} />
   else if (route.name === 'docs-comparison')
