@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { ArrowLeft, ArrowSquareOut, DownloadSimple } from '@phosphor-icons/react'
+import { useEffect, useRef, useState } from 'react'
+import { ArrowLeft, ArrowSquareOut, CaretDown, Check, DownloadSimple } from '@phosphor-icons/react'
 
 import { DocumentViewer } from '@/components/document-viewer/DocumentViewer'
 import { BackendError } from '@/components/BackendError'
@@ -17,6 +17,77 @@ import { cn } from '@/lib/utils'
 
 const CATEGORY_OPTIONS = Object.keys(CATEGORY_LABELS)
 
+function CategoryPicker({ value, onChange, disabled }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!open) return undefined
+
+    function closeOnOutsideClick(event) {
+      if (!ref.current?.contains(event.target)) setOpen(false)
+    }
+
+    function closeOnEscape(event) {
+      if (event.key === 'Escape') setOpen(false)
+    }
+
+    document.addEventListener('mousedown', closeOnOutsideClick)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('mousedown', closeOnOutsideClick)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [open])
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen((current) => !current)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="inline-flex h-10 min-w-[13rem] items-center justify-between gap-2 rounded-lg bg-white px-4 text-sm font-semibold text-[#475569] shadow-sm ring-1 ring-[#CBD5E1] transition-colors hover:bg-[#F8FAFC] disabled:opacity-60"
+      >
+        <span className="truncate">{CATEGORY_LABELS[value] || 'Select category'}</span>
+        <CaretDown
+          size={15}
+          aria-hidden="true"
+          className={cn('shrink-0 transition-transform', open && 'rotate-180')}
+        />
+      </button>
+
+      {open && (
+        <ul
+          role="listbox"
+          aria-label="Category"
+          className="absolute left-0 z-20 mt-2 w-[min(18rem,calc(100vw-2.5rem))] rounded-2xl border border-[#CBD5E1] bg-white p-2 shadow-xl"
+        >
+          {CATEGORY_OPTIONS.map((key) => (
+            <li key={key} role="option" aria-selected={key === value}>
+              <button
+                type="button"
+                onClick={() => {
+                  onChange(key)
+                  setOpen(false)
+                }}
+                className={cn(
+                  'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-[#1E293B] hover:bg-[#F8FAFC]',
+                  key === value && 'bg-[#F1F5F9] font-semibold text-[#0F172A]',
+                )}
+              >
+                <span className="min-w-0 flex-1 truncate">{CATEGORY_LABELS[key]}</span>
+                {key === value && <Check size={15} aria-hidden="true" />}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 function ComparisonSummaryCard({ navigate, detail }) {
   const [reviewItem, setReviewItem] = useState(null)
   const [reviewError, setReviewError] = useState(null)
@@ -29,11 +100,13 @@ function ComparisonSummaryCard({ navigate, detail }) {
       getReviewItems({ email_id: detail.email_id, status: 'open' })
         .then((data) => setReviewItem(data.items?.[0] || null))
         .catch(setReviewError)
+    } else {
+      setReviewItem(null)
     }
   }, [detail.email_id, result?.status])
 
   return (
-    <section className="rounded-2xl bg-white p-6 border border-slate-200">
+    <section className="rounded-2xl border border-slate-200 bg-white p-6">
       <h2 className="text-lg font-semibold text-[#1E293B]">Document comparison</h2>
       <p
         className={cn(
@@ -122,6 +195,9 @@ export function InboxDetailPage({ navigate, emailId }) {
   }
 
   useEffect(load, [emailId])
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [emailId])
 
   async function applyOverride(category) {
     setSaving(true)
@@ -154,6 +230,7 @@ export function InboxDetailPage({ navigate, emailId }) {
   }
 
   const isOverridden = Boolean(detail.category_override)
+  const hasPendingChange = Boolean(pendingCategory) && pendingCategory !== detail.category
 
   return (
     <div className="mx-auto max-w-7xl px-5 py-10 lg:px-14">
@@ -191,46 +268,32 @@ export function InboxDetailPage({ navigate, emailId }) {
       )}
 
       <div className="mt-7 grid gap-7 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-        <div className="space-y-5">
-          <section className="rounded-2xl bg-white p-6 border border-slate-200">
-            <h2 className="text-lg font-semibold text-[#1E293B]">Message</h2>
-            <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#475569]">
-              {detail.body}
-            </p>
-          </section>
-          <section className="rounded-2xl bg-white p-6 border border-slate-200">
-            <h2 className="text-lg font-semibold text-[#1E293B]">
-              Attachments ({detail.attachments?.length || 0})
-            </h2>
-            <div className="mt-3 space-y-2">
-              {(detail.attachments || []).map((attachment) => (
-                <AttachmentRow key={attachment.path} attachment={attachment} />
-              ))}
-              {!detail.attachments?.length && (
-                <p className="text-sm text-[#64748B]">No attachments on this email.</p>
-              )}
-            </div>
-          </section>
-        </div>
+        <section className="rounded-2xl border border-slate-200 bg-white p-6">
+          <h2 className="text-lg font-semibold text-[#1E293B]">Message</h2>
+          <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#475569]">{detail.body}</p>
+        </section>
 
         <div className="space-y-5">
-          <section className="rounded-2xl bg-white p-6 border border-slate-200">
-            <h2 className="text-lg font-semibold text-[#1E293B]">Category</h2>
-            <select
-              className="mt-3 h-11 w-full rounded-lg border border-[#CBD5E1] bg-white px-3 text-sm"
-              value={pendingCategory}
-              disabled={saving}
-              onChange={(event) => {
-                setPendingCategory(event.target.value)
-                applyOverride(event.target.value)
-              }}
-            >
-              {CATEGORY_OPTIONS.map((key) => (
-                <option key={key} value={key}>
-                  {CATEGORY_LABELS[key]}
-                </option>
-              ))}
-            </select>
+          <section className="rounded-2xl border border-slate-200 bg-white p-6">
+            <h2 className="text-lg font-semibold text-[#1E293B]">Change Category</h2>
+            <p className="mt-1 text-xs text-[#64748B]">
+              Change this category if this email was classified incorrectly.
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <CategoryPicker
+                value={pendingCategory}
+                onChange={setPendingCategory}
+                disabled={saving}
+              />
+              <button
+                type="button"
+                disabled={saving || !hasPendingChange}
+                onClick={() => applyOverride(pendingCategory)}
+                className="inline-flex h-10 items-center rounded-lg bg-[#0F172A] px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#1E293B] disabled:cursor-not-allowed disabled:bg-[#E2E8F0] disabled:text-[#94A3B8] disabled:shadow-none"
+              >
+                {saving ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
             {saving && <p className="mt-2 text-xs text-[#64748B]">Applying and recomputing…</p>}
             {isOverridden && !saving && (
               <button
@@ -247,6 +310,20 @@ export function InboxDetailPage({ navigate, emailId }) {
             <ComparisonSummaryCard navigate={navigate} detail={detail} />
           )}
         </div>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm xl:col-span-2">
+          <h2 className="text-lg font-semibold text-[#1E293B]">
+            Attachments ({detail.attachments?.length || 0})
+          </h2>
+          <div className="mt-3 space-y-2">
+            {(detail.attachments || []).map((attachment) => (
+              <AttachmentRow key={attachment.path} attachment={attachment} />
+            ))}
+            {!detail.attachments?.length && (
+              <p className="text-sm text-[#64748B]">No attachments on this email.</p>
+            )}
+          </div>
+        </section>
       </div>
     </div>
   )

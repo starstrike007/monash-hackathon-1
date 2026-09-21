@@ -1,5 +1,7 @@
-const API_BASE =
-  import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+// In local development, use Vite's same-origin `/api` proxy. This keeps the
+// client working whether the app is opened at localhost or 127.0.0.1, and
+// avoids a browser-side cross-origin request for every detail view.
+const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || ''
 
 export function notifyDataChanged() {
   window.dispatchEvent(new CustomEvent('clearance:data-changed'))

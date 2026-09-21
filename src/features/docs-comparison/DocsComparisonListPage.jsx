@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowRight, MagnifyingGlass } from '@phosphor-icons/react'
+import { MagnifyingGlass } from '@phosphor-icons/react'
 
 import { StatusBadge } from '@/components/layout/StatusBadge'
 import { BackendError } from '@/components/BackendError'
+import { ReceivedAt } from '@/components/ReceivedAt'
 import { summarizeComparison } from '@/features/docs-comparison/summary'
 import { getAllEmails } from '@/lib/api'
-import { formatDate } from '@/lib/types'
+import { GROUP_ORDER, groupFor } from '@/lib/time'
 
 const FILTERS = [
   { key: '', label: 'All' },
@@ -47,6 +48,16 @@ export function DocsComparisonListPage({ navigate, initialStatus = '' }) {
       ),
     [activeFilter, data.items],
   )
+
+  const grouped = useMemo(() => {
+    const now = new Date()
+    const buckets = Object.fromEntries(GROUP_ORDER.map((key) => [key, []]))
+    for (const item of visibleItems) buckets[groupFor(item.received_at, now)].push(item)
+    for (const key of GROUP_ORDER) {
+      buckets[key].sort((a, b) => new Date(b.received_at || 0) - new Date(a.received_at || 0))
+    }
+    return buckets
+  }, [visibleItems])
 
   const counts = useMemo(() => {
     const tally = { '': data.items.length, mismatch: 0, no_mismatch: 0, needs_review: 0 }
@@ -110,45 +121,51 @@ export function DocsComparisonListPage({ navigate, initialStatus = '' }) {
         ))}
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white">
-        <div className="hidden grid-cols-[120px_150px_minmax(240px,1.6fr)_170px_minmax(220px,1.4fr)_32px] gap-4 bg-[#F8FAFC] px-6 py-4 text-xs font-semibold uppercase tracking-[0.08em] text-[#64748B] lg:grid">
-          <span>Email</span>
-          <span>Received</span>
-          <span>Subject</span>
-          <span>Status</span>
-          <span>Summary</span>
-          <span />
-        </div>
-        {loading && <div className="px-6 py-14 text-center text-sm text-[#64748B]">Loading…</div>}
+      <div className="mt-6 space-y-8">
+        {loading && <div className="py-14 text-center text-sm text-[#64748B]">Loading…</div>}
         {!loading &&
           !error &&
-          visibleItems.map((item) => {
-            const summary = summarizeComparison(item)
-            return (
-              <button
-                key={item.email_id}
-                onClick={() => navigate(`/docs-comparison/${item.email_id}`)}
-                className="grid w-full grid-cols-1 gap-3 border-t border-[#E2E8F0] px-6 py-5 text-left transition-colors hover:bg-[#F8FAFC] lg:grid-cols-[120px_150px_minmax(240px,1.6fr)_170px_minmax(220px,1.4fr)_32px] lg:items-center lg:gap-4"
-              >
-                <span className="font-mono text-sm text-[#64748B]">{item.display_id}</span>
-                <span className="text-sm text-[#64748B]">{formatDate(item.received_at)}</span>
-                <strong className="min-w-0 truncate text-[15px] text-[#1E293B]">
-                  {item.subject}
-                </strong>
-                <span>
-                  <StatusBadge status={item.status} />
-                </span>
-                <span
-                  className={`truncate text-sm ${summary.tone === 'mismatch' ? 'text-[#B91C1C]' : summary.tone === 'review' ? 'text-[#B45309]' : 'text-[#64748B]'}`}
-                >
-                  {summary.text}
-                </span>
-                <ArrowRight size={18} className="hidden text-[#64748B] lg:block" />
-              </button>
-            )
-          })}
+          GROUP_ORDER.filter((key) => grouped[key].length).map((key) => (
+            <section key={key}>
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.1em] text-[#475569]">
+                {key}
+              </h2>
+              <div className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white">
+                {grouped[key].map((item) => {
+                  const summary = summarizeComparison(item)
+                  return (
+                    <button
+                      key={item.email_id}
+                      type="button"
+                      onClick={() => navigate(`/docs-comparison/${item.email_id}`)}
+                      className="grid w-full grid-cols-1 gap-2 border-t border-[#E2E8F0] bg-white px-6 py-4 text-left transition-colors first:border-t-0 hover:bg-[#F8FAFC] lg:grid-cols-[90px_minmax(0,1.4fr)_170px_minmax(0,1.2fr)_100px] lg:items-start lg:gap-4"
+                    >
+                      <span className="font-mono text-xs text-[#64748B]">{item.display_id}</span>
+                      <span className="min-w-0">
+                        <strong className="line-clamp-2 text-[15px] leading-snug text-[#1E293B]">
+                          {item.subject}
+                        </strong>
+                        <span className="mt-1 block truncate text-sm text-[#64748B]">
+                          {item.sender}
+                        </span>
+                      </span>
+                      <span>
+                        <StatusBadge status={item.status} />
+                      </span>
+                      <span
+                        className={`line-clamp-2 text-sm ${summary.tone === 'mismatch' ? 'text-[#B91C1C]' : summary.tone === 'review' ? 'text-[#B45309]' : 'text-[#64748B]'}`}
+                      >
+                        {summary.text}
+                      </span>
+                      <ReceivedAt value={item.received_at} />
+                    </button>
+                  )
+                })}
+              </div>
+            </section>
+          ))}
         {!loading && !error && !visibleItems.length && (
-          <div className="px-6 py-14 text-center text-sm text-[#64748B]">
+          <div className="rounded-2xl border border-[#E2E8F0] bg-white py-14 text-center text-sm text-[#64748B]">
             No document-comparison emails match this filter.
           </div>
         )}

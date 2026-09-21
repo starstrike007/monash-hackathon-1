@@ -74,8 +74,47 @@ class PipelineOrchestrator:
         # A run can legitimately finish with no saved result for a failed
         # item. The run record still proves the store has been initialized;
         # reseeding here would erase the visible retryable failure.
-        if self.store.list_latest_results() or self.store.latest_run():
+        latest_results = self.store.list_latest_results()
+        latest_run = self.store.latest_run()
+        if latest_results or latest_run:
             ensure_received_timestamps(self.store, self.loader)
+            # Older local stores may contain completed results from before the
+            # review queue was introduced. Reconcile them on the first API
+            # request so NEEDS_REVIEW results are not stranded outside the UI.
+            review_items = self.store.list_review_items()
+            open_review_emails = {
+                item.get("email_id")
+                for item in review_items
+                if item.get("status") == "open" and item.get("reason") != "processing_failed"
+            }
+            review_results = [
+                result
+                for result in latest_results
+                if result.get("status") == "NEEDS_REVIEW"
+                and result.get("review_reason")
+                and result.get("email_id") not in open_review_emails
+            ]
+            failures = self.store.get_failures(latest_run["run_id"]) if latest_run else []
+            processing_failure_emails = {
+                item.get("email_id")
+                for item in review_items
+                if item.get("status") == "open" and item.get("reason") == "processing_failed"
+            }
+            missing_failures = [
+                failure
+                for failure in failures
+                if failure.get("email_id") and failure.get("email_id") not in processing_failure_emails
+            ]
+            if review_results or missing_failures:
+                with self.store.batch():
+                    for result in review_results:
+                        sync_review_item(self.store, result)
+                    for failure in missing_failures:
+                        sync_processing_failure(
+                            self.store,
+                            failure["email_id"],
+                            failure.get("message", "Processing failed."),
+                        )
             return
         self.run()
         ensure_received_timestamps(self.store, self.loader)

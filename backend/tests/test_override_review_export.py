@@ -162,6 +162,25 @@ def test_review_resolution_recomputes_status_and_closes_item(api_client):
     assert after["review_reason"] is None
 
 
+def test_existing_results_backfill_missing_review_items(api_client):
+    api_client.post("/api/pipeline/run", json={})
+    store = app.state.store
+    expected_email_ids = {
+        result["email_id"]
+        for result in store.list_latest_results()
+        if result.get("status") == "NEEDS_REVIEW" and result.get("review_reason")
+    }
+
+    # Simulate a local runtime created before review items were persisted.
+    store.state["review_items"] = {}
+    store.persist()
+
+    response = api_client.get("/api/review/items", params={"status": "open"})
+
+    assert response.status_code == 200
+    assert {item["email_id"] for item in response.json()["items"]} == expected_email_ids
+
+
 def test_export_submission_uses_effective_category(api_client):
     api_client.post("/api/pipeline/run", json={"email_ids": ["email_fixture_ok"]})
     api_client.post(

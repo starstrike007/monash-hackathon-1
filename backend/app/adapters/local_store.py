@@ -3,9 +3,10 @@ from __future__ import annotations
 import json
 import threading
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 
 def utc_now() -> str:
@@ -30,6 +31,8 @@ class LocalStore:
             "review_items": {},
             "audit_log": [],
         }
+        self._batch_depth = 0
+        self._batch_dirty = False
         if self.path.is_file():
             try:
                 self.state.update(json.loads(self.path.read_text(encoding="utf-8")))
@@ -38,7 +41,27 @@ class LocalStore:
 
     def persist(self) -> None:
         with self.lock:
+            if self._batch_depth:
+                self._batch_dirty = True
+                return
             self.path.write_text(json.dumps(self.state, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    @contextmanager
+    def batch(self) -> Iterator[None]:
+        """Defer local JSON persistence until a group of writes completes."""
+
+        with self.lock:
+            self._batch_depth += 1
+        try:
+            yield
+        finally:
+            with self.lock:
+                self._batch_depth -= 1
+                should_persist = self._batch_depth == 0 and self._batch_dirty
+                if should_persist:
+                    self._batch_dirty = False
+            if should_persist:
+                self.persist()
 
     def create_run(self, total_emails: int) -> dict[str, Any]:
         run_id = str(uuid.uuid4())

@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { CaretDown, Funnel, MagnifyingGlass, Paperclip } from '@phosphor-icons/react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { CalendarBlank, CaretDown, Funnel, MagnifyingGlass, Paperclip } from '@phosphor-icons/react'
 
 import { CategoryBadge } from '@/components/layout/StatusBadge'
 import { BackendError } from '@/components/BackendError'
 import { getAllEmails } from '@/lib/api'
-import { businessDateKey, formatBusinessDateTimeParts } from '@/lib/time'
+import { businessDateKey, formatBusinessDateTimeParts, GROUP_ORDER, groupFor } from '@/lib/time'
 import { cn } from '@/lib/utils'
+
 
 function ReceivedAt({ value }) {
   const parts = formatBusinessDateTimeParts(value)
@@ -27,8 +28,6 @@ const CATEGORY_FILTERS = [
 const ALL_CATEGORY_KEYS = CATEGORY_FILTERS.map((filter) => filter.key)
 const VISITED_EMAILS_STORAGE_KEY = 'clearance:visited-email-ids'
 
-const GROUP_ORDER = ['Today', 'Yesterday', 'This week', 'This month', 'Earlier']
-
 function readVisitedEmailIds() {
   if (typeof window === 'undefined') return new Set()
   try {
@@ -47,19 +46,47 @@ function persistVisitedEmailIds(emailIds) {
   }
 }
 
-function groupFor(receivedAt, now) {
-  if (!receivedAt) return 'Earlier'
-  const today = businessDateKey(now)
-  const received = businessDateKey(receivedAt)
-  if (!today || !received) return 'Earlier'
-  const diffDays = Math.round(
-    (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${received}T00:00:00Z`)) / 86400000,
-  )
-  if (diffDays <= 0) return 'Today'
-  if (diffDays === 1) return 'Yesterday'
-  if (diffDays <= 6) return 'This week'
-  if (diffDays <= 29) return 'This month'
-  return 'Earlier'
+const VIEW_STATE_STORAGE_KEY = 'clearance:inbox-view-state'
+const SCROLL_RESTORE_STORAGE_KEY = 'clearance:inbox-scroll-restore'
+
+function readViewState() {
+  const fallback = {
+    selectedCategories: ALL_CATEGORY_KEYS,
+    showAll: true,
+    selectedPeriods: GROUP_ORDER,
+    query: '',
+  }
+  try {
+    const stored = JSON.parse(window.sessionStorage.getItem(VIEW_STATE_STORAGE_KEY) || 'null')
+    if (!stored) return fallback
+    const onlyKnown = (values, allowed) =>
+      Array.isArray(values) ? values.filter((value) => allowed.includes(value)) : allowed
+    return {
+      selectedCategories: onlyKnown(stored.selectedCategories, ALL_CATEGORY_KEYS),
+      showAll: stored.showAll !== false,
+      selectedPeriods: onlyKnown(stored.selectedPeriods, GROUP_ORDER),
+      query: typeof stored.query === 'string' ? stored.query : '',
+    }
+  } catch {
+    return fallback
+  }
+}
+
+function writeSession(key, value) {
+  try {
+    if (value === null) window.sessionStorage.removeItem(key)
+    else window.sessionStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    // Storage may be blocked; the inbox still works, it just won't remember its view.
+  }
+}
+
+function readScrollRestore() {
+  try {
+    return JSON.parse(window.sessionStorage.getItem(SCROLL_RESTORE_STORAGE_KEY) || 'null')
+  } catch {
+    return null
+  }
 }
 
 function filterByCategories(items, selectedCategories, showAll) {
@@ -68,10 +95,13 @@ function filterByCategories(items, selectedCategories, showAll) {
 }
 
 export function InboxPage({ navigate }) {
-  const [selectedCategories, setSelectedCategories] = useState(ALL_CATEGORY_KEYS)
-  const [showAll, setShowAll] = useState(true)
+  const [initialView] = useState(readViewState)
+  const [selectedCategories, setSelectedCategories] = useState(initialView.selectedCategories)
+  const [showAll, setShowAll] = useState(initialView.showAll)
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false)
-  const [query, setQuery] = useState('')
+  const [selectedPeriods, setSelectedPeriods] = useState(initialView.selectedPeriods)
+  const [periodMenuOpen, setPeriodMenuOpen] = useState(false)
+  const [query, setQuery] = useState(initialView.query)
   const [data, setData] = useState({ items: [], total: 0 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -79,16 +109,37 @@ export function InboxPage({ navigate }) {
   const [businessDay, setBusinessDay] = useState(() => businessDateKey(new Date()))
   const [visitedEmailIds, setVisitedEmailIds] = useState(readVisitedEmailIds)
   const categoryMenuRef = useRef(null)
+  const periodMenuRef = useRef(null)
+
+  // Keep the filters when an email is opened and the inbox is mounted again.
+  useEffect(() => {
+    writeSession(VIEW_STATE_STORAGE_KEY, { selectedCategories, showAll, selectedPeriods, query })
+  }, [selectedCategories, showAll, selectedPeriods, query])
+
+  // After returning from an email, put its row back where it was on screen. This
+  // runs once the list has rendered; before that the page is too short to scroll.
+  useLayoutEffect(() => {
+    if (loading || error) return
+    const restore = readScrollRestore()
+    if (!restore) return
+    writeSession(SCROLL_RESTORE_STORAGE_KEY, null)
+    const row = document.querySelector(`[data-email-id="${restore.emailId}"]`)
+    if (!row) return
+    window.scrollTo(0, window.scrollY + row.getBoundingClientRect().top - restore.top)
+  }, [loading, error])
 
   useEffect(() => {
-    if (!categoryMenuOpen) return undefined
+    if (!categoryMenuOpen && !periodMenuOpen) return undefined
 
     function closeOnOutsideClick(event) {
       if (!categoryMenuRef.current?.contains(event.target)) setCategoryMenuOpen(false)
+      if (!periodMenuRef.current?.contains(event.target)) setPeriodMenuOpen(false)
     }
 
     function closeOnEscape(event) {
-      if (event.key === 'Escape') setCategoryMenuOpen(false)
+      if (event.key !== 'Escape') return
+      setCategoryMenuOpen(false)
+      setPeriodMenuOpen(false)
     }
 
     document.addEventListener('mousedown', closeOnOutsideClick)
@@ -97,7 +148,7 @@ export function InboxPage({ navigate }) {
       document.removeEventListener('mousedown', closeOnOutsideClick)
       document.removeEventListener('keydown', closeOnEscape)
     }
-  }, [categoryMenuOpen])
+  }, [categoryMenuOpen, periodMenuOpen])
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -148,6 +199,18 @@ export function InboxPage({ navigate }) {
     return buckets
   }, [visibleItems])
 
+  const periodsFiltered = selectedPeriods.length < GROUP_ORDER.length
+  const shownCount = GROUP_ORDER.reduce(
+    (total, key) => total + (selectedPeriods.includes(key) ? grouped[key].length : 0),
+    0,
+  )
+
+  function togglePeriod(period) {
+    setSelectedPeriods((current) =>
+      current.includes(period) ? current.filter((key) => key !== period) : [...current, period],
+    )
+  }
+
   function selectAllCategories() {
     setSelectedCategories(ALL_CATEGORY_KEYS)
     setShowAll(true)
@@ -166,7 +229,8 @@ export function InboxPage({ navigate }) {
     setShowAll(next.length === ALL_CATEGORY_KEYS.length)
   }
 
-  function openEmail(emailId) {
+  function openEmail(emailId, row) {
+    writeSession(SCROLL_RESTORE_STORAGE_KEY, { emailId, top: row.getBoundingClientRect().top })
     const nextVisitedEmailIds = new Set(visitedEmailIds)
     nextVisitedEmailIds.add(emailId)
     setVisitedEmailIds(nextVisitedEmailIds)
@@ -178,7 +242,7 @@ export function InboxPage({ navigate }) {
     <div className="mx-auto max-w-7xl px-5 py-10 lg:px-14">
       <header className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
         <div>
-          <p className="text-sm font-medium text-[#475569]">{visibleItems.length} emails</p>
+          <p className="text-sm font-medium text-[#475569]">{shownCount} emails</p>
           <h1 className="mt-1 text-5xl font-semibold tracking-tight text-[#0F172A]">Inbox</h1>
         </div>
         <label className="flex h-14 w-full items-center gap-3 rounded-xl border border-[#CBD5E1] bg-white px-5 text-[#64748B] sm:max-w-[420px]">
@@ -299,13 +363,89 @@ export function InboxPage({ navigate }) {
             </div>
           )}
         </div>
+
+        <div className="relative sm:ml-auto" ref={periodMenuRef}>
+          <button
+            type="button"
+            onClick={() => setPeriodMenuOpen((open) => !open)}
+            aria-expanded={periodMenuOpen}
+            aria-controls="inbox-period-filter"
+            className={cn(
+              'inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-semibold transition-colors',
+              periodsFiltered
+                ? 'bg-[#0E5A66] text-white shadow-sm'
+                : 'bg-white text-[#46555E] shadow-sm hover:bg-[#FBF9F4]',
+            )}
+          >
+            <CalendarBlank size={17} aria-hidden="true" />
+            Time period
+            {periodsFiltered && (
+              <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">
+                {selectedPeriods.length}
+              </span>
+            )}
+            <CaretDown
+              size={15}
+              aria-hidden="true"
+              className={cn('transition-transform', periodMenuOpen && 'rotate-180')}
+            />
+          </button>
+
+          {periodMenuOpen && (
+            <div
+              id="inbox-period-filter"
+              role="dialog"
+              aria-label="Filter time period"
+              className="absolute right-0 z-20 mt-2 w-[min(18rem,calc(100vw-2.5rem))] rounded-2xl border border-[#E3DED1] bg-white p-4 shadow-xl"
+            >
+              <div className="flex items-center justify-between gap-4 border-b border-[#E9E5D9] pb-3">
+                <span className="text-xs font-semibold uppercase tracking-[0.1em] text-[#8A7F68]">
+                  Show time periods
+                </span>
+                <div className="flex items-center gap-3 text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPeriods(GROUP_ORDER)}
+                    className="text-[#0E5A66] hover:underline"
+                  >
+                    Show all
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPeriods([])}
+                    className="text-[#62757D] hover:text-[#16232B] hover:underline"
+                  >
+                    Hide all
+                  </button>
+                </div>
+              </div>
+              <div className="mt-3 space-y-1">
+                {GROUP_ORDER.map((period) => (
+                  <label
+                    key={period}
+                    className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2.5 text-sm text-[#26353D] hover:bg-[#FBF9F4]"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedPeriods.includes(period)}
+                      onChange={() => togglePeriod(period)}
+                      className="h-4 w-4 shrink-0 accent-[#0E5A66]"
+                    />
+                    <span className="min-w-0 flex-1 truncate">{period}</span>
+                    <span className="font-mono text-xs text-[#71808A]">{grouped[period].length}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="mt-6 space-y-8">
         {loading && <div className="py-14 text-center text-sm text-[#475569]">Loading emails…</div>}
         {!loading &&
           !error &&
-          GROUP_ORDER.map((key) => (
+          GROUP_ORDER.filter((key) => selectedPeriods.includes(key)).map((key) => (
             <section key={key}>
               <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.1em] text-[#475569]">
                 {key}
@@ -315,7 +455,8 @@ export function InboxPage({ navigate }) {
                   <button
                     key={item.email_id}
                     type="button"
-                    onClick={() => openEmail(item.email_id)}
+                    data-email-id={item.email_id}
+                    onClick={(event) => openEmail(item.email_id, event.currentTarget)}
                     className={cn(
                       'grid w-full grid-cols-1 gap-2 border-t border-[#E2E8F0] px-6 py-4 text-left transition-colors first:border-t-0 sm:grid-cols-[90px_minmax(0,1fr)_190px_70px_100px] sm:items-start sm:gap-4',
                       visitedEmailIds.has(item.email_id)
@@ -348,7 +489,7 @@ export function InboxPage({ navigate }) {
               </div>
             </section>
           ))}
-        {!loading && !error && !visibleItems.length && (
+        {!loading && !error && !shownCount && (
           <div className="rounded-2xl border border-[#E2E8F0] bg-white py-14 text-center text-sm text-[#64748B]">
             No emails match this filter.
           </div>

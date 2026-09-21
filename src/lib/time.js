@@ -87,3 +87,21 @@ export function formatBusinessDay(value = Date.now()) {
     year: 'numeric',
   }).format(date)
 }
+
+export const GROUP_ORDER = ['Today', 'Yesterday', 'This week', 'This month', 'Earlier']
+
+/** Inbox-style period heading for a timestamp, by Kuala Lumpur calendar days. */
+export function groupFor(receivedAt, now) {
+  if (!receivedAt) return 'Earlier'
+  const today = businessDateKey(now)
+  const received = businessDateKey(receivedAt)
+  if (!today || !received) return 'Earlier'
+  const diffDays = Math.round(
+    (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${received}T00:00:00Z`)) / 86400000,
+  )
+  if (diffDays <= 0) return 'Today'
+  if (diffDays === 1) return 'Yesterday'
+  if (diffDays <= 6) return 'This week'
+  if (diffDays <= 29) return 'This month'
+  return 'Earlier'
+}
