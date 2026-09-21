@@ -12,7 +12,7 @@ from app.api.schemas.common import (
     FieldExtraction,
 )
 from app.adapters.document_parsers import ParsedDocument, detect_document_type
-from app.pipeline.classify import classify_email
+from app.pipeline.classify import ClassificationService, classify_email
 from app.pipeline.compare import compare_documents
 from app.pipeline.decide import decide_result
 from app.pipeline.extract import extract_document
@@ -75,6 +75,42 @@ def test_classifier_keeps_explicit_compare_request_with_dropped_attachments():
             "attachments": [],
         }
     ) == EmailCategory.BL_COMPARISON
+
+
+def test_draft_bl_request_rule_flag_routes_unresolved_request_to_fallback_or_llm():
+    email = {
+        "subject": "Draft document requested",
+        "body": "Please provide the draft BL when it is ready.",
+        "attachments": [],
+    }
+
+    enabled = ClassificationService(
+        rules_only=True,
+        draft_bl_request_rule_enabled=True,
+    ).classify(email)
+    disabled_rules_only = ClassificationService(
+        rules_only=True,
+        draft_bl_request_rule_enabled=False,
+    ).classify(email)
+
+    class FakeLlm:
+        available = True
+        model = "synthetic-model"
+
+        def propose_classification(self, context):
+            return "GENERAL"
+
+    disabled_with_llm = ClassificationService(
+        FakeLlm(),
+        draft_bl_request_rule_enabled=False,
+    ).classify(email)
+
+    assert enabled.category == EmailCategory.GENERAL
+    assert enabled.decided_by == "rule"
+    assert disabled_rules_only.category == EmailCategory.GENERAL
+    assert disabled_rules_only.decided_by == "fallback_default"
+    assert disabled_with_llm.category == EmailCategory.GENERAL
+    assert disabled_with_llm.decided_by == "llm"
 
 
 def test_classifier_identifies_si_requests_and_document_instruction_labels():

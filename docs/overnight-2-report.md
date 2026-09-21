@@ -10,7 +10,7 @@ In progress. Final results, recommended settings, retained changes, and user dec
 
 - Branch: `overnight/improve-2`, created from `main` at `c52305a`.
 - No push, merge, deployment, account creation, or modification of `main` is permitted.
-- Scorer budget: 5/14 used; full OpenAI exports: 1/2 used.
+- Scorer budget: 8/14 used; full OpenAI exports: 2/2 used.
 - The task-specified interpreter path `backend.venv\Scripts\python.exe` does not exist. The repository venv exists at `backend\.venv\Scripts\python.exe`; all Python and scorer commands use that interpreter. The scorer command is otherwise unchanged.
 - Runtime and output directories are fresh children of `C:\Users\User\monash-hackathon.runtime`.
 - The scorer is used only on complete 520-entry exports. Only aggregate scorer output is recorded.
@@ -25,6 +25,9 @@ In progress. Final results, recommended settings, retained changes, and user dec
 | 3 | 1 | `ORDER_MODE_POLICY=review`, rules-only | 0.6726 | 0.7229 | 1.0000 | 0.6087 | 28/46 | 57 |
 | 4 | 1 | `ORDER_MODE_POLICY=same_party_match`, rules-only | 0.9038 | 0.7229 | 1.0000 | 0.9783 | 45/46 | 19 |
 | 5 | 1 | `ORDER_MODE_POLICY=always_mismatch`, rules-only | 0.7145 | 0.7229 | 0.6818 | 0.9783 | 31/46 | 19 |
+| 6 | 2 | Draft-BL rule on, rules-only | 0.6726 | 0.7229 | 1.0000 | 0.6087 | 28/46 | 57 |
+| 7 | 2 | Draft-BL rule off, rules-only | 0.6726 | 0.7229 | 1.0000 | 0.6087 | 28/46 | 57 |
+| 8 | 2 | Draft-BL rule off, full OpenAI | 0.7172 | 0.8715 | 1.0000 | 0.6087 | 28/46 | 100 |
 
 ## Step 0 — Baseline
 
@@ -73,7 +76,15 @@ Recommendation: `same_party_match` is the measured best policy and preserves def
 
 ## Step 2 — Draft-BL request rule
 
-Pending.
+Implemented `DRAFT_BL_REQUEST_RULE_ENABLED`, defaulting to `true` to preserve current behavior. When disabled, a draft-BL send/provide/share/forward request without explicit comparison intent is left unresolved: rules-only mode uses the conservative `GENERAL` fallback, while a full run routes it to the Stage 1 LLM. Synthetic coverage verifies all three paths.
+
+Results:
+
+- Rule enabled, rules-only: 440 rule decisions and 80 conservative fallbacks; 57 `NEEDS_REVIEW`; final 0.6726.
+- Rule disabled, rules-only: 349 rule decisions and 171 conservative fallbacks; the exported categories and 57 `NEEDS_REVIEW` rows are unchanged, so the score remains 0.6726.
+- Rule disabled, full OpenAI: 349 rule decisions and 171 LLM decisions. The run made 166 provider calls with five in-run cache hits, 75,532 input tokens, 6,637 output tokens, no retries, and no failures. It classified 43 additional emails as BL comparison, raising `NEEDS_REVIEW` from 57 to 100. Stage 1 macro-F1 improved from the full baseline's 0.8183 to 0.8715 and final score improved from 0.7012 to 0.7172; defect precision remained 1.0000, but review precision fell because of the larger queue.
+
+Recommendation: retain the enabled default for the product because it avoids 43 additional review cases and 91 extra LLM-eligible inputs. Disable it only when official-score optimization outweighs review workload and model cost; that measured configuration has the best Step 2 final score. The default remains enabled as requested.
 
 ## Step 3 — Persistent Stage 1 LLM cache
 

@@ -17,6 +17,7 @@ from app.adapters.openai_client import (
 )
 from app.api.schemas.common import Confidence, EmailCategory
 from app.pipeline.prompts import CLASSIFICATION_PROMPT, CLASSIFICATION_PROMPT_VERSION
+from app.settings import settings
 
 
 @dataclass(frozen=True)
@@ -115,7 +116,11 @@ def _attachment_metadata(email: dict[str, Any]) -> tuple[list[str], bool, bool]:
     return names, has_si, has_bl
 
 
-def _rule_classify(email: dict[str, Any]) -> _RuleDecision | None:
+def _rule_classify(
+    email: dict[str, Any],
+    *,
+    draft_bl_request_rule_enabled: bool = True,
+) -> _RuleDecision | None:
     """Return a label only for a high-signal, deterministic match."""
 
     subject = str(email.get("subject", ""))
@@ -215,7 +220,12 @@ def _rule_classify(email: dict[str, Any]) -> _RuleDecision | None:
             text,
         )
     )
-    if draft_bl_request and not attachment_pair and not explicit_comparison_intent:
+    if (
+        draft_bl_request_rule_enabled
+        and draft_bl_request
+        and not attachment_pair
+        and not explicit_comparison_intent
+    ):
         return _RuleDecision(
             EmailCategory.GENERAL,
             reason="A draft BL was requested without an explicit SI/BL comparison request.",
@@ -338,9 +348,19 @@ def _safe_reason(value: Any, fallback: str) -> str:
 class ClassificationService:
     """Rules-first Stage 1 classifier with bounded, deduplicated LLM calls."""
 
-    def __init__(self, llm: Any | None = None, rules_only: bool = False) -> None:
+    def __init__(
+        self,
+        llm: Any | None = None,
+        rules_only: bool = False,
+        draft_bl_request_rule_enabled: bool | None = None,
+    ) -> None:
         self.llm = llm
         self.rules_only = rules_only
+        self.draft_bl_request_rule_enabled = (
+            settings.draft_bl_request_rule_enabled
+            if draft_bl_request_rule_enabled is None
+            else bool(draft_bl_request_rule_enabled)
+        )
         self._cache: dict[str, ClassificationDecision] = {}
         self._inflight: dict[str, Future[ClassificationDecision]] = {}
         self._lock = threading.RLock()
@@ -365,6 +385,7 @@ class ClassificationService:
             failure_reason_counts = dict(self._failure_reason_counts)
         return {
             "rules_only": self.rules_only,
+            "draft_bl_request_rule_enabled": self.draft_bl_request_rule_enabled,
             "llm_calls": self.llm_calls,
             "provider_attempts": provider_attempts,
             "provider_retries": provider_retries,
@@ -393,7 +414,10 @@ class ClassificationService:
             return list(pool.map(self.classify, records))
 
     def classify(self, email: dict[str, Any]) -> ClassificationDecision:
-        rule_decision = _rule_classify(email)
+        rule_decision = _rule_classify(
+            email,
+            draft_bl_request_rule_enabled=self.draft_bl_request_rule_enabled,
+        )
         if rule_decision is not None:
             return ClassificationDecision(
                 category=rule_decision.category,

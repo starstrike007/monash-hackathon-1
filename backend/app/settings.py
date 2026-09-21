@@ -6,6 +6,18 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{name} must be true or false")
+
+
 class Settings:
     def __init__(self) -> None:
         self.backend_dir = Path(__file__).resolve().parents[1]
@@ -32,6 +44,9 @@ class Settings:
             raise ValueError(
                 "ORDER_MODE_POLICY must be review, same_party_match, or always_mismatch"
             )
+        self.draft_bl_request_rule_enabled = _env_bool(
+            "DRAFT_BL_REQUEST_RULE_ENABLED", True
+        )
         self.supabase_url = os.getenv("SUPABASE_URL", "")
         self.supabase_service_role_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
         allowed_origins = os.getenv("ALLOWED_ORIGINS") or os.getenv("CORS_ORIGINS")

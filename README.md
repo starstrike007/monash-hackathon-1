@@ -174,6 +174,7 @@ Set these environment variables on Render:
 OPENAI_API_KEY
 OPENAI_MODEL
 ORDER_MODE_POLICY=review
+DRAFT_BL_REQUEST_RULE_ENABLED=true
 SUPABASE_URL
 SUPABASE_SERVICE_ROLE_KEY
 DATA_DIR=../data
@@ -189,6 +190,11 @@ consignee. The safe default is `review`. The alternatives are
 `same_party_match` (match only when deterministic party normalization is equal,
 otherwise mismatch) and `always_mismatch` (any named/order-mode difference is a
 consignee mismatch). No fuzzy name matching is used.
+
+`DRAFT_BL_REQUEST_RULE_ENABLED=true` keeps draft-BL send/provide/share/forward
+requests without explicit SI/BL comparison intent as deterministic `GENERAL`.
+Set it to `false` to leave those requests unresolved for the Stage 1 OpenAI
+fallback. The default remains `true`.
 
 Render's free tier spins the service down when idle. Open the app a few
 minutes before a demo so the API has time to wake up.
