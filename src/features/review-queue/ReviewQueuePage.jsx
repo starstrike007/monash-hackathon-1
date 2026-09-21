@@ -57,12 +57,10 @@ export function ReviewQueuePage({ navigate, initialReason = '' }) {
   }, [items, reasonFilter])
 
   return (
-    <div className="mx-auto max-w-[1400px] px-5 py-10 lg:px-14">
+    <div className="mx-auto max-w-7xl px-5 py-10 lg:px-14">
       <header>
-        <p className="text-sm font-medium text-[#62757D]">{items.length} items</p>
-        <h1 className="mt-1 font-serif text-5xl font-semibold tracking-tight text-[#16232B]">
-          Review queue
-        </h1>
+        <p className="text-sm font-medium text-[#475569]">{items.length} items</p>
+        <h1 className="mt-1 text-5xl font-semibold tracking-tight text-[#0F172A]">Review queue</h1>
       </header>
 
       {error && (
@@ -72,7 +70,7 @@ export function ReviewQueuePage({ navigate, initialReason = '' }) {
       )}
 
       <div className="mt-9 flex flex-wrap items-center gap-3">
-        <div className="inline-flex rounded-lg bg-[#E9E5D9] p-1">
+        <div className="inline-flex rounded-lg bg-[#E2E8F0] p-1">
           {['open', 'resolved'].map((status) => (
             <button
               key={status}
@@ -81,7 +79,9 @@ export function ReviewQueuePage({ navigate, initialReason = '' }) {
               aria-pressed={statusFilter === status}
               className={cn(
                 'rounded-md px-4 py-2 text-sm font-semibold capitalize',
-                statusFilter === status ? 'bg-white text-[#16232B] shadow-sm' : 'text-[#62757D]',
+                statusFilter === status
+                  ? 'border border-slate-200 bg-white text-[#0F172A]'
+                  : 'text-[#64748B]',
               )}
             >
               {status}
@@ -93,7 +93,9 @@ export function ReviewQueuePage({ navigate, initialReason = '' }) {
           onClick={() => setReasonFilter('')}
           className={cn(
             'inline-flex h-9 items-center rounded-lg px-3 text-sm font-medium',
-            reasonFilter === '' ? 'bg-[#16232B] text-white' : 'bg-white text-[#46555E] shadow-sm',
+            reasonFilter === ''
+              ? 'bg-[#0F172A] text-white'
+              : 'border border-slate-200 bg-white text-[#475569]',
           )}
         >
           All
@@ -105,7 +107,7 @@ export function ReviewQueuePage({ navigate, initialReason = '' }) {
             onClick={() => setReasonFilter(reason)}
             className={cn(
               'inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium',
-              reasonFilter === reason ? 'bg-[#8A5300] text-white' : 'bg-[#FBEBCF] text-[#8A5300]',
+              reasonFilter === reason ? 'bg-[#D97706] text-white' : 'bg-[#FEF3C7] text-amber-700',
             )}
           >
             {reasonLabel(reason)}
@@ -114,8 +116,8 @@ export function ReviewQueuePage({ navigate, initialReason = '' }) {
         ))}
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-2xl border border-[#E3DED1] bg-white">
-        <div className="hidden grid-cols-[120px_150px_minmax(220px,1.6fr)_170px_minmax(220px,1.6fr)_32px] gap-4 bg-[#FBF9F4] px-6 py-4 text-xs font-semibold uppercase tracking-[0.08em] text-[#71808A] lg:grid">
+      <div className="mt-6 overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white">
+        <div className="hidden grid-cols-[120px_150px_minmax(220px,1.6fr)_170px_minmax(220px,1.6fr)_32px] gap-4 bg-[#F8FAFC] px-6 py-4 text-xs font-semibold uppercase tracking-[0.08em] text-[#64748B] lg:grid">
           <span>Email</span>
           <span>Received</span>
           <span>Subject</span>
@@ -123,33 +125,34 @@ export function ReviewQueuePage({ navigate, initialReason = '' }) {
           <span>Description</span>
           <span />
         </div>
-        {loading && <div className="px-6 py-14 text-center text-sm text-[#71808A]">Loading…</div>}
-        {!loading && !error &&
+        {loading && <div className="px-6 py-14 text-center text-sm text-[#64748B]">Loading…</div>}
+        {!loading &&
+          !error &&
           visible.map((item) => {
             const email = emailsById[item.email_id]
             return (
               <button
                 key={item.id}
                 onClick={() => navigate(`/review/${item.id}`)}
-                className="grid w-full grid-cols-1 gap-3 border-t border-[#E9E5D9] px-6 py-5 text-left transition-colors hover:bg-[#FCFAF4] lg:grid-cols-[120px_150px_minmax(220px,1.6fr)_170px_minmax(220px,1.6fr)_32px] lg:items-center lg:gap-4"
+                className="grid w-full grid-cols-1 gap-3 border-t border-[#E2E8F0] px-6 py-5 text-left transition-colors hover:bg-[#F8FAFC] lg:grid-cols-[120px_150px_minmax(220px,1.6fr)_170px_minmax(220px,1.6fr)_32px] lg:items-center lg:gap-4"
               >
-                <span className="font-mono text-sm text-[#71808A]">
+                <span className="font-mono text-sm text-[#64748B]">
                   {email?.display_id || item.email_id}
                 </span>
-                <span className="text-sm text-[#71808A]">{formatDate(email?.received_at)}</span>
-                <strong className="min-w-0 truncate text-[15px] text-[#26353D]">
+                <span className="text-sm text-[#64748B]">{formatDate(email?.received_at)}</span>
+                <strong className="min-w-0 truncate text-[15px] text-[#1E293B]">
                   {email?.subject || item.email_id}
                 </strong>
-                <span className="inline-flex w-fit items-center rounded-full bg-[#FBEBCF] px-2.5 py-1 text-xs font-semibold text-[#8A5300]">
+                <span className="inline-flex w-fit items-center rounded-md bg-[#FEF3C7] px-2 py-1 font-mono text-xs font-medium text-amber-700">
                   {reasonLabel(item.reason)}
                 </span>
-                <span className="truncate text-sm text-[#5E6D75]">{item.description}</span>
-                <ArrowRight size={18} className="hidden text-[#71808A] lg:block" />
+                <span className="truncate text-sm text-[#64748B]">{item.description}</span>
+                <ArrowRight size={18} className="hidden text-[#64748B] lg:block" />
               </button>
             )
           })}
         {!loading && !error && !visible.length && (
-          <div className="px-6 py-14 text-center text-sm text-[#71808A]">
+          <div className="px-6 py-14 text-center text-sm text-[#64748B]">
             Nothing here.{' '}
             {statusFilter === 'open' ? 'The review queue is clear.' : 'No resolved items yet.'}
           </div>

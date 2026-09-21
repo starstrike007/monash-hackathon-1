@@ -19,15 +19,15 @@ export function DefectsByField({ defects, className = 'mt-6' }) {
     <div className={`${className} space-y-4`}>
       {rows.map((row) => (
         <div key={row.key} className="flex items-center gap-3 text-sm">
-          <span className="w-32 shrink-0 text-[#46555E]">{row.label}</span>
-          <div className="h-2 flex-1 rounded-full bg-[#E9E5D9]">
+          <span className="w-32 shrink-0 text-[#475569]">{row.label}</span>
+          <div className="h-2 flex-1 rounded-full bg-[#E2E8F0]">
             <div
-              className="h-2 rounded-full bg-[#CF3B32]"
+              className="h-2 rounded-full bg-[#DC2626]"
               style={{ width: `${(row.value / maximum) * 100}%` }}
               title={`${row.value} mismatches · ${Math.round((row.value / total) * 100)}% of defects`}
             />
           </div>
-          <span className="w-7 text-right font-mono text-[#46555E]">{row.value}</span>
+          <span className="w-7 text-right font-mono text-[#475569]">{row.value}</span>
         </div>
       ))}
     </div>

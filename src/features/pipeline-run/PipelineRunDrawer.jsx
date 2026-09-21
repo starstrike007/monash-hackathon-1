@@ -15,16 +15,16 @@ function StageCard({ stage }) {
       ? 100
       : 0
   return (
-    <section className="rounded-lg border border-[#E3DED1] bg-white px-3 py-2">
+    <section className="rounded-lg border border-[#E2E8F0] bg-white px-3 py-2">
       <div className="flex items-center gap-2">
         <span
           className={cn(
             'grid h-8 w-8 shrink-0 place-items-center rounded-full',
             complete
-              ? 'bg-[#E2F1E8] text-[#17693F]'
+              ? 'bg-[#D1FAE5] text-[#047857]'
               : failed
-                ? 'bg-[#FBEBCF] text-[#8A5300]'
-                : 'bg-[#E9E5D9] text-[#71808A]',
+                ? 'bg-[#FEF3C7] text-[#B45309]'
+                : 'bg-[#E2E8F0] text-[#64748B]',
           )}
         >
           {complete ? (
@@ -35,20 +35,20 @@ function StageCard({ stage }) {
             <CircleNotch size={17} className="animate-spin" />
           )}
         </span>
-        <h2 className="text-sm font-semibold text-[#26353D]">
+        <h2 className="text-sm font-semibold text-[#1E293B]">
           {stage.stage_number} · {stage.stage_name}
         </h2>
-        <span className="ml-auto rounded-full bg-[#E9E5D9] px-2 py-0.5 text-[11px] text-[#46555E]">
+        <span className="ml-auto rounded-full bg-[#E2E8F0] px-2 py-0.5 text-[11px] text-[#475569]">
           {stage.stage_number <= 2 ? 'Rules + OpenAI' : 'Rule-based'}
         </span>
       </div>
-      <div className="mt-1.5 h-1.5 rounded-full bg-[#E9E5D9]">
+      <div className="mt-1.5 h-1.5 rounded-full bg-[#E2E8F0]">
         <div
-          className="h-1.5 rounded-full bg-[#0E5A66] transition-all"
+          className="h-1.5 rounded-full bg-[#0F172A] transition-all"
           style={{ width: `${progress}%` }}
         />
       </div>
-      <div className="mt-1.5 flex justify-between gap-3 text-xs text-[#62757D]">
+      <div className="mt-1.5 flex justify-between gap-3 text-xs text-[#64748B]">
         <span>
           {stage.processed_count} of {stage.total_count}{' '}
           {stage.stage_number === 1
@@ -65,9 +65,9 @@ function StageCard({ stage }) {
         </span>
       </div>
       {stage.details?.failure && (
-        <div className="mt-1.5 rounded-md border border-[#F2C2BC] bg-[#F8E3E0] p-1.5">
-          <p className="text-xs font-semibold text-[#A32720]">Item failed</p>
-          <p className="line-clamp-2 text-xs text-[#8C2A24]">{stage.details.failure}</p>
+        <div className="mt-1.5 rounded-md border border-[#FECACA] bg-[#FEE2E2] p-1.5">
+          <p className="text-xs font-semibold text-[#B91C1C]">Item failed</p>
+          <p className="line-clamp-2 text-xs text-[#991B1B]">{stage.details.failure}</p>
         </div>
       )}
     </section>
@@ -119,22 +119,23 @@ export function PipelineRunDrawer({ runId, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <button
-        className="absolute inset-0 bg-[#16232B]/35"
+        className="absolute inset-0 bg-[#0F172A]/35"
         onClick={onClose}
         aria-label="Close pipeline run"
       />
-      <aside className="relative flex h-full w-full max-w-[440px] flex-col bg-[#FBF9F4] px-4 py-4 shadow-2xl sm:px-5">
+      <aside className="relative flex h-full w-full max-w-[440px] flex-col bg-[#F8FAFC] px-4 py-4 shadow-xl sm:px-5">
         <button
-          className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-lg bg-white text-[#26353D] shadow-sm transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100"
+          className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-lg border border-[#0F172A] bg-transparent text-[#0F172A] hover:bg-slate-100 transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100"
           onClick={onClose}
           aria-label="Close"
         >
           <X size={16} />
         </button>
-        <p className="text-xs text-[#62757D]">
-          Started {run?.started_at ? formatDate(run.started_at) : '—'} · {run?.total_emails ?? '—'} emails
+        <p className="text-xs text-[#64748B]">
+          Started {run?.started_at ? formatDate(run.started_at) : '—'} · {run?.total_emails ?? '—'}{' '}
+          emails
         </p>
-        <h1 className="mt-0.5 font-serif text-2xl font-semibold tracking-tight text-[#16232B]">
+        <h1 className="mt-0.5 text-2xl font-semibold tracking-tight text-[#0F172A]">
           Pipeline run
         </h1>
         {error && (
@@ -143,7 +144,7 @@ export function PipelineRunDrawer({ runId, onClose }) {
           </div>
         )}
         {run?.status === 'failed' && (
-          <div className="mt-2 flex items-center gap-2 rounded-lg border border-[#EBCB83] bg-[#FBEBCF] p-2 text-xs text-[#5A3A08]">
+          <div className="mt-2 flex items-center gap-2 rounded-lg border border-[#FCD34D] bg-[#FEF3C7] p-2 text-xs text-[#78350F]">
             <Warning size={16} />
             <p>
               <strong>Run complete.</strong> Some items failed and can be retried.
@@ -156,18 +157,18 @@ export function PipelineRunDrawer({ runId, onClose }) {
           )}
         </div>
         {run?.failures?.length ? (
-          <div className="mt-1.5 space-y-2 rounded-lg border border-[#F2C2BC] bg-[#F8E3E0] p-2">
+          <div className="mt-1.5 space-y-2 rounded-lg border border-[#FECACA] bg-[#FEE2E2] p-2">
             {run.failures.map((failure) => (
               <div key={failure.email_id} className="flex items-start gap-2">
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold text-[#A32720]">
+                  <p className="text-xs font-semibold text-[#B91C1C]">
                     {failure.email_id.toUpperCase()} failed
                   </p>
-                  <p className="line-clamp-2 text-xs text-[#8C2A24]">{failure.message}</p>
+                  <p className="line-clamp-2 text-xs text-[#991B1B]">{failure.message}</p>
                 </div>
                 <button
                   type="button"
-                  className="shrink-0 rounded-md bg-white px-2 py-1 text-xs font-semibold text-[#8C2A24] disabled:opacity-60"
+                  className="shrink-0 rounded-md bg-white px-2 py-1 text-xs font-semibold text-[#991B1B] disabled:opacity-60"
                   onClick={() => retry(failure)}
                   disabled={retryingEmailId !== null}
                 >
@@ -179,7 +180,7 @@ export function PipelineRunDrawer({ runId, onClose }) {
         ) : null}
         <div className="mt-2 flex gap-2">
           <button
-            className="inline-flex h-10 w-full shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 text-sm font-semibold leading-none transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100 bg-white text-[#26353D] shadow-sm"
+            className="inline-flex h-10 w-full shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 text-sm font-semibold leading-none transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100 border border-[#0F172A] bg-transparent text-[#0F172A] hover:bg-slate-100"
             onClick={onClose}
           >
             Close

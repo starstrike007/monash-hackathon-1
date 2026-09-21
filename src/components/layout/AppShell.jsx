@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Archive, ChartLineUp, Files, List, X, WarningCircle } from '@phosphor-icons/react'
 
 import clearanceLogo from '@/assets/clearance-logo.png'
+import { AbstractBlueBackground } from '@/components/backgrounds/AbstractBlueBackground'
 import { cn } from '@/lib/utils'
 
 const navigation = [
@@ -20,9 +21,10 @@ export function AppShell({ pathname, navigate, children, reviewCount = null }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#F3F0E8] text-[#16232B]">
+    <div className="relative isolate min-h-screen bg-[#d5e4ff] text-[#0F172A]">
+      <AbstractBlueBackground className="fixed inset-0 -z-10" />
       <button
-        className="fixed left-4 top-4 z-40 rounded-lg bg-[#16232B] p-2 text-white shadow-lg lg:hidden"
+        className="fixed left-4 top-4 z-40 rounded-lg bg-[#0F172A] p-2 text-white shadow-lg lg:hidden"
         onClick={() => setOpen(true)}
         aria-label="Open navigation"
       >
@@ -31,7 +33,7 @@ export function AppShell({ pathname, navigate, children, reviewCount = null }) {
 
       {open && (
         <button
-          className="fixed inset-0 z-40 bg-[#16232B]/40 lg:hidden"
+          className="fixed inset-0 z-40 bg-[#0F172A]/40 lg:hidden"
           onClick={() => setOpen(false)}
           aria-label="Close navigation"
         />
@@ -39,7 +41,7 @@ export function AppShell({ pathname, navigate, children, reviewCount = null }) {
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-[220px] -translate-x-full flex-col bg-[#13232C] px-5 py-7 text-white transition-transform lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex w-[220px] -translate-x-full flex-col bg-gradient-to-b from-[#0A1230] via-[#0F1F45] to-[#1E3A6E] px-4 py-7 text-white transition-transform lg:translate-x-0',
           open && 'translate-x-0',
         )}
       >
@@ -55,10 +57,10 @@ export function AppShell({ pathname, navigate, children, reviewCount = null }) {
               aria-hidden="true"
               className="h-10 w-10 shrink-0 object-contain"
             />
-            <span className="font-serif text-2xl font-semibold tracking-tight">Clearance</span>
+            <span className="text-2xl font-semibold tracking-tight">Clearance</span>
           </button>
           <button
-            className="rounded-md p-2 text-white/70 hover:bg-white/10 lg:hidden"
+            className="rounded-md p-2 text-slate-400 hover:bg-slate-800 lg:hidden"
             onClick={() => setOpen(false)}
             aria-label="Close navigation"
           >
@@ -78,14 +80,14 @@ export function AppShell({ pathname, navigate, children, reviewCount = null }) {
                 key={path}
                 onClick={() => go(path)}
                 className={cn(
-                  'flex w-full items-center gap-4 rounded-xl px-4 py-3 text-left text-[15px] font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white',
-                  active && 'bg-[#9A3412] text-white',
+                  'flex w-full items-center gap-3 whitespace-nowrap rounded-xl px-3 py-3 text-left text-sm font-medium text-slate-300 transition-colors hover:bg-white/10 hover:text-white',
+                  active && 'bg-white/15 text-white hover:bg-white/15',
                 )}
               >
                 <Icon size={21} weight={active ? 'fill' : 'regular'} />
                 <span className="flex-1">{label}</span>
                 {badge && (
-                  <span className="rounded-full bg-[#FBEBCF] px-2 py-0.5 text-xs font-bold text-[#8A5300]">
+                  <span className="rounded-full bg-[#D97706] px-2 py-0.5 text-xs font-bold text-white">
                     {reviewCount == null ? '—' : reviewCount}
                   </span>
                 )}
@@ -94,7 +96,7 @@ export function AppShell({ pathname, navigate, children, reviewCount = null }) {
           })}
         </nav>
 
-        <div className="mt-auto rounded-xl bg-[#0E5A66] p-4 text-white/70">
+        <div className="mt-auto rounded-xl border border-white/10 bg-white/5 p-4 text-slate-300 backdrop-blur">
           <p className="font-semibold text-white">Live pipeline</p>
           <p className="mt-1 text-sm leading-5">
             Counts and review state come from the backend results store.

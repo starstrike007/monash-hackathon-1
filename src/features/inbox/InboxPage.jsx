@@ -10,8 +10,8 @@ import { cn } from '@/lib/utils'
 function ReceivedAt({ value }) {
   const parts = formatBusinessDateTimeParts(value)
   return (
-    <span className="flex flex-col text-xs leading-snug text-[#71808A] sm:items-end sm:text-right">
-      <span className="font-medium text-[#46555E]">{parts?.date ?? '—'}</span>
+    <span className="flex flex-col text-xs leading-snug text-[#64748B] sm:items-end sm:text-right">
+      <span className="font-medium text-[#475569]">{parts?.date ?? '—'}</span>
       {parts && <span>{parts.time}</span>}
     </span>
   )
@@ -175,19 +175,17 @@ export function InboxPage({ navigate }) {
   }
 
   return (
-    <div className="mx-auto max-w-[1400px] px-5 py-10 lg:px-14">
+    <div className="mx-auto max-w-7xl px-5 py-10 lg:px-14">
       <header className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
         <div>
-          <p className="text-sm font-medium text-[#62757D]">{visibleItems.length} emails</p>
-          <h1 className="mt-1 font-serif text-5xl font-semibold tracking-tight text-[#16232B]">
-            Inbox
-          </h1>
+          <p className="text-sm font-medium text-[#475569]">{visibleItems.length} emails</p>
+          <h1 className="mt-1 text-5xl font-semibold tracking-tight text-[#0F172A]">Inbox</h1>
         </div>
-        <label className="flex h-14 w-full items-center gap-3 rounded-xl border border-[#D5D0C2] bg-white px-5 text-[#71808A] sm:max-w-[420px]">
+        <label className="flex h-14 w-full items-center gap-3 rounded-xl border border-[#CBD5E1] bg-white px-5 text-[#64748B] sm:max-w-[420px]">
           <MagnifyingGlass size={20} />
           <span className="sr-only">Search inbox</span>
           <input
-            className="min-w-0 flex-1 bg-transparent text-sm text-[#16232B] outline-none placeholder:text-[#8A969B]"
+            className="min-w-0 flex-1 bg-transparent text-sm text-[#0F172A] outline-none placeholder:text-[#94A3B8]"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search subject, sender or ID"
@@ -209,15 +207,15 @@ export function InboxPage({ navigate }) {
           className={cn(
             'inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-semibold transition-colors',
             showAll
-              ? 'bg-[#16232B] text-white'
-              : 'bg-white text-[#46555E] shadow-sm hover:bg-[#FBF9F4]',
+              ? 'bg-[#0F172A] text-white'
+              : 'border border-slate-200 bg-white text-[#475569] hover:bg-[#F8FAFC]',
           )}
         >
           All emails
           <span
             className={cn(
               'rounded-full px-2 py-0.5 text-xs',
-              showAll ? 'bg-[#294A5C] text-white' : 'bg-[#E9E5D9] text-[#46555E]',
+              showAll ? 'bg-[#334155] text-white' : 'bg-[#E2E8F0] text-[#475569]',
             )}
           >
             {counts['']}
@@ -233,8 +231,8 @@ export function InboxPage({ navigate }) {
             className={cn(
               'inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-semibold transition-colors',
               !showAll
-                ? 'bg-[#0E5A66] text-white shadow-sm'
-                : 'bg-white text-[#46555E] shadow-sm hover:bg-[#FBF9F4]',
+                ? 'bg-[#0F172A] text-white'
+                : 'border border-slate-200 bg-white text-[#475569] hover:bg-[#F8FAFC]',
             )}
           >
             <Funnel size={17} aria-hidden="true" />
@@ -256,24 +254,24 @@ export function InboxPage({ navigate }) {
               id="inbox-category-filter"
               role="dialog"
               aria-label="Filter categories"
-              className="absolute left-0 z-20 mt-2 w-[min(22rem,calc(100vw-2.5rem))] rounded-2xl border border-[#E3DED1] bg-white p-4 shadow-xl"
+              className="absolute left-0 z-20 mt-2 w-[min(22rem,calc(100vw-2.5rem))] rounded-2xl border border-[#E2E8F0] bg-white p-4 shadow-lg"
             >
-              <div className="flex items-center justify-between gap-4 border-b border-[#E9E5D9] pb-3">
-                <span className="text-xs font-semibold uppercase tracking-[0.1em] text-[#8A7F68]">
+              <div className="flex items-center justify-between gap-4 border-b border-[#E2E8F0] pb-3">
+                <span className="text-xs font-semibold uppercase tracking-[0.1em] text-[#64748B]">
                   Show categories
                 </span>
                 <div className="flex items-center gap-3 text-xs font-semibold">
                   <button
                     type="button"
                     onClick={selectAllCategories}
-                    className="text-[#0E5A66] hover:underline"
+                    className="text-[#0F172A] hover:underline"
                   >
                     Show all
                   </button>
                   <button
                     type="button"
                     onClick={hideAllCategories}
-                    className="text-[#62757D] hover:text-[#16232B] hover:underline"
+                    className="text-[#64748B] hover:text-[#0F172A] hover:underline"
                   >
                     Hide all
                   </button>
@@ -283,16 +281,16 @@ export function InboxPage({ navigate }) {
                 {CATEGORY_FILTERS.map((filter) => (
                   <label
                     key={filter.key}
-                    className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2.5 text-sm text-[#26353D] hover:bg-[#FBF9F4]"
+                    className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2.5 text-sm text-[#1E293B] hover:bg-[#F8FAFC]"
                   >
                     <input
                       type="checkbox"
                       checked={selectedCategories.includes(filter.key)}
                       onChange={() => toggleCategory(filter.key)}
-                      className="h-4 w-4 shrink-0 accent-[#0E5A66]"
+                      className="h-4 w-4 shrink-0 accent-[#0F172A]"
                     />
                     <span className="min-w-0 flex-1 truncate">{filter.label}</span>
-                    <span className="font-mono text-xs text-[#71808A]">
+                    <span className="font-mono text-xs text-[#64748B]">
                       {counts[filter.key] || 0}
                     </span>
                   </label>
@@ -304,40 +302,40 @@ export function InboxPage({ navigate }) {
       </div>
 
       <div className="mt-6 space-y-8">
-        {loading && <div className="py-14 text-center text-sm text-[#71808A]">Loading emails…</div>}
+        {loading && <div className="py-14 text-center text-sm text-[#475569]">Loading emails…</div>}
         {!loading &&
           !error &&
           GROUP_ORDER.map((key) => (
             <section key={key}>
-              <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.1em] text-[#8A7F68]">
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.1em] text-[#475569]">
                 {key}
               </h2>
-              <div className="overflow-hidden rounded-2xl border border-[#E3DED1] bg-white">
+              <div className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white">
                 {grouped[key].map((item) => (
                   <button
                     key={item.email_id}
                     type="button"
                     onClick={() => openEmail(item.email_id)}
                     className={cn(
-                      'grid w-full grid-cols-1 gap-2 border-t border-[#E9E5D9] px-6 py-4 text-left transition-colors first:border-t-0 sm:grid-cols-[90px_minmax(0,1fr)_190px_70px_100px] sm:items-start sm:gap-4',
+                      'grid w-full grid-cols-1 gap-2 border-t border-[#E2E8F0] px-6 py-4 text-left transition-colors first:border-t-0 sm:grid-cols-[90px_minmax(0,1fr)_190px_70px_100px] sm:items-start sm:gap-4',
                       visitedEmailIds.has(item.email_id)
-                        ? 'bg-[#F6F3EC] hover:bg-[#F0ECE2]'
-                        : 'bg-white hover:bg-[#FCFAF4]',
+                        ? 'bg-[#F1F5F9] hover:bg-[#E2E8F0]'
+                        : 'bg-white hover:bg-[#F8FAFC]',
                     )}
                   >
-                    <span className="font-mono text-xs text-[#71808A]">{item.display_id}</span>
+                    <span className="font-mono text-xs text-[#64748B]">{item.display_id}</span>
                     <span className="min-w-0">
-                      <strong className="line-clamp-2 text-[15px] leading-snug text-[#26353D]">
+                      <strong className="line-clamp-2 text-[15px] leading-snug text-[#1E293B]">
                         {item.subject}
                       </strong>
-                      <span className="mt-1 block truncate text-sm text-[#71808A]">
+                      <span className="mt-1 block truncate text-sm text-[#64748B]">
                         {item.sender}
                       </span>
                     </span>
                     <span>
                       <CategoryBadge category={item.category} />
                     </span>
-                    <span className="flex items-center gap-1.5 text-sm text-[#71808A]">
+                    <span className="flex items-center gap-1.5 text-sm text-[#64748B]">
                       <Paperclip size={16} />
                       {item.attachments?.length || 0}
                     </span>
@@ -345,13 +343,13 @@ export function InboxPage({ navigate }) {
                   </button>
                 ))}
                 {!grouped[key].length && (
-                  <p className="px-6 py-4 text-sm text-[#8A969B]">No emails in this period.</p>
+                  <p className="px-6 py-4 text-sm text-[#94A3B8]">No emails in this period.</p>
                 )}
               </div>
             </section>
           ))}
         {!loading && !error && !visibleItems.length && (
-          <div className="rounded-2xl border border-[#E3DED1] bg-white py-14 text-center text-sm text-[#71808A]">
+          <div className="rounded-2xl border border-[#E2E8F0] bg-white py-14 text-center text-sm text-[#64748B]">
             No emails match this filter.
           </div>
         )}
