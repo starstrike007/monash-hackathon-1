@@ -1,0 +1,525 @@
+{
+  "source": "hand-checked development set; official scorer and Docker bundle are unavailable",
+  "notes": "Every case is a BL comparison email. Values were checked against the source attachments. For unreadable documents, the corresponding value is null. Named-consignee versus order-mode differences are intentionally NEEDS_REVIEW under the project specification.",
+  "field_order": [
+    "shipper",
+    "consignee",
+    "notify_party",
+    "port_of_loading",
+    "port_of_discharge",
+    "container_count",
+    "gross_weight_kg"
+  ],
+  "cases": [
+    {
+      "email_id": "email_001",
+      "category": "BL_COMPARISON",
+      "status": "OK",
+      "review_reason": null,
+      "has_defect": false,
+      "defect_fields": [],
+      "fields": {
+        "shipper": ["APRIL FAR EAST (M) SDN BHD", "APRIL FAR EAST (M) SDN BHD"],
+        "consignee": ["MOORIM SP CO., LTD", "MOORIM SP CO., LTD"],
+        "notify_party": ["UAB NOVAKOPA", "UAB NOVAKOPA"],
+        "port_of_loading": ["PORT KLANG (WESTPORT), MALAYSIA (MYPKG)", "PORT KLANG (WESTPORT), MALAYSIA (MYPKG)"],
+        "port_of_discharge": ["CALLAO, PERU (PECLL)", "CALLAO, PERU (PECLL)"],
+        "container_count": ["1 x 40'HC", "1 x 40'HC"],
+        "gross_weight_kg": ["21577 KG", "21577 KG"]
+      }
+    },
+    {
+      "email_id": "email_009",
+      "category": "BL_COMPARISON",
+      "status": "OK",
+      "review_reason": null,
+      "has_defect": false,
+      "defect_fields": [],
+      "fields": {
+        "shipper": ["ASIA PACIFIC PAPERBOARD TRADING PTE LTD", "ASIA PACIFIC PAPERBOARD TRADING PTE LTD"],
+        "consignee": ["PACIFIC OFFICE (M) SDN BHD", "PACIFIC OFFICE (M) SDN BHD"],
+        "notify_party": ["PACIFIC OFFICE (M) SDN BHD", "PACIFIC OFFICE (M) SDN BHD"],
+        "port_of_loading": ["PORT KLANG (WESTPORT), MALAYSIA (MYPKG)", "PORT KLANG (WESTPORT), MALAYSIA (MYPKG)"],
+        "port_of_discharge": ["MERSIN, TURKEY (TRMER)", "MERSIN, TURKEY (TRMER)"],
+        "container_count": ["1 x 40'HC", "1 x 40'HC"],
+        "gross_weight_kg": ["20381 KG", "20381 KG"]
+      }
+    },
+    {
+      "email_id": "email_034",
+      "category": "BL_COMPARISON",
+      "status": "OK",
+      "review_reason": null,
+      "has_defect": false,
+      "defect_fields": [],
+      "fields": {
+        "shipper": ["APRIL FINE PAPER TRADING (MIDDLE EAST) FZE", "APRIL FINE PAPER TRADING (MIDDLE EAST) FZE"],
+        "consignee": ["UAB NOVAKOPA", "UAB NOVAKOPA"],
+        "notify_party": ["UAB NOVAKOPA", "UAB NOVAKOPA"],
+        "port_of_loading": ["SINGAPORE (SGSIN)", "SINGAPORE (SGSIN)"],
+        "port_of_discharge": ["CONAKRY (GNCKY)", "CONAKRY (GNCKY)"],
+        "container_count": ["5 x 40'HC", "5 x 40'HC"],
+        "gross_weight_kg": ["105815 KG", "105815 KG"]
+      }
+    },
+    {
+      "email_id": "email_044",
+      "category": "BL_COMPARISON",
+      "status": "OK",
+      "review_reason": null,
+      "has_defect": false,
+      "defect_fields": [],
+      "fields": {
+        "shipper": ["APRIL FINE PAPER TRADING ON BEHALF OF VITAL SOLUTIONS PTE LTD", "APRIL FINE PAPER TRADING ON BEHALF OF VITAL SOLUTIONS PTE LTD"],
+        "consignee": ["SAFQA LIMITED", "SAFQA LIMITED"],
+        "notify_party": ["SAFQA LIMITED", "SAFQA LIMITED"],
+        "port_of_loading": ["BUATAN (IDBUA)", "BUATAN (IDBUA)"],
+        "port_of_discharge": ["APAPA (NGAPP)", "APAPA (NGAPP)"],
+        "container_count": ["2 x 40'HC", "2 x 40'HC"],
+        "gross_weight_kg": ["47192 KG", "47192 KG"]
+      }
+    },
+    {
+      "email_id": "email_051",
+      "category": "BL_COMPARISON",
+      "status": "OK",
+      "review_reason": null,
+      "has_defect": false,
+      "defect_fields": [],
+      "fields": {
+        "shipper": ["ASIA PACIFIC PAPERBOARD TRADING PTE LTD", "ASIA PACIFIC PAPERBOARD TRADING PTE LTD"],
+        "consignee": ["TO THE ORDER OF KPP-ANTALIS (SINGAPORE) PTE LTD", "TO THE ORDER OF KPP-ANTALIS (SINGAPORE) PTE LTD"],
+        "notify_party": ["KPP-ANTALIS (SINGAPORE) PTE LTD", "KPP-ANTALIS (SINGAPORE) PTE LTD"],
+        "port_of_loading": ["NHAVA SHEVA, INDIA (INNSA)", "NHAVA SHEVA, INDIA (INNSA)"],
+        "port_of_discharge": ["SAVANNAH, US (USSAV)", "SAVANNAH, US (USSAV)"],
+        "container_count": ["3 x 20'FCL", "3 x 20'FCL"],
+        "gross_weight_kg": ["60645 KG", "60645 KG"]
+      }
+    },
+    {
+      "email_id": "email_013",
+      "category": "BL_COMPARISON",
+      "status": "MISMATCH",
+      "review_reason": null,
+      "has_defect": true,
+      "defect_fields": ["port_of_discharge"],
+      "fields": {
+        "shipper": ["ASIA PACIFIC PAPERBOARD TRADING PTE LTD", "ASIA PACIFIC PAPERBOARD TRADING PTE LTD"],
+        "consignee": ["ROXCEL TRADING GMBH", "ROXCEL TRADING GMBH"],
+        "notify_party": ["ROXCEL TRADING GMBH", "ROXCEL TRADING GMBH"],
+        "port_of_loading": ["SINGAPORE (SGSIN)", "SINGAPORE (SGSIN)"],
+        "port_of_discharge": ["MOMBASA, KENYA (KEMBA)", "TUTICORIN, INDIA (KEMBA)"],
+        "container_count": ["3 x 40'HC", "3 x 40'HC"],
+        "gross_weight_kg": ["67311 KG", "67311 KG"]
+      }
+    },
+    {
+      "email_id": "email_025",
+      "category": "BL_COMPARISON",
+      "status": "MISMATCH",
+      "review_reason": null,
+      "has_defect": true,
+      "defect_fields": ["port_of_discharge", "container_count"],
+      "fields": {
+        "shipper": ["APRIL FAR EAST (M) SDN BHD", "APRIL FAR EAST (M) SDN BHD"],
+        "consignee": ["CERIEX", "CERIEX"],
+        "notify_party": ["ROXCEL TRADING GMBH", "ROXCEL TRADING GMBH"],
+        "port_of_loading": ["PORT KLANG (MYPKG)", "PORT KLANG (MYPKG)"],
+        "port_of_discharge": ["FREMANTLE, AUSTRALIA (AUFRE)", "BUSAN, SOUTH KOREA (AUFRE)"],
+        "container_count": ["6 x 20'GP", "5 x 20'GP"],
+        "gross_weight_kg": ["135126 KG", "135126 KG"]
+      }
+    },
+    {
+      "email_id": "email_031",
+      "category": "BL_COMPARISON",
+      "status": "MISMATCH",
+      "review_reason": null,
+      "has_defect": true,
+      "defect_fields": ["container_count", "gross_weight_kg"],
+      "fields": {
+        "shipper": ["APRIL FAR EAST (M) SDN BHD", "APRIL FAR EAST (M) SDN BHD"],
+        "consignee": ["CERIEX", "CERIEX"],
+        "notify_party": ["CERIEX", "CERIEX"],
+        "port_of_loading": ["RUGAO/NANTONG/SHANGHAI, CHINA (CNSHA)", "RUGAO/NANTONG/SHANGHAI, CHINA (CNSHA)"],
+        "port_of_discharge": ["FREMANTLE, AUSTRALIA (AUFRE)", "FREMANTLE, AUSTRALIA (AUFRE)"],
+        "container_count": ["1 x 20'GP", "3 x 20'GP"],
+        "gross_weight_kg": ["21114 KG", "23114 KG"]
+      }
+    },
+    {
+      "email_id": "email_046",
+      "category": "BL_COMPARISON",
+      "status": "MISMATCH",
+      "review_reason": null,
+      "has_defect": true,
+      "defect_fields": ["notify_party"],
+      "fields": {
+        "shipper": ["APRIL FAR EAST (M) SDN BHD", "APRIL FAR EAST (M) SDN BHD"],
+        "consignee": ["MOORIM SP CO LTD", "MOORIM SP CO LTD"],
+        "notify_party": ["TOPKOPY MIDDLE EAST FZE", "MOORIM SP CO LTD"],
+        "port_of_loading": ["PORT KLANG (MYPKG)", "PORT KLANG (MYPKG)"],
+        "port_of_discharge": ["JEDDAH (SAJED)", "JEDDAH (SAJED)"],
+        "container_count": ["2 x 40'HC", "2 x 40'HC"],
+        "gross_weight_kg": ["47000 KG", "47000 KG"]
+      }
+    },
+    {
+      "email_id": "email_071",
+      "category": "BL_COMPARISON",
+      "status": "MISMATCH",
+      "review_reason": null,
+      "has_defect": true,
+      "defect_fields": ["port_of_discharge", "container_count"],
+      "fields": {
+        "shipper": ["APRIL FAR EAST (M) SDN BHD", "APRIL FAR EAST (M) SDN BHD"],
+        "consignee": ["CERIEX", "CERIEX"],
+        "notify_party": ["CERIEX", "CERIEX"],
+        "port_of_loading": ["RUGAO/NANTONG/SHANGHAI, CHINA (CNSHA)", "RUGAO/NANTONG/SHANGHAI, CHINA (CNSHA)"],
+        "port_of_discharge": ["YANGON, MYANMAR (MMRGN)", "CEBU, PHILIPPINES (MMRGN)"],
+        "container_count": ["6 x 40'HC", "8 x 40'HC"],
+        "gross_weight_kg": ["136000 KG", "136000 KG"]
+      }
+    },
+    {
+      "email_id": "email_004",
+      "category": "BL_COMPARISON",
+      "status": "NEEDS_REVIEW",
+      "review_reason": "missing_value",
+      "has_defect": false,
+      "defect_fields": ["notify_party"],
+      "fields": {
+        "shipper": ["APRIL FAR EAST (M) SDN BHD", "APRIL FAR EAST (M) SDN BHD"],
+        "consignee": ["EAST BRIGHT FZ-LLC", "TO THE ORDER OF UAB NOVAKOPA"],
+        "notify_party": ["EAST BRIGHT FZ-LLC", "UAB NOVAKOPA"],
+        "port_of_loading": ["NANTONG (CNNTG)", "NANTONG (CNNTG)"],
+        "port_of_discharge": ["KARACHI (PKKHI)", "KARACHI (PKKHI)"],
+        "container_count": ["6 x 40'HC", "6 x 40'HC"],
+        "gross_weight_kg": ["131058 KG", "131058 KG"]
+      }
+    },
+    {
+      "email_id": "email_032",
+      "category": "BL_COMPARISON",
+      "status": "NEEDS_REVIEW",
+      "review_reason": "missing_value",
+      "has_defect": false,
+      "defect_fields": [],
+      "fields": {
+        "shipper": ["APRIL FAR EAST (M) SDN BHD", "APRIL FAR EAST (M) SDN BHD"],
+        "consignee": ["TOPKOPY", "TO THE ORDER OF TOPKOPY"],
+        "notify_party": ["TOPKOPY", "TOPKOPY"],
+        "port_of_loading": ["RUGAO/NANTONG/SHANGHAI (CNSHA)", "RUGAO/NANTONG/SHANGHAI (CNSHA)"],
+        "port_of_discharge": ["KARACHI (PKKHI)", "KARACHI (PKKHI)"],
+        "container_count": ["3 x 40'HC", "3 x 40'HC"],
+        "gross_weight_kg": ["64092 KG", "64092 KG"]
+      }
+    },
+    {
+      "email_id": "email_040",
+      "category": "BL_COMPARISON",
+      "status": "NEEDS_REVIEW",
+      "review_reason": "missing_value",
+      "has_defect": false,
+      "defect_fields": [],
+      "fields": {
+        "shipper": ["APRIL FAR EAST (M) SDN BHD", "APRIL FAR EAST (M) SDN BHD"],
+        "consignee": ["TOPKOPY", "TO THE ORDER OF TOPKOPY"],
+        "notify_party": ["SAFQA LIMITED", "SAFQA LIMITED"],
+        "port_of_loading": ["NHAVA SHEVA (INNSA)", "NHAVA SHEVA (INNSA)"],
+        "port_of_discharge": ["CONAKRY (GNCKY)", "CONAKRY (GNCKY)"],
+        "container_count": ["10 x 20'FCL", "10 x 20'FCL"],
+        "gross_weight_kg": ["222690 KG", "222690 KG"]
+      }
+    },
+    {
+      "email_id": "email_052",
+      "category": "BL_COMPARISON",
+      "status": "NEEDS_REVIEW",
+      "review_reason": "missing_value",
+      "has_defect": false,
+      "defect_fields": [],
+      "fields": {
+        "shipper": ["APRIL FAR EAST (M) SDN BHD", "APRIL FAR EAST (M) SDN BHD"],
+        "consignee": ["BALL & DOGGETT AUSTRALIA", "TO THE ORDER OF BALL & DOGGETT AUSTRALIA"],
+        "notify_party": ["BALL & DOGGETT AUSTRALIA", "BALL & DOGGETT AUSTRALIA"],
+        "port_of_loading": ["SINGAPORE (SGSIN)", "SINGAPORE (SGSIN)"],
+        "port_of_discharge": ["PYEONGTAEK (KRPTK)", "PYEONGTAEK (KRPTK)"],
+        "container_count": ["6 x 40'HC", "6 x 40'HC"],
+        "gross_weight_kg": ["135930 KG", "135930 KG"]
+      }
+    },
+    {
+      "email_id": "email_065",
+      "category": "BL_COMPARISON",
+      "status": "NEEDS_REVIEW",
+      "review_reason": "missing_value",
+      "has_defect": false,
+      "defect_fields": ["notify_party", "port_of_discharge"],
+      "fields": {
+        "shipper": ["APRIL FINE PAPER TRADING (MIDDLE EAST) FZE", "APRIL FINE PAPER TRADING (MIDDLE EAST) FZE"],
+        "consignee": ["INTERNATIONAL FOREST PRODUCTS LLC", "TO THE ORDER OF INTERNATIONAL FOREST PRODUCTS LLC"],
+        "notify_party": ["INTERNATIONAL FOREST PRODUCTS LLC", "HABRAS INTERNATIONAL LIMITED"],
+        "port_of_loading": ["PORT KLANG (MYPKG)", "PORT KLANG (MYPKG)"],
+        "port_of_discharge": ["HO CHI MINH CITY (VNSGN)", "BUSAN, SOUTH KOREA (VNSGN)"],
+        "container_count": ["1 x 40'HC", "1 x 40'HC"],
+        "gross_weight_kg": ["21479 KG", "21479 KG"]
+      }
+    },
+    {
+      "email_id": "email_055",
+      "category": "BL_COMPARISON",
+      "status": "OK",
+      "review_reason": null,
+      "has_defect": false,
+      "defect_fields": [],
+      "fields": {
+        "shipper": ["APRIL FINE PAPER TRADING ON BEHALF OF VITAL SOLUTIONS PTE LTD", "APRIL FINE PAPER TRADING ON BEHALF OF VITAL SOLUTIONS PTE LTD"],
+        "consignee": ["AL GURG STATIONERY LLC", "AL GURG STATIONERY LLC"],
+        "notify_party": ["AL GURG STATIONERY LLC", "AL GURG STATIONERY LLC"],
+        "port_of_loading": ["SINGAPORE", "SINGAPORE"],
+        "port_of_discharge": ["KARACHI", "KARACHI"],
+        "container_count": ["12 x 20'FCL", "12 x 20'FCL"],
+        "gross_weight_kg": ["243588 KG", "243588 KG"]
+      }
+    },
+    {
+      "email_id": "email_097",
+      "category": "BL_COMPARISON",
+      "status": "MISMATCH",
+      "review_reason": null,
+      "has_defect": true,
+      "defect_fields": ["container_count", "gross_weight_kg"],
+      "fields": {
+        "shipper": ["APRIL FINE PAPER TRADING (MIDDLE EAST) FZE", "APRIL FINE PAPER TRADING (MIDDLE EAST) FZE"],
+        "consignee": ["ROXCEL TRADING GMBH", "ROXCEL TRADING GMBH"],
+        "notify_party": ["NAGAPPA EXPORTS", "NAGAPPA EXPORTS"],
+        "port_of_loading": ["SINGAPORE", "SINGAPORE"],
+        "port_of_discharge": ["BRISBANE, AUSTRALIA", "BRISBANE, AUSTRALIA"],
+        "container_count": ["10 x 40'HC", "11 x 40'HC"],
+        "gross_weight_kg": ["216950 KG", "215950 KG"]
+      }
+    },
+    {
+      "email_id": "email_107",
+      "category": "BL_COMPARISON",
+      "status": "NEEDS_REVIEW",
+      "review_reason": "missing_value",
+      "has_defect": false,
+      "defect_fields": ["container_count"],
+      "fields": {
+        "shipper": ["APRIL FINE PAPER TRADING (MIDDLE EAST) FZE", "APRIL FINE PAPER TRADING (MIDDLE EAST) FZE"],
+        "consignee": ["KTP CO LTD", "TO THE ORDER OF VITAL SOLUTIONS PTE LTD"],
+        "notify_party": ["KTP CO LTD", "KTP CO LTD"],
+        "port_of_loading": ["PORT KLANG (MYPKG)", "PORT KLANG (MYPKG)"],
+        "port_of_discharge": ["MOMBASA (KEMBA)", "MOMBASA (KEMBA)"],
+        "container_count": ["2 x 40'HC", "3 x 40'HC"],
+        "gross_weight_kg": ["41124 KG", "41124 KG"]
+      }
+    },
+    {
+      "email_id": "email_291",
+      "category": "BL_COMPARISON",
+      "status": "MISMATCH",
+      "review_reason": null,
+      "has_defect": true,
+      "defect_fields": ["consignee", "container_count"],
+      "fields": {
+        "shipper": ["APRIL FINE PAPER TRADING", "APRIL FINE PAPER TRADING"],
+        "consignee": ["TO THE ORDER OF INTERNATIONAL FOREST PRODUCTS LLC", "TO THE ORDER OF TOPKOPY MIDDLE EAST FZE"],
+        "notify_party": ["INTERNATIONAL FOREST PRODUCTS LLC", "INTERNATIONAL FOREST PRODUCTS LLC"],
+        "port_of_loading": ["NANTONG (CNSHA)", "NANTONG (CNSHA)"],
+        "port_of_discharge": ["SAVANNAH (USSAV)", "SAVANNAH (USSAV)"],
+        "container_count": ["1 x 20'GP", "3 x 20'GP"],
+        "gross_weight_kg": ["21745 KG", "21745 KG"]
+      }
+    },
+    {
+      "email_id": "email_435",
+      "category": "BL_COMPARISON",
+      "status": "NEEDS_REVIEW",
+      "review_reason": "missing_value",
+      "has_defect": false,
+      "defect_fields": ["gross_weight_kg"],
+      "fields": {
+        "shipper": ["APRIL FINE PAPER TRADING", "APRIL FINE PAPER TRADING"],
+        "consignee": ["TO THE ORDER OF AL GURG STATIONERY LLC", "AL GURG STATIONERY LLC"],
+        "notify_party": ["AL GURG STATIONERY LLC", "AL GURG STATIONERY LLC"],
+        "port_of_loading": ["SINGAPORE (SGSIN)", "SINGAPORE (SGSIN)"],
+        "port_of_discharge": ["AQABA (JOAQB)", "AQABA (JOAQB)"],
+        "container_count": ["10 x 20'FCL", "10 x 20'FCL"],
+        "gross_weight_kg": ["214270 KG", "214770 KG"]
+      }
+    },
+    {
+      "email_id": "email_059",
+      "category": "BL_COMPARISON",
+      "status": "OK",
+      "review_reason": null,
+      "has_defect": false,
+      "defect_fields": [],
+      "fields": {
+        "shipper": ["APRIL FINE PAPER TRADING ON BEHALF OF VITAL SOLUTIONS PTE LTD", "APRIL FINE PAPER TRADING ON BEHALF OF VITAL SOLUTIONS PTE LTD"],
+        "consignee": ["BALL & DOGGETT AUSTRALIA PTY LTD", "BALL & DOGGETT AUSTRALIA PTY LTD"],
+        "notify_party": ["PACIFIC OFFICE (M) SDN BHD", "PACIFIC OFFICE (M) SDN BHD"],
+        "port_of_loading": ["BUATAN, INDONESIA", "BUATAN, INDONESIA"],
+        "port_of_discharge": ["FREMANTLE, AUSTRALIA", "FREMANTLE, AUSTRALIA"],
+        "container_count": ["6 x 40'HC", "6 x 40'HC"],
+        "gross_weight_kg": ["131322 KG", "131322 KG"]
+      }
+    },
+    {
+      "email_id": "email_160",
+      "category": "BL_COMPARISON",
+      "status": "OK",
+      "review_reason": null,
+      "has_defect": false,
+      "defect_fields": [],
+      "fields": {
+        "shipper": ["APRIL FINE PAPER TRADING ON BEHALF OF VITAL SOLUTIONS PTE LTD", "APRIL FINE PAPER TRADING ON BEHALF OF VITAL SOLUTIONS PTE LTD"],
+        "consignee": ["KTP CO LTD", "KTP CO LTD"],
+        "notify_party": ["KTP CO LTD", "KTP CO LTD"],
+        "port_of_loading": ["PORT KLANG (WESTPORT), MALAYSIA", "PORT KLANG (WESTPORT), MALAYSIA"],
+        "port_of_discharge": ["APAPA, NIGERIA", "APAPA, NIGERIA"],
+        "container_count": ["1 x 40'HC", "1 x 40'HC"],
+        "gross_weight_kg": ["23702 KG", "23702 KG"]
+      }
+    },
+    {
+      "email_id": "email_208",
+      "category": "BL_COMPARISON",
+      "status": "OK",
+      "review_reason": null,
+      "has_defect": false,
+      "defect_fields": [],
+      "fields": {
+        "shipper": ["APRIL FAR EAST (M) SDN BHD", "APRIL FAR EAST (M) SDN BHD"],
+        "consignee": ["CERIEX", "CERIEX"],
+        "notify_party": ["CERIEX", "CERIEX"],
+        "port_of_loading": ["RUGAO/NANTONG/SHANGHAI, CHINA", "RUGAO/NANTONG/SHANGHAI, CHINA"],
+        "port_of_discharge": ["FREMANTLE, AUSTRALIA", "FREMANTLE, AUSTRALIA"],
+        "container_count": ["6 x 20'FCL", "6 x 20'FCL"],
+        "gross_weight_kg": ["143940 KG", "143940 KG"]
+      }
+    },
+    {
+      "email_id": "email_351",
+      "category": "BL_COMPARISON",
+      "status": "MISMATCH",
+      "review_reason": null,
+      "has_defect": true,
+      "defect_fields": ["container_count", "gross_weight_kg"],
+      "fields": {
+        "shipper": ["APRIL FINE PAPER TRADING (MIDDLE EAST) FZE", "APRIL FINE PAPER TRADING (MIDDLE EAST) FZE"],
+        "consignee": ["KTP CO LTD", "KTP CO LTD"],
+        "notify_party": ["KTP CO LTD", "KTP CO LTD"],
+        "port_of_loading": ["PORT KLANG (WESTPORT), MALAYSIA", "PORT KLANG (WESTPORT), MALAYSIA"],
+        "port_of_discharge": ["ASHDOD, ISRAEL", "ASHDOD, ISRAEL"],
+        "container_count": ["15 x 20'FCL", "16 x 20'FCL"],
+        "gross_weight_kg": ["359415 KG", "360415 KG"]
+      }
+    },
+    {
+      "email_id": "email_407",
+      "category": "BL_COMPARISON",
+      "status": "OK",
+      "review_reason": null,
+      "has_defect": false,
+      "defect_fields": [],
+      "fields": {
+        "shipper": ["APRIL FINE PAPER TRADING ON BEHALF OF VITAL SOLUTIONS PTE LTD", "APRIL FINE PAPER TRADING ON BEHALF OF VITAL SOLUTIONS PTE LTD"],
+        "consignee": ["NAGAPPA EXPORTS", "NAGAPPA EXPORTS"],
+        "notify_party": ["NAGAPPA EXPORTS", "NAGAPPA EXPORTS"],
+        "port_of_loading": ["NHAVA SHEVA, INDIA", "NHAVA SHEVA, INDIA"],
+        "port_of_discharge": ["YANGON, MYANMAR", "YANGON, MYANMAR"],
+        "container_count": ["12 x 20'GP", "12 x 20'GP"],
+        "gross_weight_kg": ["285720 KG", "285720 KG"]
+      }
+    },
+    {
+      "email_id": "email_511",
+      "category": "BL_COMPARISON",
+      "status": "NEEDS_REVIEW",
+      "review_reason": "unreadable",
+      "has_defect": false,
+      "defect_fields": [],
+      "fields": {
+        "shipper": ["APRIL FINE PAPER TRADING ON BEHALF OF VITAL SOLUTIONS PTE LTD", null],
+        "consignee": ["TO THE ORDER OF AL GURG STATIONERY LLC", null],
+        "notify_party": ["AL GURG STATIONERY LLC", null],
+        "port_of_loading": ["NHAVA SHEVA, INDIA (INNSA)", null],
+        "port_of_discharge": ["KOPER, SLOVENIA (SIKOP)", null],
+        "container_count": ["6 x 40'HC", null],
+        "gross_weight_kg": ["134904 KG", null]
+      }
+    },
+    {
+      "email_id": "email_512",
+      "category": "BL_COMPARISON",
+      "status": "NEEDS_REVIEW",
+      "review_reason": "unreadable",
+      "has_defect": false,
+      "defect_fields": [],
+      "fields": {
+        "shipper": [null, null],
+        "consignee": [null, null],
+        "notify_party": [null, null],
+        "port_of_loading": [null, null],
+        "port_of_discharge": [null, null],
+        "container_count": [null, null],
+        "gross_weight_kg": [null, null]
+      }
+    },
+    {
+      "email_id": "email_513",
+      "category": "BL_COMPARISON",
+      "status": "NEEDS_REVIEW",
+      "review_reason": "unreadable",
+      "has_defect": false,
+      "defect_fields": [],
+      "fields": {
+        "shipper": [null, null],
+        "consignee": [null, null],
+        "notify_party": [null, null],
+        "port_of_loading": [null, null],
+        "port_of_discharge": [null, null],
+        "container_count": [null, null],
+        "gross_weight_kg": [null, null]
+      }
+    },
+    {
+      "email_id": "email_514",
+      "category": "BL_COMPARISON",
+      "status": "NEEDS_REVIEW",
+      "review_reason": "unreadable",
+      "has_defect": false,
+      "defect_fields": [],
+      "fields": {
+        "shipper": [null, null],
+        "consignee": [null, null],
+        "notify_party": [null, null],
+        "port_of_loading": [null, null],
+        "port_of_discharge": [null, null],
+        "container_count": [null, null],
+        "gross_weight_kg": [null, null]
+      }
+    },
+    {
+      "email_id": "email_515",
+      "category": "BL_COMPARISON",
+      "status": "NEEDS_REVIEW",
+      "review_reason": "unreadable",
+      "has_defect": false,
+      "defect_fields": [],
+      "fields": {
+        "shipper": ["APRIL FINE PAPER TRADING ON BEHALF OF VITAL SOLUTIONS PTE LTD", null],
+        "consignee": ["TO THE ORDER OF 3S PAPER PRODUCTS SDN BHD", null],
+        "notify_party": ["3S PAPER PRODUCTS SDN BHD", null],
+        "port_of_loading": ["BUATAN, INDONESIA (IDBUA)", null],
+        "port_of_discharge": ["AQABA, JORDAN (JOAQB)", null],
+        "container_count": ["1 x 40'HC", null],
+        "gross_weight_kg": ["21949 KG", null]
+      }
+    }
+  ]
+}
