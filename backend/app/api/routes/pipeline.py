@@ -3,12 +3,23 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 
 from app.api.schemas.pipeline import (
+    PipelineBootstrapStatus,
     PipelineRun,
     PipelineRunDetail,
     PipelineRunRequest,
 )
 
 router = APIRouter(tags=["pipeline"])
+
+
+@router.post("/pipeline/bootstrap", response_model=PipelineBootstrapStatus)
+def start_pipeline_bootstrap(request: Request) -> PipelineBootstrapStatus:
+    return PipelineBootstrapStatus(**request.app.state.orchestrator.start_bootstrap())
+
+
+@router.get("/pipeline/bootstrap/status", response_model=PipelineBootstrapStatus)
+def pipeline_bootstrap_status(request: Request) -> PipelineBootstrapStatus:
+    return PipelineBootstrapStatus(**request.app.state.orchestrator.get_bootstrap_status())
 
 
 @router.post("/pipeline/run", response_model=PipelineRun)

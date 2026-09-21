@@ -35,10 +35,17 @@ export function summarizeComparison(result) {
     return { tone: 'mismatch', text: mismatchSummary(result) }
   }
   if (result.status === 'NEEDS_REVIEW') {
-    const review = `Needs review: ${REASON_LABELS[result.review_reason] || result.review_reason || 'unresolved'}`
+    const reason = REASON_LABELS[result.review_reason] || result.review_reason || 'unresolved'
+    const review = `Needs review: ${reason}`
     // Fields that clearly differ are recorded even when another field needs a person, so say so.
     const hasMismatch = (result.defect_fields?.length || 0) > 0
-    return { tone: 'review', text: hasMismatch ? `${review} · ${mismatchSummary(result)}` : review }
+    return {
+      tone: 'review',
+      text: hasMismatch ? `${review} · ${mismatchSummary(result)}` : review,
+      // The list already shows a Needs review badge, so its line is just the reason.
+      primaryText: reason.charAt(0).toUpperCase() + reason.slice(1),
+      secondaryText: hasMismatch ? mismatchSummary(result) : null,
+    }
   }
   return { tone: 'review', text: 'Not applicable' }
 }

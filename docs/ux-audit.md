@@ -44,10 +44,10 @@ Status meanings: PASS is implemented and verified; PARTIAL is present but incomp
 
 ### Stage 2 — Extraction
 
-1. **PASS — Extraction method is not shown on normal Inbox screens.** Inbox detail shows classification provenance at `src/features/inbox/InboxDetailPage.jsx:154-157`; extraction source rows are confined to the collapsed Document Comparison decision section at `src/features/docs-comparison/DocsComparisonDetailPage.jsx:84-137`.
+1. **PASS — Extraction method is not shown on normal Inbox screens.** Inbox detail shows classification provenance at `src/features/inbox/InboxDetailPage.jsx:154-157`; extraction source rows are confined to the collapsed Document comparison decision section at `src/features/docs-comparison/DocsComparisonDetailPage.jsx:84-137`.
 2. **PARTIAL — Field locations and coverage.** Parser/extractor plumbing exists at `backend/app/adapters/document_parsers.py:21-25,49-188` and `backend/app/pipeline/extract.py:64-147`, and the fresh export measured 94.74% location coverage. PDF unreadable/scanned fields still lack a dependable quoted location and DOCX paragraph locations are not carried through the schema.
 
-### Stage 3 — Document Comparison
+### Stage 3 — Document comparison
 
 1. **PARTIAL — List, filters/counts, search, effective category.** `src/features/docs-comparison/DocsComparisonListPage.jsx:22-38` requests the comparison category and has status/search controls, but chip counts are calculated from the active response rather than an unfiltered comparison set.
 2. **PARTIAL — State banner and seven-field table.** `src/features/docs-comparison/DocsComparisonDetailPage.jsx:17-79,195-227` renders the banner and comparison rows with raw/normalized values, but normalized values are unlabeled and loading/fetch errors can leave a blank/skeleton state.
@@ -57,7 +57,7 @@ Status meanings: PASS is implemented and verified; PARTIAL is present but incomp
 6. **PASS — Collapsed decision section.** `src/features/docs-comparison/DocsComparisonDetailPage.jsx:84-137` implements the collapsed “How this was decided” section.
 7. **MISSING — Corrupt/unreadable attachments never cause 500/blank.** `backend/app/api/routes/attachments.py:19-29` only catches `FileNotFoundError` and `ValueError`; parser exceptions from corrupt XLSX/DOCX can escape as 500.
 
-### Stage 4 — Review queue
+### Stage 4 — Human review
 
 1. **PARTIAL — Oldest-first list, reason filter, open/resolved toggle.** `src/features/review-queue/ReviewQueuePage.jsx:17-47,58-97` implements all controls and sorting, but fetch failures are not surfaced and counts only reflect the loaded filter.
 2. **PARTIAL — Plain-language detail/evidence viewer.** `src/features/review-queue/ReviewItemDetailPage.jsx:289-362` has explanation and two viewers, but passes `location={null}` so the evidence is not pinpointed.
@@ -93,7 +93,7 @@ browser click-through was still unavailable.
 
 ### Global
 
-1. **PASS — Sidebar and live badge.** `src/components/layout/AppShell.jsx:6-13,65-85` keeps exactly Dashboard, Inbox, Document Comparison, and Review queue. `src/app/router.jsx:37-58` refreshes the open count on load and after `clearance:data-changed`; the fixture HTTP run returned the live open count.
+1. **PASS — Sidebar and live badge.** `src/components/layout/AppShell.jsx:6-13,65-85` keeps exactly Dashboard, Inbox, Document comparison, and Human review. `src/app/router.jsx:37-58` refreshes the open count on load and after `clearance:data-changed`; the fixture HTTP run returned the live open count.
 2. **PASS — Direct-load routes.** `src/app/router.jsx:18-32` still defines all seven routes. Vite HTTP checks returned 200 for every requested path after the final build.
 3. **PARTIAL — Prototype visual language.** The requested design tokens remain in `src/index.css` and `src/components/layout/AppShell.jsx`, but no browser surface was available for screenshot/click verification (`cua.listBrowsers()=[]`; Playwright/Vitest are not installed).
 4. **PASS — Effective dashboard values.** `backend/app/services/dashboard_service.py:77-111` aggregates from effective `EmailListItem` values; the added dashboard override regression test verifies the category count ripple. Export/list behavior is also covered.
@@ -119,7 +119,7 @@ browser click-through was still unavailable.
 1. **PASS — Extraction method hidden on normal screens.** `src/features/inbox/InboxDetailPage.jsx:154-158` only shows classification provenance; extraction sources are in the collapsed section at `src/features/docs-comparison/DocsComparisonDetailPage.jsx:84-137`.
 2. **PARTIAL — Field locations and coverage.** `backend/app/adapters/document_parsers.py` and `backend/app/pipeline/extract.py` carry page/line/sheet/cell/table/paragraph/bbox/quoted evidence. The final dataset measurement is 1,658/1,750 fields (94.74%) across all states, with 1,654/1,654 readable/found values (100%) located. Missing/unreadable values cannot have a dependable pinpoint without fabricated evidence.
 
-### Stage 3 — Document Comparison
+### Stage 3 — Document comparison
 
 1. **PASS — List, filters/counts/search/effective category.** `src/features/docs-comparison/DocsComparisonListPage.jsx:18-55,90-157` requests only effective Document comparison items and computes status counts over the unfiltered response.
 2. **PASS — State banner and seven-field table.** `src/features/docs-comparison/DocsComparisonDetailPage.jsx:17-83,207-238` renders all seven fields, explicit normalized/raw values, uncertain styling, and fetch/review error states.
@@ -129,7 +129,7 @@ browser click-through was still unavailable.
 6. **PASS — Collapsed decision section.** `src/features/docs-comparison/DocsComparisonDetailPage.jsx:84-137` implements it.
 7. **PASS — Corrupt/unreadable attachments.** `backend/app/api/routes/attachments.py:27-82` converts parser/render failures to clean 404/415/422 responses; `test_unreadable_attachment_view_is_a_clean_response` passes.
 
-### Stage 4 — Review queue
+### Stage 4 — Human review
 
 1. **PASS — Oldest-first list, filters, toggle, and error state.** `src/features/review-queue/ReviewQueuePage.jsx:17-58,75-161` provides the controls and visible retry state; fixture HTTP/API checks cover queue population.
 2. **PASS — Plain-language detail/evidence viewer.** `src/features/review-queue/ReviewItemDetailPage.jsx:392-551` selects a flagged field and passes SI/BL evidence into both viewers.

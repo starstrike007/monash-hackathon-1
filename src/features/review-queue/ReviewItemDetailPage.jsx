@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, Warning } from '@phosphor-icons/react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { ArrowLeft, EnvelopeSimple, Trash, Warning } from '@phosphor-icons/react'
 
 import { BackendError } from '@/components/BackendError'
 import { DocumentViewer } from '@/components/document-viewer/DocumentViewer'
+import { LoadingBoat } from '@/components/LoadingBoat'
 import { reasonLabel } from '@/features/review-queue/reasons'
 import { fieldLabels } from '@/features/docs-comparison/summary'
 import {
@@ -17,25 +18,13 @@ import { cn } from '@/lib/utils'
 
 const RECLASSIFY_OPTIONS = ['SI_REQUEST', 'INVOICE_QUERY', 'GENERAL', 'SPAM']
 
-function ConfirmCorrectPanel({ itemId, email, fieldOptions, onSaved }) {
-  const [fieldName, setFieldName] = useState(fieldOptions[0] || '')
-  const [action, setAction] = useState('confirm')
-  const [correctedValue, setCorrectedValue] = useState('')
+function ResolveIssueButton({ itemId, onSaved }) {
   const [saving, setSaving] = useState(false)
-  const comparison = email?.result?.comparisons?.find((item) => item.field_name === fieldName)
 
-  useEffect(() => {
-    setFieldName((current) => current || fieldOptions[0] || '')
-  }, [fieldOptions])
-
-  async function save() {
+  async function resolve() {
     setSaving(true)
     try {
-      const outcome = await resolveReviewItem(itemId, {
-        action,
-        field_name: fieldName,
-        corrected_value: action === 'correct' ? correctedValue : null,
-      })
+      const outcome = await resolveReviewItem(itemId, { action: 'resolve' })
       onSaved(outcome)
     } catch (reason) {
       onSaved(null, reason)
@@ -45,79 +34,14 @@ function ConfirmCorrectPanel({ itemId, email, fieldOptions, onSaved }) {
   }
 
   return (
-    <section className="rounded-2xl bg-white p-6 border border-slate-200">
-      <h2 className="font-display text-lg font-semibold text-[#1E293B]">Resolve this field</h2>
-      <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-[#64748B]">
-        Field
-        <select
-          className="mt-2 h-11 w-full rounded-lg border border-[#CBD5E1] bg-white px-3 text-sm"
-          value={fieldName}
-          onChange={(event) => setFieldName(event.target.value)}
-        >
-          {fieldOptions.map((key) => (
-            <option key={key} value={key}>
-              {fieldLabels[key]?.label || key}
-            </option>
-          ))}
-        </select>
-      </label>
-      <div className="mt-4 grid gap-3">
-        <button
-          type="button"
-          className={cn(
-            'rounded-xl border p-4 text-left',
-            action === 'confirm' ? 'border-[#0F172A] bg-[#F1F5F9]' : 'border-[#CBD5E1]',
-          )}
-          onClick={() => setAction('confirm')}
-        >
-          <p className="font-semibold text-[#1E293B]">Confirm the reading is correct</p>
-          <p className="mt-1 text-sm text-[#64748B]">
-            BL value is {comparison?.bl?.raw_value || 'as extracted'}.
-          </p>
-        </button>
-        <button
-          type="button"
-          className={cn(
-            'rounded-xl border p-4 text-left',
-            action === 'correct' ? 'border-[#0F172A] bg-[#F1F5F9]' : 'border-[#CBD5E1]',
-          )}
-          onClick={() => setAction('correct')}
-        >
-          <p className="font-semibold text-[#1E293B]">Enter the correct value</p>
-          <p className="mt-1 text-sm text-[#64748B]">The extracted reading was wrong or missing.</p>
-        </button>
-        {email?.result?.review_reason === 'missing_value' && (
-          <button
-            type="button"
-            className={cn(
-              'rounded-xl border p-4 text-left',
-              action === 'confirm_absent' ? 'border-[#B45309] bg-[#FFFBEB]' : 'border-[#CBD5E1]',
-            )}
-            onClick={() => setAction('confirm_absent')}
-          >
-            <p className="font-semibold text-[#1E293B]">Confirm the field is absent</p>
-            <p className="mt-1 text-sm text-[#64748B]">
-              Record the absence as a discrepancy for this field.
-            </p>
-          </button>
-        )}
-      </div>
-      {action === 'correct' && (
-        <input
-          className="mt-3 h-11 w-full rounded-lg border border-[#CBD5E1] px-3 font-mono text-sm"
-          value={correctedValue}
-          onChange={(event) => setCorrectedValue(event.target.value)}
-          placeholder={comparison?.si?.raw_value || 'Corrected value'}
-        />
-      )}
-      <button
-        className="mt-5 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[#0F172A] text-sm font-semibold text-white disabled:opacity-60 hover:bg-[#1E293B]"
-        onClick={save}
-        disabled={saving || !fieldName || (action === 'correct' && !correctedValue)}
-      >
-        {saving ? 'Saving…' : 'Save decision'}
-      </button>
-    </section>
+    <button
+      type="button"
+      className="mt-5 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[#0F172A] text-sm font-semibold text-white disabled:opacity-60 hover:bg-[#1E293B]"
+      onClick={resolve}
+      disabled={saving}
+    >
+      {saving ? 'Resolving...' : 'Resolve this issue'}
+    </button>
   )
 }
 
@@ -135,6 +59,7 @@ function UploadMissingPanel({ itemId, onSaved }) {
   const [role, setRole] = useState('SI')
   const [file, setFile] = useState(null)
   const [saving, setSaving] = useState(false)
+  const fileInputRef = useRef(null)
 
   async function upload() {
     if (!file) return
@@ -173,12 +98,44 @@ function UploadMissingPanel({ itemId, onSaved }) {
           <option value="BL">Draft bill of lading</option>
         </select>
       </label>
-      <input
-        type="file"
-        accept=".txt,.pdf,.docx,.xlsx"
-        className="mt-3 block w-full text-sm text-[#475569]"
-        onChange={(event) => setFile(event.target.files?.[0] || null)}
-      />
+      <div className="mt-4">
+        <span className="text-xs font-semibold uppercase tracking-wide text-[#64748B]">
+          Attachment file
+        </span>
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <label
+            htmlFor={`review-upload-${itemId}`}
+            className="inline-flex cursor-pointer items-center text-sm font-semibold text-[#0F172A] underline underline-offset-4 transition-colors hover:text-[#34558F]"
+          >
+            Choose file
+          </label>
+          <input
+            id={`review-upload-${itemId}`}
+            ref={fileInputRef}
+            type="file"
+            accept=".txt,.pdf,.docx,.xlsx"
+            className="sr-only"
+            onChange={(event) => setFile(event.target.files?.[0] || null)}
+          />
+          <span className="min-w-0 max-w-full truncate text-sm text-[#475569]">
+            {file?.name || 'No file selected'}
+          </span>
+          {file && (
+            <button
+              type="button"
+              onClick={() => {
+                setFile(null)
+                if (fileInputRef.current) fileInputRef.current.value = ''
+              }}
+              className="inline-flex items-center gap-1 text-sm font-semibold text-[#B91C1C] underline underline-offset-4 hover:text-[#991B1B]"
+            >
+              <Trash size={14} aria-hidden="true" />
+              Remove
+            </button>
+          )}
+        </div>
+        <p className="mt-1 text-xs text-[#94A3B8]">TXT, PDF, DOCX or XLSX</p>
+      </div>
       <button
         type="button"
         className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[#0F172A] text-sm font-semibold text-white disabled:opacity-60 hover:bg-[#1E293B]"
@@ -387,6 +344,60 @@ function ReassignRolesPanel({ itemId, email, onSaved }) {
   )
 }
 
+function EscalationPanel({ itemId, onSaved, onOpenComparison }) {
+  const [note, setNote] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function save() {
+    setSaving(true)
+    try {
+      const outcome = await resolveReviewItem(itemId, {
+        action: 'mark_reviewed',
+        note: note.trim() || null,
+      })
+      onSaved(outcome)
+    } catch (reason) {
+      onSaved(null, reason)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <section className="rounded-2xl bg-white p-6 border border-slate-200">
+      <h2 className="font-display text-lg font-semibold text-[#1E293B]">Review this comparison</h2>
+      <p className="mt-1 text-sm text-[#64748B]">
+        Check each field against both documents. If a field needs correcting, change its result on
+        the document comparison page first, then mark this as reviewed.
+      </p>
+      <button
+        type="button"
+        onClick={onOpenComparison}
+        className="mt-4 inline-flex h-10 items-center rounded-lg border border-[#0F172A] bg-transparent px-4 text-sm font-semibold text-[#0F172A] hover:bg-slate-100"
+      >
+        Open document comparison
+      </button>
+      <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-[#64748B]">
+        Note (optional)
+        <textarea
+          className="mt-2 min-h-[84px] w-full rounded-lg border border-[#CBD5E1] bg-white px-3 py-2 text-sm normal-case text-[#1E293B]"
+          value={note}
+          onChange={(event) => setNote(event.target.value)}
+          placeholder="What did you check or change?"
+        />
+      </label>
+      <button
+        type="button"
+        className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[#0F172A] text-sm font-semibold text-white disabled:opacity-60 hover:bg-[#1E293B]"
+        onClick={save}
+        disabled={saving}
+      >
+        {saving ? 'Saving…' : 'Mark as reviewed'}
+      </button>
+    </section>
+  )
+}
+
 function RetryPanel({ itemId, onSaved }) {
   const [saving, setSaving] = useState(false)
   async function retry() {
@@ -417,6 +428,33 @@ function RetryPanel({ itemId, onSaved }) {
   )
 }
 
+function ReopenIssueButton({ itemId, onSaved }) {
+  const [saving, setSaving] = useState(false)
+
+  async function reopen() {
+    setSaving(true)
+    try {
+      const outcome = await resolveReviewItem(itemId, { action: 'reopen' })
+      onSaved(outcome)
+    } catch (reason) {
+      onSaved(null, reason)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg border border-[#0F172A] bg-transparent text-sm font-semibold text-[#0F172A] transition-colors hover:bg-slate-100 disabled:opacity-60"
+      onClick={reopen}
+      disabled={saving}
+    >
+      {saving ? 'Reopening...' : 'Reopen this issue'}
+    </button>
+  )
+}
+
 export function ReviewItemDetailPage({ navigate, itemId }) {
   const [item, setItem] = useState(null)
   const [email, setEmail] = useState(null)
@@ -437,6 +475,9 @@ export function ReviewItemDetailPage({ navigate, itemId }) {
   const documents = email?.result?.documents || []
   const siDoc = documents.find((document) => document.role === 'SI') || documents[0]
   const blDoc = documents.find((document) => document.role === 'BL') || documents[1]
+  // With no attachment there is no document to point evidence at, so the field picker stays empty.
+  const hasAttachment =
+    (email?.attachments?.length || 0) > 0 || Boolean(siDoc?.path) || Boolean(blDoc?.path)
   const flaggedFields = useMemo(() => {
     if (!email?.result) return []
     const fromSkipped = email.result.skipped_fields || []
@@ -475,7 +516,7 @@ export function ReviewItemDetailPage({ navigate, itemId }) {
   if (!item) {
     return (
       <div className="p-8 lg:p-12">
-        <div className="h-8 w-64 animate-pulse rounded bg-[#E2E8F0]" />
+        <LoadingBoat label="Loading review item" />
       </div>
     )
   }
@@ -488,7 +529,7 @@ export function ReviewItemDetailPage({ navigate, itemId }) {
         className="mb-6 inline-flex h-10 items-center gap-2 rounded-lg border border-[#0F172A] bg-transparent px-4 text-sm font-semibold text-[#0F172A] hover:bg-white/60"
       >
         <ArrowLeft size={16} />
-        Review queue
+        Human review
       </button>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -504,15 +545,34 @@ export function ReviewItemDetailPage({ navigate, itemId }) {
           </span>
         )}
       </div>
-      <h1 className="font-display mt-3 text-[2rem] font-semibold text-[#0F172A]">
+      <h1 className="font-display mt-3 text-[2rem] font-semibold tracking-[-0.01em] text-[#0F172A]">
         {email?.subject || item.email_id}
       </h1>
-      <p className="mt-2 text-sm text-[#475569]">Received {formatDate(email?.received_at)}</p>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate(`/inbox/${item.email_id}`)}
+            className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#0F172A] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#1E293B]"
+          >
+            <EnvelopeSimple size={17} aria-hidden="true" />
+            Go to email content
+          </button>
+          <p className="text-sm text-[#475569]">Received {formatDate(email?.received_at)}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => navigate(`/docs-comparison/${item.email_id}`)}
+          className="inline-flex h-10 items-center rounded-lg border border-[#0F172A] bg-transparent px-4 text-sm font-semibold text-[#0F172A] transition-colors hover:bg-white/70"
+        >
+          Go to document comparison
+        </button>
+      </div>
 
       <div className="mt-6 flex gap-4 rounded-2xl border border-[#FDE68A] bg-[#FEF3C7] p-6">
         <Warning size={22} className="mt-0.5 shrink-0 text-[#B45309]" />
         <div>
-          <p className="font-display font-semibold text-[#78350F]">Why this needs a person</p>
+          <p className="font-display font-semibold text-[#78350F]">Why this needs a human review</p>
           <p className="mt-1 text-sm leading-6 text-[#92400E]">{item.description}</p>
         </div>
       </div>
@@ -524,24 +584,26 @@ export function ReviewItemDetailPage({ navigate, itemId }) {
 
       <div className="mt-7 grid gap-7 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="space-y-5">
+          {item.status === 'open' && <UploadMissingPanel itemId={item.id} onSaved={handleSaved} />}
+          {item.status === 'open' && item.reason === 'manual_escalation' && (
+            <EscalationPanel
+              itemId={item.id}
+              onSaved={handleSaved}
+              onOpenComparison={() => navigate(`/docs-comparison/${item.email_id}`)}
+            />
+          )}
           {item.status === 'open' && item.reason === 'processing_failed' && (
             <RetryPanel itemId={item.id} onSaved={handleSaved} />
           )}
           {item.status === 'open' &&
             (item.reason === 'unreadable' || item.reason === 'missing_value') && (
-              <ConfirmCorrectPanel
-                itemId={item.id}
-                email={email}
-                fieldOptions={flaggedFields}
-                onSaved={handleSaved}
-              />
+              <ResolveIssueButton itemId={item.id} onSaved={handleSaved} />
             )}
           {item.status === 'open' && item.reason === 'wrong_doc_type' && (
             <ReassignRolesPanel itemId={item.id} email={email} onSaved={handleSaved} />
           )}
           {item.status === 'open' && item.reason === 'missing_attachment' && (
             <>
-              <UploadMissingPanel itemId={item.id} onSaved={handleSaved} />
               <ReclassifyPanel
                 itemId={item.id}
                 onSaved={handleSaved}
@@ -556,6 +618,7 @@ export function ReviewItemDetailPage({ navigate, itemId }) {
               <pre className="mt-2 overflow-auto rounded-lg bg-[#F8FAFC] p-3 font-mono text-xs text-[#475569]">
                 {JSON.stringify(item.resolution, null, 2)}
               </pre>
+              <ReopenIssueButton itemId={item.id} onSaved={handleSaved} />
             </section>
           )}
         </div>
@@ -564,15 +627,20 @@ export function ReviewItemDetailPage({ navigate, itemId }) {
             <label className="block text-xs font-semibold uppercase tracking-wide text-[#475569]">
               Evidence field
               <select
-                className="mt-2 h-10 w-full rounded-lg border border-[#CBD5E1] bg-white px-3 text-sm normal-case"
-                value={activeField || ''}
+                className="mt-2 h-10 w-full rounded-lg border border-[#CBD5E1] bg-white px-3 text-sm normal-case disabled:cursor-not-allowed disabled:bg-[#F1F5F9]"
+                value={hasAttachment ? activeField || '' : ''}
+                disabled={!hasAttachment}
                 onChange={(event) => setActiveField(event.target.value)}
               >
-                {flaggedFields.map((field) => (
-                  <option key={field} value={field}>
-                    {fieldLabels[field]?.label || field}
-                  </option>
-                ))}
+                {hasAttachment ? (
+                  flaggedFields.map((field) => (
+                    <option key={field} value={field}>
+                      {fieldLabels[field]?.label || field}
+                    </option>
+                  ))
+                ) : (
+                  <option value="" />
+                )}
               </select>
             </label>
           )}

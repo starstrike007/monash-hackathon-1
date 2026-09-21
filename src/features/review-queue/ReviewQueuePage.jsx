@@ -3,6 +3,7 @@ import { CalendarBlank, Funnel, MagnifyingGlass } from '@phosphor-icons/react'
 
 import { BackendError } from '@/components/BackendError'
 import { FilterMenu } from '@/components/FilterMenu'
+import { LoadingBoat } from '@/components/LoadingBoat'
 import { ReceivedAt } from '@/components/ReceivedAt'
 import { reasonLabel } from '@/features/review-queue/reasons'
 import { getAllEmails, getReviewItems } from '@/lib/api'
@@ -22,9 +23,11 @@ const REASON_FILTERS = [
   { key: 'missing_attachment', label: 'Missing attachment' },
   { key: 'unreadable', label: 'Unreadable' },
   { key: 'missing_value', label: 'Missing value' },
+  { key: 'manual_escalation', label: 'Escalated' },
 ]
 const ALL_REASON_KEYS = REASON_FILTERS.map((filter) => filter.key)
-const VIEW_STATE_STORAGE_KEY = 'clearance:review-queue-view-state'
+// v2: the category list gained "Escalated"; a saved list of the old four would hide those items.
+const VIEW_STATE_STORAGE_KEY = 'clearance:review-queue-view-state-v2'
 const SCROLL_RESTORE_STORAGE_KEY = 'clearance:review-queue-scroll-restore'
 
 function reasonFilterKey(reason) {
@@ -135,7 +138,7 @@ export function ReviewQueuePage({ navigate, initialReason = '' }) {
     )
   }, [emailsById, reasonFiltered, selectedPeriods])
 
-  // Group under Today, Yesterday, ... newest first, like the inbox and Document Comparison.
+  // Group under Today, Yesterday, ... newest first, like the inbox and Document comparison.
   const grouped = useMemo(() => {
     const now = new Date()
     const receivedOf = (item) => emailsById[item.email_id]?.received_at || item.created_at
@@ -169,12 +172,12 @@ export function ReviewQueuePage({ navigate, initialReason = '' }) {
         <div>
           <p className="text-sm font-medium text-[#475569]">{visible.length} items</p>
           <h1 className="font-display mt-1 text-[2.75rem] font-semibold tracking-[-0.02em] text-[#0F172A]">
-            Review queue
+            Human review
           </h1>
         </div>
         <label className="flex h-14 w-full items-center gap-3 rounded-xl border border-[#CBD5E1] bg-white px-5 text-[#64748B] sm:max-w-[420px]">
           <MagnifyingGlass size={20} />
-          <span className="sr-only">Search review queue</span>
+          <span className="sr-only">Search human review</span>
           <input
             className="min-w-0 flex-1 bg-transparent text-sm text-[#0F172A] outline-none placeholder:text-[#94A3B8]"
             value={query}
@@ -240,9 +243,7 @@ export function ReviewQueuePage({ navigate, initialReason = '' }) {
       </div>
 
       <div className="mt-6 space-y-8">
-        {!ready && !error && (
-          <div className="py-14 text-center text-sm text-[#64748B]">Loading…</div>
-        )}
+        {!ready && !error && <LoadingBoat label="Loading human review" />}
         {ready &&
           GROUP_ORDER.filter((key) => grouped[key].length).map((key) => (
             <section key={key}>
@@ -279,7 +280,7 @@ export function ReviewQueuePage({ navigate, initialReason = '' }) {
                         )}
                       </span>
                       <span>
-                        <span className="inline-flex w-fit items-center rounded-md bg-slate-100 px-2 py-1 font-mono text-xs font-medium text-slate-600">
+                        <span className="inline-flex w-fit items-center rounded-md bg-[#CBD5E1] px-2 py-1 font-mono text-xs font-medium text-[#1E293B]">
                           {reasonLabel(item.reason)}
                         </span>
                       </span>
@@ -297,7 +298,7 @@ export function ReviewQueuePage({ navigate, initialReason = '' }) {
           <div className="rounded-2xl border border-[#E2E8F0] bg-white py-14 text-center text-sm text-[#64748B]">
             {query.trim()
               ? 'No review items match your search.'
-              : `Nothing here. ${statusFilter === 'open' ? 'The review queue is clear.' : 'No resolved items yet.'}`}
+              : `Nothing here. ${statusFilter === 'open' ? 'Nothing is waiting for human review.' : 'No resolved items yet.'}`}
           </div>
         )}
       </div>

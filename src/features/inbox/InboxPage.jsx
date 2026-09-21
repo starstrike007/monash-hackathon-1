@@ -3,6 +3,7 @@ import { CalendarBlank, CaretDown, Funnel, MagnifyingGlass, Paperclip } from '@p
 
 import { CategoryBadge } from '@/components/layout/StatusBadge'
 import { BackendError } from '@/components/BackendError'
+import { LoadingBoat } from '@/components/LoadingBoat'
 import { getAllEmails } from '@/lib/api'
 import {
   persistVisitedEmailIds,
@@ -407,7 +408,7 @@ export function InboxPage({ navigate }) {
       </div>
 
       <div className="mt-6 space-y-8">
-        {loading && <div className="py-14 text-center text-sm text-[#475569]">Loading emails…</div>}
+        {loading && <LoadingBoat label="Loading inbox" />}
         {!loading &&
           !error &&
           GROUP_ORDER.filter((key) => selectedPeriods.includes(key)).map((key) => (

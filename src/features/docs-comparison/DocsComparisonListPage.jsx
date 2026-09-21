@@ -4,6 +4,7 @@ import { CalendarBlank, Funnel, MagnifyingGlass } from '@phosphor-icons/react'
 import { StatusBadge } from '@/components/layout/StatusBadge'
 import { BackendError } from '@/components/BackendError'
 import { FilterMenu } from '@/components/FilterMenu'
+import { LoadingBoat } from '@/components/LoadingBoat'
 import { ReceivedAt } from '@/components/ReceivedAt'
 import { summarizeComparison } from '@/features/docs-comparison/summary'
 import { getAllEmails } from '@/lib/api'
@@ -134,7 +135,7 @@ export function DocsComparisonListPage({ navigate, initialStatus = '' }) {
         <div>
           <p className="text-sm font-medium text-[#475569]">{shownCount} comparison requests</p>
           <h1 className="font-display mt-1 text-[2.75rem] font-semibold tracking-[-0.02em] text-[#0F172A]">
-            Document Comparison
+            Document comparison
           </h1>
         </div>
         <label className="flex h-14 w-full items-center gap-3 rounded-xl border border-[#CBD5E1] bg-white px-5 text-[#64748B] sm:max-w-[420px]">
@@ -210,7 +211,7 @@ export function DocsComparisonListPage({ navigate, initialStatus = '' }) {
       </div>
 
       <div className="mt-6 space-y-8">
-        {loading && <div className="py-14 text-center text-sm text-[#64748B]">Loading…</div>}
+        {loading && <LoadingBoat label="Loading document comparison" />}
         {!loading &&
           !error &&
           shownGroups.map((key) => (
@@ -252,9 +253,16 @@ export function DocsComparisonListPage({ navigate, initialStatus = '' }) {
                         )}
                       </span>
                       <span
-                        className={`line-clamp-2 text-sm ${summary.tone === 'mismatch' ? 'text-[#B91C1C]' : summary.tone === 'review' ? 'text-[#B45309]' : 'text-[#64748B]'}`}
+                        className={`text-sm ${summary.tone === 'mismatch' ? 'text-[#B91C1C]' : summary.tone === 'review' ? 'text-[#B45309]' : 'text-[#64748B]'}`}
                       >
-                        {summary.text}
+                        <span className="block line-clamp-1">
+                          {summary.primaryText || summary.text}
+                        </span>
+                        {summary.secondaryText && (
+                          <span className="mt-1 block line-clamp-1 text-[#B91C1C]">
+                            {summary.secondaryText}
+                          </span>
+                        )}
                       </span>
                       <ReceivedAt value={item.received_at} />
                     </button>

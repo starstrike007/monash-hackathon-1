@@ -24,10 +24,10 @@ async function request(path, options = {}) {
       ...options,
     })
   } catch (error) {
-    throw new ApiError(
-      'Backend unreachable. Start the FastAPI service and try again.',
-      { backendUnavailable: true, cause: error },
-    )
+    throw new ApiError('Backend unreachable. Start the FastAPI service and try again.', {
+      backendUnavailable: true,
+      cause: error,
+    })
   }
   if (!response.ok) {
     let detail = ''
@@ -97,6 +97,17 @@ export function getPipelineRun(runId) {
   return request(`/api/pipeline/runs/${runId}`)
 }
 
+export function startPipelineBootstrap() {
+  return request('/api/pipeline/bootstrap', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
+}
+
+export function getPipelineBootstrapStatus() {
+  return request('/api/pipeline/bootstrap/status')
+}
+
 export function retryEmail(emailId) {
   return request(`/api/emails/${emailId}/retry`, {
     method: 'POST',
@@ -159,6 +170,13 @@ export function resolveReviewItem(itemId, payload) {
 
 export function uploadReviewAttachment(itemId, payload) {
   return request(`/api/review/items/${itemId}/resolve`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function escalateToHumanReview(emailId, payload = {}) {
+  return request(`/api/emails/${emailId}/escalate`, {
     method: 'POST',
     body: JSON.stringify(payload),
   })

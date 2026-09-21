@@ -28,7 +28,7 @@ export function CategoryBadge({ category, className }) {
   return (
     <span
       className={cn(
-        'inline-flex rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600',
+        'inline-flex rounded-md bg-[#CBD5E1] px-2 py-1 text-xs font-medium text-[#1E293B]',
         className,
       )}
     >

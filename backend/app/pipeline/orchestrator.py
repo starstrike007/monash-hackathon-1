@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import json
 import logging
 import re
+from threading import Lock, Thread
 from pathlib import Path
 from typing import Any
 
@@ -58,6 +59,9 @@ class PipelineOrchestrator:
         self.max_workers = max(1, int(max_workers))
         self.output_dir = Path(output_dir).resolve() if output_dir else None
         self.last_classification_metrics: dict[str, Any] = {}
+        self._bootstrap_lock = Lock()
+        self._bootstrap_state: dict[str, Any] | None = None
+        self._bootstrap_thread: Thread | None = None
 
     def _default_output_dir(self) -> Path:
         """Keep fixture/custom-dataset exports from clobbering the submission."""
@@ -70,10 +74,163 @@ class PipelineOrchestrator:
             return Path(__file__).resolve().parents[2] / "output"
         return Path(self.store.runtime_dir) / "output"
 
+    @staticmethod
+    def _bootstrap_percentage(processed_count: int, total_emails: int) -> int:
+        if total_emails <= 0:
+            return 100
+        return max(0, min(100, round((processed_count / total_emails) * 100)))
+
+    def _update_bootstrap_state(self, **changes: Any) -> dict[str, Any] | None:
+        with self._bootstrap_lock:
+            if self._bootstrap_state is None:
+                return None
+            self._bootstrap_state.update(changes)
+            return dict(self._bootstrap_state)
+
+    def _update_bootstrap_progress(
+        self,
+        run_id: str,
+        processed_count: int,
+        total_emails: int,
+        stage: str,
+        message: str,
+    ) -> None:
+        with self._bootstrap_lock:
+            if not self._bootstrap_state or self._bootstrap_state.get("run_id") not in {None, run_id}:
+                return
+            if self._bootstrap_state.get("status") not in {"queued", "running"}:
+                return
+            self._bootstrap_state.update(
+                {
+                    "status": "running",
+                    "run_id": run_id,
+                    "total_emails": total_emails,
+                    "processed_count": processed_count,
+                    "percentage": self._bootstrap_percentage(processed_count, total_emails),
+                    "stage": stage,
+                    "message": message,
+                }
+            )
+
+    def _run_bootstrap(self) -> None:
+        try:
+            self._update_bootstrap_state(
+                status="running",
+                stage="Starting pipeline",
+                message="Preparing the email corpus…",
+            )
+            run = self.run()
+            with self._bootstrap_lock:
+                bootstrap_total = (self._bootstrap_state or {}).get("total_emails", 0)
+            total_emails = int(run.get("total_emails") or bootstrap_total)
+            run_status = run.get("status")
+            message = (
+                "Dashboard data is ready."
+                if run_status == "complete"
+                else "Dashboard data is ready; some items may need a retry."
+            )
+            self._update_bootstrap_state(
+                status="complete",
+                run_id=run.get("run_id"),
+                total_emails=total_emails,
+                processed_count=total_emails,
+                percentage=100,
+                stage="Ready",
+                message=message,
+            )
+        except Exception as exc:
+            logger.exception("Dashboard bootstrap failed")
+            self._update_bootstrap_state(
+                status="failed",
+                percentage=0,
+                stage="Unable to load",
+                message=str(exc)[:240] or "The initial pipeline run failed.",
+            )
+
+    def get_bootstrap_status(self) -> dict[str, Any]:
+        with self._bootstrap_lock:
+            if self._bootstrap_state and self._bootstrap_state.get("status") in {"queued", "running"}:
+                return dict(self._bootstrap_state)
+
+        latest_run = self.store.latest_run()
+        latest_results = self.store.list_latest_results()
+        if latest_run or latest_results:
+            total_emails = int(
+                (latest_run or {}).get("total_emails") or len(self.loader.list_emails())
+            )
+            processed_count = len(latest_results)
+            if latest_run:
+                stages = self.store.get_stages(latest_run["run_id"])
+                stage_counts = [int(stage.get("processed_count") or 0) for stage in stages]
+                processed_count = max([processed_count, *stage_counts])
+            run_status = (latest_run or {}).get("status")
+            if run_status == "running":
+                return {
+                    "status": "running",
+                    "run_id": latest_run.get("run_id"),
+                    "total_emails": total_emails,
+                    "processed_count": processed_count,
+                    "percentage": self._bootstrap_percentage(processed_count, total_emails),
+                    "stage": "Processing emails",
+                    "message": f"Processed {processed_count} of {total_emails} emails.",
+                }
+            return {
+                "status": "ready",
+                "run_id": (latest_run or {}).get("run_id"),
+                "total_emails": total_emails,
+                "processed_count": total_emails,
+                "percentage": 100,
+                "stage": "Ready",
+                "message": "Dashboard data is ready.",
+            }
+
+        return {
+            "status": "idle",
+            "run_id": None,
+            "total_emails": len(self.loader.list_emails()),
+            "processed_count": 0,
+            "percentage": 0,
+            "stage": "Waiting to start",
+            "message": "Preparing the dashboard data…",
+        }
+
+    def start_bootstrap(self) -> dict[str, Any]:
+        with self._bootstrap_lock:
+            if self._bootstrap_state and self._bootstrap_state.get("status") in {"queued", "running"}:
+                return dict(self._bootstrap_state)
+
+            latest_run = self.store.latest_run()
+            latest_results = self.store.list_latest_results()
+            has_existing_data = bool(latest_run or latest_results)
+
+            if not has_existing_data:
+                total_emails = len(self.loader.list_emails())
+                self._bootstrap_state = {
+                    "status": "queued",
+                    "run_id": None,
+                    "total_emails": total_emails,
+                    "processed_count": 0,
+                    "percentage": 0,
+                    "stage": "Queued",
+                    "message": "Starting the dashboard pipeline…",
+                }
+                self._bootstrap_thread = Thread(
+                    target=self._run_bootstrap,
+                    name="dashboard-bootstrap",
+                    daemon=True,
+                )
+                self._bootstrap_thread.start()
+                return dict(self._bootstrap_state)
+
+        return self.get_bootstrap_status()
+
     def ensure_seeded(self) -> None:
         # A run can legitimately finish with no saved result for a failed
         # item. The run record still proves the store has been initialized;
         # reseeding here would erase the visible retryable failure.
+        with self._bootstrap_lock:
+            if self._bootstrap_state and self._bootstrap_state.get("status") in {"queued", "running"}:
+                return
         latest_results = self.store.list_latest_results()
         latest_run = self.store.latest_run()
         if latest_results or latest_run:
@@ -151,6 +308,18 @@ class PipelineOrchestrator:
             emails = [email for email in emails if email.get("email_id") in wanted]
         run = self.store.create_run(len(emails))
         run_id = run["run_id"]
+        with self._bootstrap_lock:
+            bootstrap_active = bool(
+                self._bootstrap_state
+                and self._bootstrap_state.get("status") in {"queued", "running"}
+            )
+        if bootstrap_active:
+            self._update_bootstrap_state(
+                run_id=run_id,
+                status="running",
+                stage="Classifying emails",
+                message="Classifying the email corpus…",
+            )
         self.store.update_run(run_id, status="running", started_at=datetime.now(timezone.utc).isoformat())
         for stage_number, stage_name in STAGES:
             self.store.upsert_stage(
@@ -191,7 +360,7 @@ class PipelineOrchestrator:
         decision_by_email = dict(zip((email["email_id"] for email in to_classify), classified))
         decision_by_email.update(overridden)
 
-        for email in emails:
+        for processed_count, email in enumerate(emails, start=1):
             email_id = email["email_id"]
             decision = decision_by_email[email_id]
             self._record_email_meta(email_id, decision)
@@ -210,6 +379,13 @@ class PipelineOrchestrator:
                 logger.exception("Stage 1 failed for %s", email_id)
                 failures.append({"email_id": email_id, "message": str(exc), "retryable": True})
                 sync_processing_failure(self.store, email_id, str(exc))
+            self._update_bootstrap_progress(
+                run_id,
+                processed_count,
+                len(emails),
+                "Processing emails",
+                f"Processed {processed_count} of {len(emails)} emails.",
+            )
 
         for stage_number, stage_name in STAGES:
             status = "partial" if failures else "complete"

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -42,3 +43,13 @@ class PipelineFailure(BaseModel):
 class PipelineRunDetail(PipelineRun):
     stages: list[PipelineStageProgress] = Field(default_factory=list)
     failures: list[PipelineFailure] = Field(default_factory=list)
+
+
+class PipelineBootstrapStatus(BaseModel):
+    status: Literal["idle", "queued", "running", "complete", "ready", "failed"]
+    run_id: str | None = None
+    total_emails: int = 0
+    processed_count: int = 0
+    percentage: int = 0
+    stage: str = ""
+    message: str = ""

@@ -9,7 +9,7 @@ import {
   WarningCircle,
 } from '@phosphor-icons/react'
 
-import clearanceLogo from '@/assets/clearance-logo.png'
+import clearanceLogo from '@/assets/clearance-mark.png'
 import { AbstractBlueBackground } from '@/components/backgrounds/AbstractBlueBackground'
 import { cn } from '@/lib/utils'
 
@@ -26,8 +26,8 @@ function readSidebarCollapsed() {
 const navigation = [
   { label: 'Dashboard', path: '/dashboard', icon: ChartLineUp },
   { label: 'Inbox', path: '/inbox', icon: Archive },
-  { label: 'Document Comparison', path: '/docs-comparison', icon: Files },
-  { label: 'Review queue', path: '/review', icon: WarningCircle, badge: true },
+  { label: 'Document comparison', path: '/docs-comparison', icon: Files },
+  { label: 'Human review', path: '/review', icon: WarningCircle, badge: true },
 ]
 
 export function AppShell({ pathname, navigate, children, reviewCount = null }) {

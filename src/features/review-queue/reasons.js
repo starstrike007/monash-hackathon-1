@@ -4,6 +4,7 @@ export const REASON_LABELS = {
   missing_value: 'Missing value',
   wrong_doc_type: 'Wrong document type',
   processing_failed: 'Processing failed',
+  manual_escalation: 'Escalated',
 }
 
 export function reasonLabel(reason) {

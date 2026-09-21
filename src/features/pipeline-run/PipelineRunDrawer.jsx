@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle, CircleNotch, Warning, X } from '@phosphor-icons/react'
+import { CheckCircle, Warning, X } from '@phosphor-icons/react'
 
 import { BackendError } from '@/components/BackendError'
+import { LoadingBoat, LoadingBoatMark } from '@/components/LoadingBoat'
 import { getPipelineRun, notifyDataChanged, retryEmail } from '@/lib/api'
 import { formatDate } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -24,7 +25,7 @@ function StageCard({ stage }) {
               ? 'bg-[#D1FAE5] text-[#047857]'
               : failed
                 ? 'bg-[#FEF3C7] text-[#B45309]'
-                : 'bg-[#E2E8F0] text-[#64748B]',
+                : 'bg-[#34558F] text-white',
           )}
         >
           {complete ? (
@@ -32,7 +33,7 @@ function StageCard({ stage }) {
           ) : failed ? (
             <Warning size={17} weight="fill" />
           ) : (
-            <CircleNotch size={17} className="animate-spin" />
+            <LoadingBoatMark className="h-7 w-7" />
           )}
         </span>
         <h2 className="text-sm font-semibold text-[#1E293B]">
@@ -153,7 +154,7 @@ export function PipelineRunDrawer({ runId, onClose }) {
         )}
         <div className="mt-3 flex-1 space-y-2 overflow-y-auto">
           {run?.stages?.map((stage) => <StageCard key={stage.stage_number} stage={stage} />) || (
-            <div className="h-40 animate-pulse rounded-lg bg-white" />
+            <LoadingBoat label="Loading pipeline" compact />
           )}
         </div>
         {run?.failures?.length ? (

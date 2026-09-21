@@ -1,11 +1,27 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, Check, EnvelopeSimple } from '@phosphor-icons/react'
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import {
+  ArrowLeft,
+  CaretDown,
+  Check,
+  CheckCircle,
+  EnvelopeSimple,
+  Flag,
+  WarningCircle,
+  XCircle,
+} from '@phosphor-icons/react'
 
 import { DocumentViewer } from '@/components/document-viewer/DocumentViewer'
 import { BackendError } from '@/components/BackendError'
 import { CategoryBadge } from '@/components/layout/StatusBadge'
+import { LoadingBoat } from '@/components/LoadingBoat'
 import { fieldLabels, summarizeComparison } from '@/features/docs-comparison/summary'
-import { getEmail, getReviewItems, notifyDataChanged, overrideComparisonResult } from '@/lib/api'
+import {
+  escalateToHumanReview,
+  getEmail,
+  getReviewItems,
+  notifyDataChanged,
+  overrideComparisonResult,
+} from '@/lib/api'
 import { formatDate } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -13,6 +29,30 @@ const BANNER_TONE = {
   ok: 'bg-[#D1FAE5] text-emerald-700 border-[#A7F3D0]',
   mismatch: 'bg-[#FEE2E2] text-red-700 border-[#FECACA]',
   review: 'bg-[#FEF3C7] text-amber-700 border-[#FDE68A]',
+}
+
+const BANNER_ICONS = {
+  ok: CheckCircle,
+  mismatch: XCircle,
+  review: WarningCircle,
+}
+
+function ResultBanner({ tone, text, children }) {
+  const BannerIcon = BANNER_ICONS[tone] || WarningCircle
+
+  return (
+    <div className={cn('w-full rounded-2xl border px-5 py-2.5', BANNER_TONE[tone])}>
+      <div className="flex items-center gap-4">
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-white/70 shadow-sm">
+          <BannerIcon size={24} weight="fill" aria-hidden="true" />
+        </div>
+        <div className="min-w-0">
+          <p className="font-display text-xl font-semibold">{text}</p>
+          {children}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function ValueCell({ extraction }) {
@@ -25,7 +65,7 @@ function ValueCell({ extraction }) {
         <span className="mr-1 font-sans uppercase tracking-wide text-[#94A3B8]">Normalized</span>
         {extraction.normalized_value || '—'}
       </p>
-      <p className="text-[15px] text-[#1E293B]">
+      <p className="text-[13.5px] text-[#1E293B]">
         <span className="mr-1 text-xs uppercase tracking-wide text-[#94A3B8]">Raw</span>
         {extraction.raw_value || '—'}
       </p>
@@ -85,23 +125,30 @@ function ComparisonTable({
             <ValueCell extraction={comparison.si} />
             <ValueCell extraction={comparison.bl} />
             <div className="flex flex-wrap items-center gap-2">
-              <select
-                aria-label={`Result for ${field.label}`}
-                value={pendingResult}
-                disabled={savingField === comparison.field_name}
-                onClick={(event) => event.stopPropagation()}
-                onChange={(event) => onChangeResult(comparison.field_name, event.target.value)}
-                className={cn(
-                  'h-9 rounded-md border bg-white px-2 text-xs font-semibold text-[#1E293B] outline-none focus:ring-2 focus:ring-[#0E5A66]/20',
-                  mismatch && 'border-[#FECACA] text-[#B91C1C]',
-                  uncertain && 'border-[#FDE68A] text-[#B45309]',
-                  !mismatch && !uncertain && 'border-[#A7F3D0] text-[#047857]',
-                )}
-              >
-                <option value="match">Match</option>
-                <option value="mismatch">Mismatch</option>
-                <option value="skipped">Uncertain</option>
-              </select>
+              <div className="relative">
+                <select
+                  aria-label={`Result for ${field.label}`}
+                  value={pendingResult}
+                  disabled={savingField === comparison.field_name}
+                  onClick={(event) => event.stopPropagation()}
+                  onChange={(event) => onChangeResult(comparison.field_name, event.target.value)}
+                  className={cn(
+                    'h-9 appearance-none rounded-md border bg-white pl-2 pr-7 text-xs font-semibold text-[#1E293B] outline-none focus:ring-2 focus:ring-[#0E5A66]/20',
+                    mismatch && 'border-[#FECACA] text-[#B91C1C]',
+                    uncertain && 'border-[#FDE68A] text-[#B45309]',
+                    !mismatch && !uncertain && 'border-[#A7F3D0] text-[#047857]',
+                  )}
+                >
+                  <option value="match">Match</option>
+                  <option value="mismatch">Mismatch</option>
+                  <option value="skipped">Uncertain</option>
+                </select>
+                <CaretDown
+                  size={13}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[#64748B]"
+                />
+              </div>
               <button
                 type="button"
                 onClick={(event) => {
@@ -131,6 +178,13 @@ export function DocsComparisonDetailPage({ navigate, emailId }) {
   const [pendingResults, setPendingResults] = useState({})
   const [savingField, setSavingField] = useState(null)
   const [resultSaveError, setResultSaveError] = useState(null)
+  const [openReviewItem, setOpenReviewItem] = useState(null)
+  const [escalating, setEscalating] = useState(false)
+  const [escalateError, setEscalateError] = useState(null)
+
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [emailId])
 
   useEffect(() => {
     setError(null)
@@ -162,6 +216,27 @@ export function DocsComparisonDetailPage({ navigate, emailId }) {
     }
   }, [emailId, detail?.result?.status])
 
+  // Any open human-review item for this email (from the pipeline or an escalation).
+  useEffect(() => {
+    setEscalateError(null)
+    getReviewItems({ email_id: emailId, status: 'open' })
+      .then((data) => setOpenReviewItem(data.items?.[0] || null))
+      .catch(setEscalateError)
+  }, [emailId, detail?.result?.status, detail?.result?.version])
+
+  async function escalate() {
+    setEscalating(true)
+    setEscalateError(null)
+    try {
+      setOpenReviewItem(await escalateToHumanReview(emailId))
+      notifyDataChanged()
+    } catch (reason) {
+      setEscalateError(reason)
+    } finally {
+      setEscalating(false)
+    }
+  }
+
   const result = detail?.result
   const comparisons = result?.comparisons || []
   const activeComparison = useMemo(
@@ -173,6 +248,10 @@ export function DocsComparisonDetailPage({ navigate, emailId }) {
   const siDoc = documents.find((document) => document.role === 'SI') || documents[0]
   const blDoc = documents.find((document) => document.role === 'BL') || documents[1]
   const summary = summarizeComparison(result)
+  const hasReviewAndMismatch = result?.status === 'NEEDS_REVIEW' && Boolean(summary.secondaryText)
+  const reviewBannerText = hasReviewAndMismatch
+    ? `Needs review: ${summary.primaryText || 'Unresolved'}`
+    : summary.text
 
   function handleResultChange(fieldName, value) {
     setPendingResults((current) => ({ ...current, [fieldName]: value }))
@@ -226,8 +305,7 @@ export function DocsComparisonDetailPage({ navigate, emailId }) {
   if (!detail) {
     return (
       <div className="p-8 lg:p-12">
-        <div className="h-8 w-64 animate-pulse rounded bg-[#E2E8F0]" />
-        <div className="mt-8 h-80 animate-pulse rounded-2xl bg-white" />
+        <LoadingBoat label="Loading comparison" />
       </div>
     )
   }
@@ -240,7 +318,7 @@ export function DocsComparisonDetailPage({ navigate, emailId }) {
         className="mb-6 inline-flex h-10 items-center gap-2 rounded-lg border border-[#0F172A] bg-transparent px-4 text-sm font-semibold text-[#0F172A] hover:bg-white/60"
       >
         <ArrowLeft size={16} />
-        Document Comparison
+        Document comparison
       </button>
 
       <header className="flex flex-wrap items-center gap-3 text-sm font-medium text-[#475569]">
@@ -264,17 +342,19 @@ export function DocsComparisonDetailPage({ navigate, emailId }) {
         </button>
       </div>
 
-      <div className={cn('mt-7 rounded-2xl border px-6 py-3', BANNER_TONE[summary.tone])}>
-        <p className="font-display text-2xl font-semibold">{summary.text}</p>
-        {result?.status === 'NEEDS_REVIEW' && reviewItem && (
-          <button
-            type="button"
-            onClick={() => navigate(`/review/${reviewItem.id}`)}
-            className="mb-1 mt-2 inline-flex items-center gap-2 rounded-lg bg-white/70 px-3 py-1.5 text-sm font-semibold underline"
-          >
-            Open in Review queue
-          </button>
-        )}
+      <div className="mt-7 space-y-3">
+        <ResultBanner tone={hasReviewAndMismatch ? 'review' : summary.tone} text={reviewBannerText}>
+          {result?.status === 'NEEDS_REVIEW' && reviewItem && (
+            <button
+              type="button"
+              onClick={() => navigate(`/review/${reviewItem.id}`)}
+              className="mb-1 mt-1.5 inline-flex items-center gap-2 rounded-lg bg-white/70 px-2.5 py-1 text-xs font-semibold underline"
+            >
+              Go to human review
+            </button>
+          )}
+        </ResultBanner>
+        {hasReviewAndMismatch && <ResultBanner tone="mismatch" text={summary.secondaryText} />}
         {reviewError && (
           <div className="mt-3">
             <BackendError error={reviewError} compact />
@@ -316,6 +396,44 @@ export function DocsComparisonDetailPage({ navigate, emailId }) {
             />
           </div>
         </div>
+        {result && (
+          <section className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="max-w-2xl">
+              <h2 className="font-display text-lg font-semibold text-[#1E293B]">
+                Escalate to human review
+              </h2>
+              <p className="mt-1 text-sm leading-6 text-[#64748B]">
+                {openReviewItem
+                  ? 'This email is already in the human review list, where a person will check it against both documents.'
+                  : 'Not confident in this result? Escalate it and a person will check each field against both documents. The email stays in the human review list until someone marks it as reviewed.'}
+              </p>
+              {escalateError && (
+                <div className="mt-3">
+                  <BackendError error={escalateError} compact />
+                </div>
+              )}
+            </div>
+            {openReviewItem ? (
+              <button
+                type="button"
+                onClick={() => navigate(`/review/${openReviewItem.id}`)}
+                className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-[#0F172A] bg-transparent px-4 text-sm font-semibold text-[#0F172A] hover:bg-slate-100"
+              >
+                Go to human review
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={escalate}
+                disabled={escalating}
+                className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg bg-[#0F172A] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#1E293B] disabled:opacity-60"
+              >
+                <Flag size={17} aria-hidden="true" />
+                {escalating ? 'Escalating…' : 'Escalate to human review'}
+              </button>
+            )}
+          </section>
+        )}
       </div>
     </div>
   )

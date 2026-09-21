@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import time
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -72,6 +73,22 @@ def test_timestamps_rebase_automatically_when_the_calendar_day_changes(tmp_path)
     assert ensure_received_timestamps(store, loader, now=next_day) == len(loader.list_emails())
     assert store.get_email_meta("email_fixture_general")["received_at"] != first_timestamp
     assert store.get_email_meta("email_fixture_general")[TIMESTAMP_ANCHOR_KEY] == "2026-09-22"
+
+
+def test_dashboard_bootstrap_reports_real_progress(api_client):
+    response = api_client.post("/api/pipeline/bootstrap")
+    assert response.status_code == 200
+    status = response.json()
+    assert status["status"] in {"queued", "running", "ready", "complete"}
+
+    deadline = time.monotonic() + 10
+    while status["status"] in {"queued", "running"} and time.monotonic() < deadline:
+        time.sleep(0.05)
+        status = api_client.get("/api/pipeline/bootstrap/status").json()
+
+    assert status["status"] in {"ready", "complete"}
+    assert status["percentage"] == 100
+    assert status["processed_count"] == status["total_emails"]
 
 
 def test_override_away_from_comparison_clears_status(api_client):
@@ -160,6 +177,42 @@ def test_review_resolution_recomputes_status_and_closes_item(api_client):
     after = api_client.get("/api/emails/email_fixture_placeholder").json()
     assert after["status"] in {"OK", "MISMATCH"}
     assert after["review_reason"] is None
+
+
+def test_review_issue_can_be_resolved_and_reopened(api_client):
+    api_client.post("/api/pipeline/run", json={"email_ids": ["email_fixture_placeholder"]})
+    item = api_client.get(
+        "/api/review/items", params={"status": "open", "email_id": "email_fixture_placeholder"}
+    ).json()["items"][0]
+
+    resolve = api_client.post(
+        f"/api/review/items/{item['id']}/resolve",
+        json={"action": "resolve", "reviewer_id": "qa"},
+    )
+
+    assert resolve.status_code == 200
+    assert resolve.json()["review_item"]["status"] == "resolved"
+    assert api_client.get(
+        "/api/review/items", params={"status": "open", "email_id": "email_fixture_placeholder"}
+    ).json()["items"] == []
+    assert len(
+        api_client.get(
+            "/api/review/items", params={"status": "resolved", "email_id": "email_fixture_placeholder"}
+        ).json()["items"]
+    ) == 1
+
+    reopened = api_client.post(
+        f"/api/review/items/{item['id']}/resolve",
+        json={"action": "reopen", "reviewer_id": "qa"},
+    )
+
+    assert reopened.status_code == 200
+    assert reopened.json()["review_item"]["status"] == "open"
+    assert reopened.json()["review_item"]["resolved_at"] is None
+    assert any(
+        entry["action"] == "review_reopened"
+        for entry in app.state.store.list_audit_log("email_fixture_placeholder")
+    )
 
 
 def test_comparison_result_override_recomputes_and_audits(api_client):

@@ -4,14 +4,9 @@ import { ArrowLeft, ArrowSquareOut, CaretDown, Check, DownloadSimple } from '@ph
 import { DocumentViewer } from '@/components/document-viewer/DocumentViewer'
 import { BackendError } from '@/components/BackendError'
 import { CategoryBadge } from '@/components/layout/StatusBadge'
+import { LoadingBoat } from '@/components/LoadingBoat'
 import { summarizeComparison } from '@/features/docs-comparison/summary'
-import {
-  attachmentUrl,
-  getEmail,
-  getReviewItems,
-  notifyDataChanged,
-  overrideCategory,
-} from '@/lib/api'
+import { attachmentUrl, getEmail, notifyDataChanged, overrideCategory } from '@/lib/api'
 import { CATEGORY_LABELS, formatDate } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -89,55 +84,41 @@ function CategoryPicker({ value, onChange, disabled }) {
 }
 
 function ComparisonSummaryCard({ navigate, detail }) {
-  const [reviewItem, setReviewItem] = useState(null)
-  const [reviewError, setReviewError] = useState(null)
   const result = detail.result
   const summary = summarizeComparison(result)
-
-  useEffect(() => {
-    if (result?.status === 'NEEDS_REVIEW') {
-      setReviewError(null)
-      getReviewItems({ email_id: detail.email_id, status: 'open' })
-        .then((data) => setReviewItem(data.items?.[0] || null))
-        .catch(setReviewError)
-    } else {
-      setReviewItem(null)
-    }
-  }, [detail.email_id, result?.status])
+  const hasReviewAndMismatch = result?.status === 'NEEDS_REVIEW' && Boolean(summary.secondaryText)
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6">
       <h2 className="font-display text-lg font-semibold text-[#1E293B]">Document comparison</h2>
-      <p
-        className={cn(
-          'mt-2 text-sm font-medium',
-          summary.tone === 'mismatch'
-            ? 'text-[#B91C1C]'
-            : summary.tone === 'review'
-              ? 'text-[#B45309]'
-              : 'text-[#047857]',
-        )}
-      >
-        {summary.text}
-      </p>
-      {result?.status === 'NEEDS_REVIEW' && reviewItem ? (
-        <button
-          type="button"
-          onClick={() => navigate(`/review/${reviewItem.id}`)}
-          className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg bg-[#0F172A] px-4 text-sm font-semibold text-white hover:bg-[#1E293B]"
-        >
-          Open in Review queue
-        </button>
+      {hasReviewAndMismatch ? (
+        <div className="mt-2 space-y-1">
+          <p className="text-sm font-medium text-[#B45309]">
+            Needs review: {summary.primaryText || 'Unresolved'}
+          </p>
+          <p className="text-sm font-medium text-[#B91C1C]">{summary.secondaryText}</p>
+        </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => navigate(`/docs-comparison/${detail.email_id}`)}
-          className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg bg-[#0F172A] px-4 text-sm font-semibold text-white hover:bg-[#1E293B]"
+        <p
+          className={cn(
+            'mt-2 text-sm font-medium',
+            summary.tone === 'mismatch'
+              ? 'text-[#B91C1C]'
+              : summary.tone === 'review'
+                ? 'text-[#B45309]'
+                : 'text-[#047857]',
+          )}
         >
-          Open in Document Comparison
-        </button>
+          {summary.text}
+        </p>
       )}
-      {reviewError && <BackendError error={reviewError} compact />}
+      <button
+        type="button"
+        onClick={() => navigate(`/docs-comparison/${detail.email_id}`)}
+        className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg bg-[#0F172A] px-4 text-sm font-semibold text-white hover:bg-[#1E293B]"
+      >
+        Go to Document comparison
+      </button>
     </section>
   )
 }
@@ -224,7 +205,7 @@ export function InboxDetailPage({ navigate, emailId }) {
   if (!detail) {
     return (
       <div className="p-8 lg:p-12">
-        <div className="h-8 w-64 animate-pulse rounded bg-[#E2E8F0]" />
+        <LoadingBoat label="Loading email" />
       </div>
     )
   }
@@ -253,7 +234,7 @@ export function InboxDetailPage({ navigate, emailId }) {
           </span>
         )}
       </div>
-      <h1 className="font-display mt-3 text-[2rem] font-semibold text-[#0F172A]">
+      <h1 className="font-display mt-3 text-[2rem] font-semibold tracking-[-0.01em] text-[#0F172A]">
         {detail.subject}
       </h1>
       <p className="mt-2 text-sm text-[#475569]">

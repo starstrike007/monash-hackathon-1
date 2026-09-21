@@ -78,12 +78,12 @@ it shows a visible "Backend unavailable" state with a retry action.
   attachments (with an inline viewer and download), the classification
   method/reason, and a category override dropdown ("Originally classified
   as X" + Revert once overridden).
-- **Document Comparison** (`/docs-comparison`, `/docs-comparison/:emailId`) —
+- **Document comparison** (`/docs-comparison`, `/docs-comparison/:emailId`) —
   every `BL_COMPARISON` email's comparison result: a filterable list, and a
   detail page with a state-aware banner, the seven-field SI/BL table, two
   document viewers scrolled and highlighted to the selected field's
   evidence, and a collapsed "how this was decided" section.
-- **Review queue** (`/review`, `/review/:itemId`) — everything a person
+- **Human review** (`/review`, `/review/:itemId`) — everything a person
   must resolve (its own id, not an email id), oldest first, filterable by
   reason, with reason-specific actions: confirm/correct a value
   (unreadable, missing_value), confirm an absent value as a discrepancy,
@@ -110,11 +110,11 @@ curl -X POST http://localhost:8000/api/admin/rebase-timestamps
 This regenerates every email's timestamp relative to now and leaves everything
 else (results, categories, review state) untouched.
 
-## Category override and the review queue
+## Category override and human review
 
 A category is either the pipeline's own decision (`category_machine`) or a
 reviewer's `category_override`; the *effective* category (override if set)
-is what every downstream reader uses — dashboard counts, Document Comparison's
+is what every downstream reader uses — dashboard counts, Document comparison's
 list, and the submission export. Overriding an email into
 `BL_COMPARISON` reprocesses it immediately (creating a `missing_attachment`
 review item if it has fewer than two usable attachments); overriding it

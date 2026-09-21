@@ -6,14 +6,17 @@ from app.api.schemas.common import EmailCategory
 from app.api.schemas.emails import EmailDetail, EmailListResponse
 from app.api.schemas.review import (
     ComparisonResultOverrideRequest,
+    EscalateRequest,
     OverrideRequest,
     OverrideResponse,
     ResolveRequest,
     ResolveResponse,
     RetryRequest,
+    ReviewItem,
 )
 from app.services.dashboard_service import get_email_detail, to_email_item
 from app.services.override_service import OverrideError, apply_category_override
+from app.services.review_queue_service import EscalationError, escalate_to_human_review
 from app.services.review_service import override_comparison_result, resolve_result
 
 router = APIRouter(tags=["emails"])
@@ -99,6 +102,20 @@ def override_category(email_id: str, payload: OverrideRequest, request: Request)
     except OverrideError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return OverrideResponse(email_id=email_id, result=outcome["result"], email_meta=outcome["email_meta"])
+
+
+@router.post("/emails/{email_id}/escalate", response_model=ReviewItem)
+def escalate_email(email_id: str, request: Request, payload: EscalateRequest | None = None) -> ReviewItem:
+    request.app.state.orchestrator.ensure_seeded()
+    payload = payload or EscalateRequest()
+    try:
+        item = escalate_to_human_review(
+            request.app.state.store, email_id, actor=payload.reviewer_id, note=payload.note
+        )
+    except EscalationError as exc:
+        status = 404 if "No result exists" in str(exc) else 400
+        raise HTTPException(status_code=status, detail=str(exc)) from exc
+    return ReviewItem(**item)
 
 
 @router.post("/emails/{email_id}/resolve", response_model=ResolveResponse)

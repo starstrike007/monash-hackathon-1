@@ -106,5 +106,6 @@ def build_dashboard(
         defects_by_field=dict(defects),
         attention=attention,
         latest_run_id=latest_run.get("run_id") if latest_run else None,
+        last_run_at=(latest_run.get("finished_at") or latest_run.get("started_at")) if latest_run else None,
         review_queue_open=len(store.list_review_items(status="open")),
     )

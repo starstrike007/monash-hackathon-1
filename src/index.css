@@ -53,6 +53,40 @@ body {
   min-height: 100dvh;
 }
 
+@keyframes loading-boat-sway {
+  0% {
+    transform: translateX(-42px) rotate(-4deg);
+  }
+
+  50% {
+    transform: translateX(0) rotate(0deg);
+  }
+
+  100% {
+    transform: translateX(42px) rotate(4deg);
+  }
+}
+
+@keyframes loading-track-indeterminate {
+  0% {
+    transform: translateX(-140%);
+  }
+
+  100% {
+    transform: translateX(350%);
+  }
+}
+
+.loading-boat {
+  animation: loading-boat-sway 1.6s cubic-bezier(0.77, 0, 0.175, 1) infinite;
+  will-change: transform;
+}
+
+.loading-track-indeterminate {
+  animation: loading-track-indeterminate 1.5s cubic-bezier(0.77, 0, 0.175, 1) infinite;
+  will-change: transform;
+}
+
 button,
 a,
 input,
@@ -85,5 +119,11 @@ select:focus-visible {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+
+  .loading-boat,
+  .loading-track-indeterminate {
+    animation: none !important;
+    transform: translateX(0) rotate(0deg) !important;
   }
 }

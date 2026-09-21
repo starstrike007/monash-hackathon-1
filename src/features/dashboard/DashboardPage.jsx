@@ -3,15 +3,19 @@ import { ArrowDown, ArrowRight, Clock, Play, WarningCircle } from '@phosphor-ico
 
 import { CategoryPie } from '@/components/charts/CategoryPie'
 import { BackendError } from '@/components/BackendError'
+import { LoadingBoat } from '@/components/LoadingBoat'
 import { PipelineRunDrawer } from '@/features/pipeline-run/PipelineRunDrawer'
 import {
+  ApiError,
   getDashboard,
   getEmail,
   getEmails,
   getPipelineRun,
+  getPipelineBootstrapStatus,
   notifyDataChanged,
   runPipeline,
   submissionUrl,
+  startPipelineBootstrap,
 } from '@/lib/api'
 import { formatBusinessDay, relativeTime } from '@/lib/time'
 import { FIELDS, STATUS } from '@/lib/types'
@@ -172,7 +176,7 @@ function SummaryBrief({ data, navigate, lastRunAt, onOpenComparisons, onOpenMism
           <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-[#475569]">
             This run read {data.emails_processed} emails and checked {data.comparison_requests}{' '}
             SI/BL comparison requests. Draft quality is the story: mismatches are concentrated in a
-            handful of fields, and the small review queue is driven by unreadable or missing
+            handful of fields, and the small human review list is driven by unreadable or missing
             documents rather than by the checker being unsure.
           </p>
 
@@ -218,7 +222,7 @@ function SummaryBrief({ data, navigate, lastRunAt, onOpenComparisons, onOpenMism
               compact
               label="Needs review"
               value={data.needs_review}
-              caption="Open review queue →"
+              caption="Open human review →"
               warning
               onClick={() => navigate('/review')}
             />
@@ -228,7 +232,7 @@ function SummaryBrief({ data, navigate, lastRunAt, onOpenComparisons, onOpenMism
             className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[#1D4ED8] px-5 text-sm font-semibold text-white transition hover:bg-[#1A44BC]"
             onClick={() => navigate('/review')}
           >
-            Open review queue
+            Open human review
             <ArrowRight size={16} />
           </button>
         </div>
@@ -294,7 +298,7 @@ function OutcomeBreakdown({ outcomes, navigate }) {
               <button
                 type="button"
                 onClick={() => openComparisons(key)}
-                aria-label={`${label}: ${value} of ${total} (${percent}%). Open in Document Comparison`}
+                aria-label={`${label}: ${value} of ${total} (${percent}%). Open in Document comparison`}
                 className={cn(
                   'block h-full w-full cursor-pointer outline-none',
                   index === 0 && 'rounded-l-lg',
@@ -433,15 +437,50 @@ export function DashboardPage({ navigate, initialRunId = null }) {
   const [runId, setRunId] = useState(initialRunId)
   const [running, setRunning] = useState(false)
   const [error, setError] = useState(null)
+  const [loadingProgress, setLoadingProgress] = useState({
+    status: 'queued',
+    percentage: 0,
+    stage: 'Starting',
+    message: 'Preparing the dashboard data…',
+  })
+
+  async function waitForBootstrap() {
+    try {
+      let status = await startPipelineBootstrap()
+      setLoadingProgress(status)
+      while (!['ready', 'complete'].includes(status.status)) {
+        if (status.status === 'failed') {
+          throw new Error(status.message || 'The dashboard pipeline failed to start.')
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 1000))
+        status = await getPipelineBootstrapStatus()
+        setLoadingProgress(status)
+      }
+    } catch (reason) {
+      // Keep an older Render deployment usable while the API is redeployed.
+      // Its dashboard endpoint still performs the original synchronous seed.
+      if (reason instanceof ApiError && reason.status === 404) {
+        setLoadingProgress({
+          status: 'running',
+          percentage: 0,
+          stage: 'Loading saved results',
+          message: 'Waiting for the backend to return dashboard data…',
+        })
+        return
+      }
+      throw reason
+    }
+  }
 
   async function loadDashboard() {
     setError(null)
     try {
+      await waitForBootstrap()
       const summary = await getDashboard()
       setData(summary)
 
-      // The summary endpoint only carries the run id, so the finish time comes
-      // from the run record itself.
+      // Newer backends include the run timestamp in the summary. Keep the
+      // second request as a compatibility fallback for older deployments.
       if (summary.last_run_at) {
         setLastRunAt(summary.last_run_at)
       } else if (summary.latest_run_id) {
@@ -515,16 +554,35 @@ export function DashboardPage({ navigate, initialRunId = null }) {
 
   if (!data)
     return (
-      <div className="p-8 lg:p-12">
-        <div className="h-8 w-56 animate-pulse rounded bg-[#E2E8F0]" />
-        <div className="mt-8 h-80 animate-pulse rounded-2xl bg-white" />
+      <div className="mx-auto max-w-[900px] px-5 py-10 lg:px-14">
+        <div className="rounded-2xl border border-[#D7E1F2] bg-white p-7 shadow-sm">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748B]">
+                Loading dashboard
+              </p>
+              <h1 className="mt-2 font-display text-3xl font-semibold tracking-[-0.01em] text-[#0F172A]">
+                Preparing your overview
+              </h1>
+            </div>
+          </div>
+          <LoadingBoat
+            label="Loading dashboard"
+            percentage={loadingProgress.percentage}
+            message={`${loadingProgress.stage || 'Working'} - ${loadingProgress.message || 'Preparing saved results...'}`}
+          />
+          <p className="mt-5 text-xs leading-relaxed text-[#94A3B8]">
+            The first load may take longer while the backend prepares the email results. This page
+            will update automatically as each record is processed.
+          </p>
+        </div>
       </div>
     )
 
   return (
     <>
       <div className="mx-auto max-w-7xl px-5 py-10 lg:px-14">
-        <header className="relative px-0 py-6 text-[#0F172A] sm:flex sm:items-end sm:justify-between sm:gap-6">
+        <header className="relative px-0 py-6 text-[#0F172A] sm:flex sm:items-center sm:justify-between sm:gap-6">
           <div className="relative">
             <p className="text-xs font-medium uppercase tracking-[0.14em] text-[#475569]">
               {formatBusinessDay()}

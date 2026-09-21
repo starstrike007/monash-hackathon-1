@@ -74,6 +74,50 @@ def resolve_review_item(
     email_id = item["email_id"]
     action = payload.action
 
+    if action == "resolve":
+        if item.get("status") != "resolved":
+            resolution = {
+                "resolution": "reviewer_resolved",
+                "reviewer_id": payload.reviewer_id,
+            }
+            if payload.note:
+                resolution["note"] = payload.note
+            store.update_review_item(
+                item_id,
+                status="resolved",
+                resolved_at=utc_now(),
+                resolution=resolution,
+            )
+            store.add_audit_entry(
+                {
+                    "email_id": email_id,
+                    "action": "review_resolved",
+                    "before": {"status": item.get("status"), "reason": item.get("reason")},
+                    "after": {"status": "resolved", "resolution": resolution},
+                    "actor": payload.reviewer_id,
+                    "evidence": item.get("evidence") or {},
+                }
+            )
+        return {"email_id": email_id, "result": store.get_result(email_id), "review_item": store.get_review_item(item_id)}
+
+    if action == "reopen":
+        if item.get("status") != "open":
+            store.update_review_item(item_id, status="open", resolved_at=None, resolution=None)
+            store.add_audit_entry(
+                {
+                    "email_id": email_id,
+                    "action": "review_reopened",
+                    "before": {
+                        "status": item.get("status"),
+                        "resolution": item.get("resolution"),
+                    },
+                    "after": {"status": "open"},
+                    "actor": payload.reviewer_id,
+                    "evidence": item.get("evidence") or {},
+                }
+            )
+        return {"email_id": email_id, "result": store.get_result(email_id), "review_item": store.get_review_item(item_id)}
+
     if action in {"confirm", "correct", "confirm_absent"}:
         if not payload.field_name:
             raise ReviewItemError("field_name is required to resolve a value")
@@ -188,6 +232,31 @@ def resolve_review_item(
             }
         )
         return {"email_id": email_id, "result": result, "review_item": store.get_review_item(item_id)}
+
+    if action == "mark_reviewed":
+        if item.get("reason") != "manual_escalation":
+            raise ReviewItemError("Only an escalated item can be marked as reviewed")
+        store.update_review_item(
+            item_id,
+            status="resolved",
+            resolved_at=utc_now(),
+            resolution={"resolution": "reviewed_by_human", "note": payload.note, "reviewer_id": payload.reviewer_id},
+        )
+        store.add_audit_entry(
+            {
+                "email_id": email_id,
+                "action": "review_marked_reviewed",
+                "before": {"reason": "manual_escalation"},
+                "after": {"status": "resolved"},
+                "actor": payload.reviewer_id,
+                "evidence": {"note": payload.note},
+            }
+        )
+        return {
+            "email_id": email_id,
+            "result": store.get_result(email_id),
+            "review_item": store.get_review_item(item_id),
+        }
 
     if action == "retry":
         orchestrator.run([email_id])

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { CaretLeft, CaretRight, DownloadSimple, FileX, Spinner } from '@phosphor-icons/react'
+import { CaretLeft, CaretRight, DownloadSimple, FileX } from '@phosphor-icons/react'
 
+import { LoadingBoat } from '@/components/LoadingBoat'
 import { attachmentPageImageUrl, attachmentUrl, getAttachmentView } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
@@ -343,9 +344,8 @@ export function DocumentViewer({ path, label, location, readable, className, ton
         </div>
       )}
       {path && loading && (
-        <div className="flex h-full items-center justify-center gap-2 py-10 text-sm text-[#64748B]">
-          <Spinner className="animate-spin" size={16} />
-          Loading document…
+        <div className="flex h-full items-center justify-center px-4">
+          <LoadingBoat label="Loading document" compact />
         </div>
       )}
       {path && !loading && error && (

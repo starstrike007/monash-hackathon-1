@@ -34,6 +34,11 @@ class ComparisonResultOverrideRequest(BaseModel):
     expected_version: int | None = None
 
 
+class EscalateRequest(BaseModel):
+    reviewer_id: str = "local-reviewer"
+    note: str | None = None
+
+
 class OverrideRequest(BaseModel):
     category: EmailCategory | None = None  # None reverts to the machine category
     actor: str = "local-reviewer"
@@ -70,7 +75,7 @@ class ReviewItemResolveRequest(BaseModel):
     fields are ignored by the handler for that reason.
     """
 
-    action: str  # confirm | correct | upload_missing | reclassify | draft_reply | reassign_roles | mark_missing | retry
+    action: str  # resolve | reopen | confirm | correct | upload_missing | reclassify | draft_reply | reassign_roles | mark_missing | mark_reviewed | retry
     field_name: CanonicalField | None = None
     corrected_value: str | None = None
     new_category: EmailCategory | None = None

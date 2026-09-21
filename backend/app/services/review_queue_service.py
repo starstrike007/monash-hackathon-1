@@ -11,7 +11,14 @@ from app.adapters.local_store import LocalStore
 # what it needed to decide).
 EXPORT_REASON_MAP: dict[str, str] = {
     "processing_failed": "unreadable",
+    # A person escalated a comparison the pipeline was happy with. The evaluator only
+    # knows four reasons; "a value could not be confirmed" is the closest of them.
+    "manual_escalation": "missing_value",
 }
+
+# Review items a person opened or that are not tied to the latest comparison result. They are
+# never created, rewritten or auto-cleared by sync_review_item when a result is recomputed.
+MANUAL_REASONS = {"processing_failed", "manual_escalation"}
 
 REASON_DESCRIPTIONS: dict[str, str] = {
     "unreadable": "The attached document could not be read as text or an image.",
@@ -19,6 +26,7 @@ REASON_DESCRIPTIONS: dict[str, str] = {
     "missing_value": "One or more of the seven compared fields could not be found in a document.",
     "wrong_doc_type": "The attachments could not be resolved unambiguously into one SI and one BL.",
     "processing_failed": "Processing this email failed. Retry to try again.",
+    "manual_escalation": "A reviewer escalated this comparison so a person can check the fields against both documents.",
 }
 
 
@@ -64,7 +72,7 @@ def sync_review_item(
         (
             item
             for item in store.list_review_items(email_id=email_id, status="open")
-            if item.get("reason") != "processing_failed"
+            if item.get("reason") not in MANUAL_REASONS
         ),
         None,
     )
@@ -74,6 +82,15 @@ def sync_review_item(
         evidence = _evidence_for_result(result)
         if existing_open:
             store.update_review_item(existing_open["id"], reason=reason, description=description, evidence=evidence)
+        elif any(
+            item.get("reason") == reason
+            and (item.get("resolution") or {}).get("resolution") == "reviewer_resolved"
+            for item in store.list_review_items(email_id=email_id, status="resolved")
+        ):
+            # A reviewer may intentionally close an unresolved case without
+            # changing the extraction. Keep it in the resolved tab until they
+            # explicitly reopen it instead of recreating it on every read.
+            return
         else:
             store.add_review_item(
                 {
@@ -92,6 +109,64 @@ def sync_review_item(
             resolution=cleared_resolution
             or {"resolution": "auto_cleared", "note": "Recomputed without a review reason."},
         )
+
+
+class EscalationError(ValueError):
+    pass
+
+
+def escalate_to_human_review(
+    store: LocalStore,
+    email_id: str,
+    *,
+    actor: str = "local-reviewer",
+    note: str | None = None,
+) -> dict[str, Any]:
+    """Open a human-review item for a comparison the pipeline did not flag.
+
+    Escalating twice returns the item that is already open instead of adding another.
+    """
+
+    result = store.get_result(email_id)
+    if not result:
+        raise EscalationError(f"No result exists for {email_id} yet")
+    meta = store.get_email_meta(email_id) or {}
+    category = meta.get("category_override") or result.get("category")
+    if category != "BL_COMPARISON":
+        raise EscalationError("Only document comparisons can be escalated to human review")
+
+    existing = next(
+        (
+            item
+            for item in store.list_review_items(email_id=email_id, status="open")
+            if item.get("reason") == "manual_escalation"
+        ),
+        None,
+    )
+    if existing:
+        return existing
+
+    evidence = {**_evidence_for_result(result), "escalated_by": actor, "note": note}
+    item = store.add_review_item(
+        {
+            "email_id": email_id,
+            "reason": "manual_escalation",
+            "status": "open",
+            "description": REASON_DESCRIPTIONS["manual_escalation"],
+            "evidence": evidence,
+        }
+    )
+    store.add_audit_entry(
+        {
+            "email_id": email_id,
+            "action": "escalate_to_human_review",
+            "before": {"status": result.get("status")},
+            "after": {"review_item_id": item["id"]},
+            "actor": actor,
+            "evidence": {"note": note},
+        }
+    )
+    return item
 
 
 def sync_processing_failure(store: LocalStore, email_id: str, message: str) -> None:
