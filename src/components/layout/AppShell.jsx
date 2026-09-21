@@ -10,7 +10,7 @@ const navigation = [
   { label: 'Review queue', path: '/review', icon: WarningCircle, badge: true },
 ]
 
-export function AppShell({ pathname, navigate, children, reviewCount = 14 }) {
+export function AppShell({ pathname, navigate, children, reviewCount = null }) {
   const [open, setOpen] = useState(false)
 
   function go(path) {
@@ -82,7 +82,7 @@ export function AppShell({ pathname, navigate, children, reviewCount = 14 }) {
                 <span className="flex-1">{label}</span>
                 {badge && (
                   <span className="rounded-full bg-[#FBEBCF] px-2 py-0.5 text-xs font-bold text-[#8A5300]">
-                    {reviewCount}
+                    {reviewCount == null ? '—' : reviewCount}
                   </span>
                 )}
               </button>
@@ -90,9 +90,9 @@ export function AppShell({ pathname, navigate, children, reviewCount = 14 }) {
           })}
         </nav>
 
-        <div className="mt-auto rounded-xl bg-[#9A3412] p-4 text-white/70">
-          <p className="font-semibold text-white">Prototype</p>
-          <p className="mt-1 text-sm leading-5">Sample data. Figures are illustrative.</p>
+        <div className="mt-auto rounded-xl bg-[#0E5A66] p-4 text-white/70">
+          <p className="font-semibold text-white">Live pipeline</p>
+          <p className="mt-1 text-sm leading-5">Counts and review state come from the backend results store.</p>
         </div>
       </aside>
 

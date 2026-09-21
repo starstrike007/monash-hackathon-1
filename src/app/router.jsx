@@ -34,17 +34,29 @@ function routeFor(location) {
 
 export function Router() {
   const [location, setLocation] = useState(currentLocation)
-  const [reviewCount, setReviewCount] = useState(14)
+  const [reviewCount, setReviewCount] = useState(null)
   const route = useMemo(() => routeFor(location), [location])
 
   useEffect(() => {
     const onPopState = () => setLocation(currentLocation())
     window.addEventListener('popstate', onPopState)
     if (location.pathname === '/') navigate('/dashboard', true)
-    getDashboard()
-      .then((data) => setReviewCount(data.review_queue_open ?? data.needs_review ?? 0))
-      .catch(() => {})
-    return () => window.removeEventListener('popstate', onPopState)
+    let active = true
+    const refreshReviewCount = () =>
+      getDashboard()
+        .then((data) => {
+          if (active) setReviewCount(data.review_queue_open ?? 0)
+        })
+        .catch(() => {
+          if (active) setReviewCount(null)
+        })
+    refreshReviewCount()
+    window.addEventListener('shipcheck:data-changed', refreshReviewCount)
+    return () => {
+      active = false
+      window.removeEventListener('popstate', onPopState)
+      window.removeEventListener('shipcheck:data-changed', refreshReviewCount)
+    }
   }, [])
 
   function navigate(path, replace = false) {

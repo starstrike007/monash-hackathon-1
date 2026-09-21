@@ -40,13 +40,18 @@ def to_email_item(
     # pipeline's own decision - everything downstream (dashboard, exports,
     # lists) reads `category`, so it never needs to know about overrides.
     effective_category = meta.get("category_override") or (result.get("category") if result else None)
+    excluded = set(meta.get("excluded_attachments") or [])
+    paths: list[str] = []
+    for path in [*(email.get("attachments") or []), *(meta.get("uploaded_attachments") or [])]:
+        if path not in excluded and path not in paths:
+            paths.append(path)
     return EmailListItem(
         email_id=email["email_id"],
         display_id=display_id(email["email_id"]),
         sender=email.get("from", ""),
         subject=email.get("subject", ""),
         received_at=meta.get("received_at"),
-        attachments=attachment_meta(loader, email.get("attachments", [])),
+        attachments=attachment_meta(loader, paths),
         category=effective_category,
         category_machine=meta.get("category_machine"),
         category_override=meta.get("category_override"),
@@ -76,18 +81,19 @@ def build_dashboard(
 ) -> DashboardSummary:
     results = store.list_latest_results()
     by_email = {result.get("email_id"): result for result in results}
-    categories = Counter(result.get("category") for result in results if result.get("category"))
-    outcomes = Counter(result.get("status") for result in results if result.get("status"))
-    defects = Counter(
-        field
-        for result in results
-        for field in result.get("defect_fields", [])
-    )
     all_meta = store.list_email_meta()
     items = [
         to_email_item(email, by_email.get(email["email_id"]), loader, all_meta.get(email["email_id"]))
         for email in emails
     ]
+    categories = Counter(item.category.value for item in items if item.category)
+    outcomes = Counter(item.status.value for item in items if item.status)
+    defects = Counter(
+        field
+        for item in items
+        for field in (by_email.get(item.email_id) or {}).get("defect_fields", [])
+        if item.category == EmailCategory.BL_COMPARISON
+    )
     attention = [item for item in items if item.status == ComparisonStatus.NEEDS_REVIEW][:6]
     latest_run = store.latest_run()
     return DashboardSummary(

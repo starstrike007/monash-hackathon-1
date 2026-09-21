@@ -32,8 +32,10 @@ def build_submission(store: LocalStore, email_ids: list[str]) -> dict[str, dict]
             if open_reason and not review_reason:
                 status = "NEEDS_REVIEW"
                 review_reason = to_export_reason(open_reason)
+            meta = email_meta.get(email_id, {})
+            effective_category = meta.get("category_override") or result.get("category", "GENERAL")
             submission[email_id] = SubmissionRow(
-                category=result.get("category", "GENERAL"),
+                category=effective_category,
                 status=status,
                 review_reason=review_reason,
                 defect_fields=result.get("defect_fields", []),

@@ -2,16 +2,18 @@ import { useEffect, useState } from 'react'
 import { ArrowDown, ArrowRight, Clock, Play, WarningCircle } from '@phosphor-icons/react'
 
 import { CategoryPie } from '@/components/charts/CategoryPie'
+import { BackendError } from '@/components/BackendError'
 import { PipelineRunDrawer } from '@/features/pipeline-run/PipelineRunDrawer'
 import {
   getDashboard,
   getEmail,
   getEmails,
   getPipelineRun,
+  notifyDataChanged,
   runPipeline,
   submissionUrl,
 } from '@/lib/api'
-import { relativeTime } from '@/lib/time'
+import { formatBusinessDay, relativeTime } from '@/lib/time'
 import { FIELDS, STATUS } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -200,14 +202,14 @@ function SummaryBrief({ data, navigate, lastRunAt, onOpenComparisons, onOpenMism
               compact
               label="Comparison requests"
               value={data.comparison_requests}
-              caption={`${data.comparison_requests - 2} SI/BL pairs · 2 missing attachment`}
+              caption={`${(data.outcomes?.OK || 0) + (data.outcomes?.MISMATCH || 0)} fully compared`}
               onClick={onOpenComparisons}
             />
             <SummaryCard
               compact
               label="Mismatches found"
               value={data.mismatches_found}
-              caption={`Across ${data.comparison_requests - data.needs_review} fully compared pairs`}
+              caption={`Across ${data.outcomes?.MISMATCH || 0} compared pairs`}
               onClick={onOpenMismatches}
             />
             <SummaryCard
@@ -429,18 +431,24 @@ export function DashboardPage({ navigate, initialRunId = null }) {
   const [lastRunAt, setLastRunAt] = useState(null)
   const [runId, setRunId] = useState(initialRunId)
   const [running, setRunning] = useState(false)
+  const [error, setError] = useState(null)
 
   async function loadDashboard() {
-    const summary = await getDashboard()
-    setData(summary)
+    setError(null)
+    try {
+      const summary = await getDashboard()
+      setData(summary)
 
-    // The summary endpoint only carries the run id, so the finish time comes
-    // from the run record itself.
-    if (summary.last_run_at) {
-      setLastRunAt(summary.last_run_at)
-    } else if (summary.latest_run_id) {
-      const run = await getPipelineRun(summary.latest_run_id).catch(() => null)
-      setLastRunAt(run?.finished_at || run?.started_at || null)
+      // The summary endpoint only carries the run id, so the finish time comes
+      // from the run record itself.
+      if (summary.last_run_at) {
+        setLastRunAt(summary.last_run_at)
+      } else if (summary.latest_run_id) {
+        const run = await getPipelineRun(summary.latest_run_id)
+        setLastRunAt(run?.finished_at || run?.started_at || null)
+      }
+    } catch (reason) {
+      setError(reason)
     }
   }
 
@@ -457,30 +465,52 @@ export function DashboardPage({ navigate, initialRunId = null }) {
 
   async function startPipeline() {
     setRunning(true)
-    const run = await runPipeline()
-    setRunId(run.run_id)
-    setRunning(false)
-    loadDashboard()
+    setError(null)
+    try {
+      const run = await runPipeline()
+      setRunId(run.run_id)
+      notifyDataChanged()
+      await loadDashboard()
+    } catch (reason) {
+      setError(reason)
+    } finally {
+      setRunning(false)
+    }
   }
 
   async function openFirst(filter, fallback) {
-    const { items } = await getEmails(filter.params)
-    const first = items.find(filter.match)
-    navigate(first ? `/docs-comparison/${first.email_id}` : fallback)
+    try {
+      const { items } = await getEmails(filter.params)
+      const first = items.find(filter.match)
+      navigate(first ? `/docs-comparison/${first.email_id}` : fallback)
+    } catch (reason) {
+      setError(reason)
+    }
   }
 
   async function openDefect(fieldKey) {
-    const { items } = await getEmails({ status: 'mismatch' })
-    const mismatches = items.filter((item) => item.status === STATUS.MISMATCH).slice(0, 25)
-    const details = await Promise.all(mismatches.map((item) => getEmail(item.email_id)))
-    const index = details.findIndex((detail) =>
-      detail?.result?.comparisons?.some(
-        (comparison) => comparison.field_name === fieldKey && comparison.result === 'mismatch',
-      ),
-    )
-    const target = mismatches[index] || mismatches[0]
-    navigate(target ? `/docs-comparison/${target.email_id}` : '/docs-comparison?status=mismatch')
+    try {
+      const { items } = await getEmails({ status: 'mismatch' })
+      const mismatches = items.filter((item) => item.status === STATUS.MISMATCH).slice(0, 25)
+      const details = await Promise.all(mismatches.map((item) => getEmail(item.email_id)))
+      const index = details.findIndex((detail) =>
+        detail?.result?.comparisons?.some(
+          (comparison) => comparison.field_name === fieldKey && comparison.result === 'mismatch',
+        ),
+      )
+      const target = mismatches[index] || mismatches[0]
+      navigate(target ? `/docs-comparison/${target.email_id}` : '/docs-comparison?status=mismatch')
+    } catch (reason) {
+      setError(reason)
+    }
   }
+
+  if (error && !data)
+    return (
+      <div className="mx-auto max-w-[900px] px-5 py-10 lg:px-14">
+        <BackendError error={error} onRetry={loadDashboard} />
+      </div>
+    )
 
   if (!data)
     return (
@@ -495,7 +525,7 @@ export function DashboardPage({ navigate, initialRunId = null }) {
       <div className="mx-auto max-w-[1540px] px-5 py-10 lg:px-14">
         <header className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
           <div>
-            <p className="text-sm font-medium text-[#62757D]">Saturday, 19 September 2026</p>
+            <p className="text-sm font-medium text-[#62757D]">{formatBusinessDay()}</p>
             <h1 className="mt-1 font-serif text-5xl font-semibold tracking-tight text-[#16232B]">
               Overview
             </h1>
@@ -520,6 +550,12 @@ export function DashboardPage({ navigate, initialRunId = null }) {
             </button>
           </div>
         </header>
+
+        {error && (
+          <div className="mt-6">
+            <BackendError error={error} onRetry={loadDashboard} compact />
+          </div>
+        )}
 
         <div className="mt-10">
           <SummaryBrief
@@ -577,7 +613,7 @@ export function DashboardPage({ navigate, initialRunId = null }) {
       {running && (
         <div className="fixed bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-[#16232B] px-5 py-3 text-sm font-semibold text-white shadow-xl">
           <WarningCircle size={18} />
-          Processing the fixture inbox…
+          Processing the inbox…
         </div>
       )}
     </>

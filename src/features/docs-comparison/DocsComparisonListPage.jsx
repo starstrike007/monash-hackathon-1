@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ArrowRight, MagnifyingGlass } from '@phosphor-icons/react'
 
 import { StatusBadge } from '@/components/layout/StatusBadge'
+import { BackendError } from '@/components/BackendError'
 import { summarizeComparison } from '@/features/docs-comparison/summary'
 import { getAllEmails } from '@/lib/api'
 import { formatDate } from '@/lib/types'
@@ -18,14 +19,32 @@ export function DocsComparisonListPage({ navigate, initialStatus = '' }) {
   const [query, setQuery] = useState('')
   const [data, setData] = useState({ items: [], total: 0 })
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [retryNonce, setRetryNonce] = useState(0)
 
   useEffect(() => {
     setLoading(true)
-    getAllEmails({ category: 'BL_COMPARISON', status: activeFilter, query }).then((result) => {
-      setData(result)
-      setLoading(false)
-    })
-  }, [activeFilter, query])
+    setError(null)
+    getAllEmails({ category: 'BL_COMPARISON', query })
+      .then((result) => {
+        setData(result)
+        setLoading(false)
+      })
+      .catch((reason) => {
+        setError(reason)
+        setLoading(false)
+      })
+  }, [query, retryNonce])
+
+  const visibleItems = useMemo(
+    () =>
+      data.items.filter(
+        (item) =>
+          !activeFilter ||
+          (activeFilter === 'no_mismatch' ? item.status === 'OK' : item.status === activeFilter.toUpperCase()),
+      ),
+    [activeFilter, data.items],
+  )
 
   const counts = useMemo(() => {
     const tally = { '': data.items.length, mismatch: 0, no_mismatch: 0, needs_review: 0 }
@@ -41,7 +60,7 @@ export function DocsComparisonListPage({ navigate, initialStatus = '' }) {
     <div className="mx-auto max-w-[1400px] px-5 py-10 lg:px-14">
       <header className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
         <div>
-          <p className="text-sm font-medium text-[#62757D]">{data.total} comparison requests</p>
+          <p className="text-sm font-medium text-[#62757D]">{visibleItems.length} comparison requests</p>
           <h1 className="mt-1 font-serif text-5xl font-semibold tracking-tight text-[#16232B]">
             Docs Comparison
           </h1>
@@ -57,6 +76,12 @@ export function DocsComparisonListPage({ navigate, initialStatus = '' }) {
           />
         </label>
       </header>
+
+      {error && (
+        <div className="mt-7">
+          <BackendError error={error} onRetry={() => setRetryNonce((value) => value + 1)} />
+        </div>
+      )}
 
       <div className="mt-9 flex flex-wrap gap-3">
         {FILTERS.map((filter) => (
@@ -91,8 +116,8 @@ export function DocsComparisonListPage({ navigate, initialStatus = '' }) {
           <span />
         </div>
         {loading && <div className="px-6 py-14 text-center text-sm text-[#71808A]">Loading…</div>}
-        {!loading &&
-          data.items.map((item) => {
+        {!loading && !error &&
+          visibleItems.map((item) => {
             const summary = summarizeComparison(item)
             return (
               <button
@@ -117,7 +142,7 @@ export function DocsComparisonListPage({ navigate, initialStatus = '' }) {
               </button>
             )
           })}
-        {!loading && !data.items.length && (
+        {!loading && !error && !visibleItems.length && (
           <div className="px-6 py-14 text-center text-sm text-[#71808A]">
             No document-comparison emails match this filter.
           </div>
