@@ -2,13 +2,11 @@
 
 ## Decision
 
-Evaluator scores are currently unavailable. The permitted scorer command was run against each fresh submission, but the exact configured path did not exist:
-
-```text
-C:\Users\User\sdoc-eval\server\score_cli.py
-```
-
-The command failed before reading a submission. No answer key, external evaluation data, or files outside the explicitly permitted scorer path were inspected. Therefore this branch is not objectively certified safe to merge on score evidence. The provisional base is `overnight/phase-8` because it contains the requested Stage 2 parser and fallback work and passed its local gates; this is a code-review decision, not a score claim. After the general parser fixes and reliability work, a fresh candidate rules-only export matches the `main` local status counts and differs only in five conservative document-resolution review reasons.
+`merge-candidate` is the recommended version. Its fresh 520-entry rules-only
+submission ties the best score from `main` and `phase8-document-parsers`, and
+improves on `overnight/phase-8`. The parser fixes, reliability tests, hygiene
+checks, and evaluator run are complete. No push, merge, deployment, account
+creation, or main-branch change was performed.
 
 ## Step 0: repository state
 
@@ -25,19 +23,35 @@ Each export used the project virtualenv, the repository `data` directory, `--rul
 
 | version | run status | entries | OK | MISMATCH | NEEDS_REVIEW | evaluator score |
 | --- | --- | ---: | ---: | ---: | ---: | --- |
-| `main` | complete | 520 | 411 | 28 | 81 | unavailable |
-| `phase8-document-parsers` | complete | 520 | 411 | 28 | 81 | unavailable |
-| `overnight/phase-8` | complete | 520 | 407 | 32 | 81 | unavailable |
-| `merge-candidate` | complete | 520 | 411 | 28 | 81 | unavailable |
+| `main` | complete | 520 | 411 | 28 | 81 | 0.5533814238 |
+| `phase8-document-parsers` | complete | 520 | 411 | 28 | 81 | 0.5533814238 |
+| `overnight/phase-8` | complete | 520 | 407 | 32 | 81 | 0.5028856191 |
+| `merge-candidate` | complete | 520 | 411 | 28 | 81 | 0.5533814238 |
+
+Aggregate evaluator metrics:
+
+| version | Stage 1 macro-F1 | Stage 3 defect precision | Stage 3 defect recall | end-to-end |
+| --- | ---: | ---: | ---: | ---: |
+| `main` | 0.7479863886 | 0.9230769231 | 0.5217391304 | 18/46 |
+| `phase8-document-parsers` | 0.7479863886 | 0.9230769231 | 0.5217391304 | 18/46 |
+| `overnight/phase-8` | 0.7479863886 | 0.8000000000 | 0.5217391304 | 14/46 |
+| `merge-candidate` | 0.7479863886 | 0.9230769231 | 0.5217391304 | 18/46 |
+
+All four submissions contained 520 emails. The scorer reported 20 gold review
+cases and 81 predicted `NEEDS_REVIEW` cases; the candidate caught 18 of the
+20 gold review cases (90% escalation recall).
 
 Commands used (with the branch-specific working directory substituted for each comparison worktree):
 
 ```powershell
 C:\Users\User\monash-hackathon\backend\.venv\Scripts\python.exe export_stage1.py --rules-only --data-dir C:\Users\User\monash-hackathon\data --runtime-dir C:\Users\User\monash-hackathon\.runtime\merge-readiness-20260921\<version>-runtime --output-dir C:\Users\User\monash-hackathon\.runtime\merge-readiness-20260921\<version>-output
-$env:PYTHONIOENCODING='utf-8'; & C:\Users\User\monash-hackathon\backend\.venv\Scripts\python.exe C:\Users\User\sdoc-eval\server\score_cli.py C:\Users\User\monash-hackathon\.runtime\merge-readiness-20260921\<version>-output\submission.json --json
+$env:PYTHONIOENCODING='utf-8'; & C:\Users\User\monash-hackathon\backend\.venv\Scripts\python.exe C:\Users\User\Downloads\sdoc-hackathon-docker\server\score_cli.py C:\Users\User\monash-hackathon\.runtime\merge-readiness-20260921\<version>-output\submission.json --json
 ```
 
-The first command completed for `main`, `phase8-document-parsers`, and `overnight/phase-8`. The second command failed identically because the scorer file was absent; no score fields are reported or inferred.
+The first command completed for all four versions. The second command was run
+against each fresh output with the provided scorer path and returned the
+aggregate metrics recorded above. No answer key or evaluator data was opened
+directly.
 
 ## Step 3 audit
 
@@ -59,10 +73,10 @@ The final non-rules-only export without a candidate `.env` completed with 520 en
 
 ## Step 6: hygiene and final verification
 
-The final commands and hygiene results are recorded in `docs/overnight-log.md`. The candidate rules-only export completed with 520 entries, `run_status=complete`, and counts 411 OK, 28 MISMATCH, and 81 NEEDS_REVIEW. The full pytest and final diff checks are complete. The exact scorer command was attempted against fresh comparison outputs but cannot run because the permitted scorer file is missing.
+The final commands and hygiene results are recorded in `docs/overnight-log.md`. The candidate rules-only export completed with 520 entries, `run_status=complete`, and counts 411 OK, 28 MISMATCH, and 81 NEEDS_REVIEW. Pytest, compileall, diff checks, hygiene scans, and evaluator scoring are complete.
 
-## Unfinished / blockers
+## Remaining operational issue
 
-- Aggregate score, Stage 1 macro-F1, Stage 3 precision/recall, end-to-end count, and evaluator review count are unavailable because the exact permitted scorer path is missing.
-- Real-provider scoring is not established; the provider was unavailable and no tokens were reported.
-- The final recommendation must remain conditional until the scorer is restored and a fresh 520-entry submission is scored.
+- The provider-backed full exports remained `degraded` because the OpenAI
+  connection failed; zero tokens were reported and the Stage 2 fallback remains
+  off by default. The deterministic rules-only submission is the scored path.

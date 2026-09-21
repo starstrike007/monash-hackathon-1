@@ -1,6 +1,6 @@
 # Fresh local regression audit
 
-This is a precautionary audit of the fresh rules-only submissions from `main` and `overnight/phase-8`. The permitted evaluator was unavailable, so these are local output differences, not scored regressions. The two submissions had 19 differing email records. For comparison rows below, only fields involved in the changed defect set are shown; the other canonical fields were unchanged or did not affect the reported difference. Values and snippets are truncated to keep the log from reproducing full documents.
+This audit began as a local comparison of the fresh rules-only submissions from `main` and `overnight/phase-8` while the evaluator path was unavailable. The two submissions had 19 differing email records. After the replacement scorer path was supplied, the final candidate score was verified equal to `main` and `phase8-document-parsers` and higher than `overnight/phase-8`. For comparison rows below, only fields involved in the changed defect set are shown; the other canonical fields were unchanged or did not affect the reported difference. Values and snippets are truncated to keep the log from reproducing full documents.
 
 Format pairing is SI extension + BL extension. Locations are taken from the parser evidence attached to each field.
 
@@ -122,4 +122,4 @@ A fresh rules-only export after the two parser fixes completed with 520 entries 
 | --- | ---: | ---: | ---: | ---: |
 | `merge-candidate` | 411 | 28 | 81 | 5 document-resolution records |
 
-The remaining records are `email_507`, `email_509`, `email_512`, `email_513`, and `email_514`. They differ only in review reason: one-sided candidates are `missing_attachment`, and unreadable candidates are `unreadable`. No parser-derived field or status difference remains in the local comparison. This validation does not substitute for evaluator scoring, which remains blocked by the missing permitted scorer path.
+The remaining records are `email_507`, `email_509`, `email_512`, `email_513`, and `email_514`. They differ only in review reason: one-sided candidates are `missing_attachment`, and unreadable candidates are `unreadable`. No parser-derived field or status difference remains in the local comparison. The supplied scorer confirms the candidate's final score is `0.5533814238`, with Stage 3 defect precision `0.9230769231` and end-to-end success `18/46`.

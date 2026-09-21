@@ -163,7 +163,7 @@ before scoring that same submission:
 $env:STAGE2_LLM_FALLBACK='0'
 & C:\Users\User\monash-hackathon\backend\.venv\Scripts\python.exe C:\Users\User\monash-hackathon\backend\export_stage1.py --rules-only --data-dir C:\Users\User\monash-hackathon\data --runtime-dir C:\Users\User\monash-hackathon\.runtime\fresh-rules-runtime --output-dir C:\Users\User\monash-hackathon\.runtime\fresh-rules-output
 $env:PYTHONIOENCODING='utf-8'
-& C:\Users\User\monash-hackathon\backend\.venv\Scripts\python.exe C:\Users\User\sdoc-eval\server\score_cli.py C:\Users\User\monash-hackathon\.runtime\fresh-rules-output\submission.json --json
+& C:\Users\User\monash-hackathon\backend\.venv\Scripts\python.exe C:\Users\User\Downloads\sdoc-hackathon-docker\server\score_cli.py C:\Users\User\monash-hackathon\.runtime\fresh-rules-output\submission.json --json
 ```
 
 The scorer is external to this repository and must only be run against the

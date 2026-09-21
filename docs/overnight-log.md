@@ -5,9 +5,8 @@
 The unattended merge-readiness pass created `merge-candidate` from
 `overnight/phase-8` in the untracked worktree
 `.runtime/merge-readiness-20260921/`. It did not push, merge, deploy, create an
-account, or modify `main`. The permitted evaluator path was missing, so no
-aggregate score, Stage 1 macro-F1, Stage 3 precision/recall, end-to-end score,
-or evaluator review count is claimed.
+account, or modify `main`. The initially configured evaluator path was
+missing; scoring was completed with the replacement path supplied afterward.
 
 Final commands:
 
@@ -16,7 +15,7 @@ C:\Users\User\monash-hackathon\backend\.venv\Scripts\python.exe -m pytest -q
 $env:STAGE2_LLM_FALLBACK='0'; & C:\Users\User\monash-hackathon\backend\.venv\Scripts\python.exe C:\Users\User\monash-hackathon\backend\export_stage1.py --rules-only --data-dir C:\Users\User\monash-hackathon\data --runtime-dir C:\Users\User\monash-hackathon\.runtime\merge-readiness-20260921\merge-candidate-v2-runtime --output-dir C:\Users\User\monash-hackathon\.runtime\merge-readiness-20260921\merge-candidate-v2-output
 $env:STAGE2_LLM_FALLBACK='0'; & C:\Users\User\monash-hackathon\backend\.venv\Scripts\python.exe C:\Users\User\monash-hackathon\backend\export_stage1.py --data-dir C:\Users\User\monash-hackathon\data --runtime-dir C:\Users\User\monash-hackathon\.runtime\merge-readiness-20260921\merge-candidate-full-runtime --output-dir C:\Users\User\monash-hackathon\.runtime\merge-readiness-20260921\merge-candidate-full-output
 $env:STAGE2_LLM_FALLBACK='1'; & C:\Users\User\monash-hackathon\backend\.venv\Scripts\python.exe C:\Users\User\monash-hackathon\backend\export_stage1.py --data-dir C:\Users\User\monash-hackathon\data --runtime-dir C:\Users\User\monash-hackathon\.runtime\merge-readiness-20260921\merge-candidate-full-on-runtime --output-dir C:\Users\User\monash-hackathon\.runtime\merge-readiness-20260921\merge-candidate-full-on-output
-$env:PYTHONIOENCODING='utf-8'; & C:\Users\User\monash-hackathon\backend\.venv\Scripts\python.exe C:\Users\User\sdoc-eval\server\score_cli.py C:\Users\User\monash-hackathon\.runtime\merge-readiness-20260921\merge-candidate-v2-output\submission.json --json
+$env:PYTHONIOENCODING='utf-8'; & C:\Users\User\monash-hackathon\backend\.venv\Scripts\python.exe C:\Users\User\Downloads\sdoc-hackathon-docker\server\score_cli.py C:\Users\User\monash-hackathon\.runtime\merge-readiness-20260921\merge-candidate-v2-output\submission.json --json
 ```
 
 Results: final pytest was 61 passed, 1 existing xfailed, and 2 dependency
@@ -28,9 +27,16 @@ ignored copy of the existing `.env`, deleted it in `finally`, and completed
 520/520 with `run_status=degraded`, 8 logical classification calls, 24
 provider attempts, 28 bounded retries, 147 model failures, 139
 `llm_unavailable` circuit-open fallbacks, 6 Stage 2 calls, 6 Stage 2 errors,
-and zero reported tokens. No key content was printed or logged. The scorer
-command failed before reading the submission because
-`C:\Users\User\sdoc-eval\server\score_cli.py` does not exist.
+and zero reported tokens. No key content was printed or logged. The supplied
+scorer returned `final_score=0.5533814238` for `merge-candidate` and
+`main`/`phase8-document-parsers`, while `overnight/phase-8` returned
+`0.5028856191`. Candidate aggregate metrics were Stage 1 macro-F1
+`0.7479863886`, Stage 3 defect precision `0.9230769231`, defect recall
+`0.5217391304`, end-to-end `18/46`, and 81 predicted `NEEDS_REVIEW` cases.
+
+The exact scorer command was run against all four fresh 520-entry,
+`run_status=complete` rules-only submissions. No answer key or evaluator data
+was opened directly; only aggregate JSON values were recorded.
 
 The two general parser fixes (preserved multiline cells and line-start label
 matching, including protection from colons inside table values) are covered by
