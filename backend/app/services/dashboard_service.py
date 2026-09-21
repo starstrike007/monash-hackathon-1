@@ -29,22 +29,43 @@ def attachment_meta(loader: DatasetLoader, paths: list[str]) -> list[dict[str, A
     ]
 
 
-def to_email_item(email: dict[str, Any], result: dict[str, Any] | None, loader: DatasetLoader) -> EmailListItem:
+def to_email_item(
+    email: dict[str, Any],
+    result: dict[str, Any] | None,
+    loader: DatasetLoader,
+    meta: dict[str, Any] | None = None,
+) -> EmailListItem:
+    meta = meta or {}
+    # The effective category is category_override when set, else the
+    # pipeline's own decision - everything downstream (dashboard, exports,
+    # lists) reads `category`, so it never needs to know about overrides.
+    effective_category = meta.get("category_override") or (result.get("category") if result else None)
     return EmailListItem(
         email_id=email["email_id"],
         display_id=display_id(email["email_id"]),
         sender=email.get("from", ""),
         subject=email.get("subject", ""),
+        received_at=meta.get("received_at"),
         attachments=attachment_meta(loader, email.get("attachments", [])),
-        category=result.get("category") if result else None,
+        category=effective_category,
+        category_machine=meta.get("category_machine"),
+        category_override=meta.get("category_override"),
+        classification_method=meta.get("classification_method"),
+        classification_reason=meta.get("classification_reason"),
         status=result.get("status") if result else None,
         review_reason=result.get("review_reason") if result else None,
+        defect_fields=result.get("defect_fields", []) if result else [],
         attention=(result.get("decision_notes") or [None])[0] if result else None,
     )
 
 
-def get_email_detail(email: dict[str, Any], result: dict[str, Any] | None, loader: DatasetLoader) -> EmailDetail:
-    item = to_email_item(email, result, loader)
+def get_email_detail(
+    email: dict[str, Any],
+    result: dict[str, Any] | None,
+    loader: DatasetLoader,
+    meta: dict[str, Any] | None = None,
+) -> EmailDetail:
+    item = to_email_item(email, result, loader, meta)
     return EmailDetail(**dump_model(item), body=email.get("body", ""), result=result)
 
 
@@ -62,7 +83,11 @@ def build_dashboard(
         for result in results
         for field in result.get("defect_fields", [])
     )
-    items = [to_email_item(email, by_email.get(email["email_id"]), loader) for email in emails]
+    all_meta = store.list_email_meta()
+    items = [
+        to_email_item(email, by_email.get(email["email_id"]), loader, all_meta.get(email["email_id"]))
+        for email in emails
+    ]
     attention = [item for item in items if item.status == ComparisonStatus.NEEDS_REVIEW][:6]
     latest_run = store.latest_run()
     return DashboardSummary(
@@ -75,4 +100,5 @@ def build_dashboard(
         defects_by_field=dict(defects),
         attention=attention,
         latest_run_id=latest_run.get("run_id") if latest_run else None,
+        review_queue_open=len(store.list_review_items(status="open")),
     )

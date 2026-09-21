@@ -35,13 +35,11 @@ class Settings:
             for origin in (allowed_origins or "").split(",")
             if origin.strip()
         ]
-        # During local development Vite may select any free port. Production
-        # deployments must set ALLOWED_ORIGINS or CORS_ORIGINS explicitly.
-        self.cors_origin_regex = (
-            None
-            if self.allowed_origins
-            else r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
-        )
+        # Always allow localhost on any port (Vite may pick a different one
+        # each run) in addition to any explicitly configured production
+        # origins - CORSMiddleware allows a request that matches either, so
+        # setting ALLOWED_ORIGINS for production never breaks local dev.
+        self.cors_origin_regex = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
         # Keep the existing attribute name available to the app and callers.
         self.cors_origins = self.allowed_origins
 

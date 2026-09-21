@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from app.adapters.local_store import LocalStore
 from app.api.schemas.common import ComparisonStatus, ReviewAction, dump_model
 from app.api.schemas.review import ResolveRequest
+from app.services.review_queue_service import sync_review_item
 
 
 def resolve_result(store: LocalStore, email_id: str, request: ResolveRequest) -> dict:
@@ -58,6 +59,16 @@ def resolve_result(store: LocalStore, email_id: str, request: ResolveRequest) ->
             "corrected_value": request.corrected_value,
             "reviewer_id": request.reviewer_id,
             "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+    sync_review_item(store, current)
+    store.add_audit_entry(
+        {
+            "email_id": email_id,
+            "action": "review_resolved",
+            "before": {"field_name": request.field_name.value, "value": original_value},
+            "after": {"field_name": request.field_name.value, "value": bl.get("raw_value")},
+            "actor": request.reviewer_id,
         }
     )
     return current

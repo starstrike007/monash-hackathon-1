@@ -5,6 +5,8 @@ import { getDashboard } from '@/lib/api'
 import { CaseDetailPage } from '@/features/case-detail/CaseDetailPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { InboxPage } from '@/features/inbox/InboxPage'
+import { DocsComparisonDetailPage } from '@/features/docs-comparison/DocsComparisonDetailPage'
+import { DocsComparisonListPage } from '@/features/docs-comparison/DocsComparisonListPage'
 
 function currentLocation() {
   const url = new URL(window.location.href)
@@ -19,6 +21,9 @@ function routeFor(location) {
   if (parts[0] === 'inbox' && parts[1])
     return { name: 'case', emailId: parts[1], mode: 'inbox', pathname, search }
   if (parts[0] === 'inbox') return { name: 'inbox', pathname, search }
+  if (parts[0] === 'docs-comparison' && parts[1])
+    return { name: 'docs-comparison-detail', emailId: parts[1], pathname, search }
+  if (parts[0] === 'docs-comparison') return { name: 'docs-comparison', pathname, search }
   if (parts[0] === 'review' && parts[1])
     return { name: 'case', emailId: parts[1], mode: 'review', pathname, search }
   if (parts[0] === 'review')
@@ -65,6 +70,12 @@ export function Router() {
     )
   else if (route.name === 'case')
     content = <CaseDetailPage navigate={navigate} emailId={route.emailId} mode={route.mode} />
+  else if (route.name === 'docs-comparison')
+    content = (
+      <DocsComparisonListPage navigate={navigate} initialStatus={route.search.get('status')} />
+    )
+  else if (route.name === 'docs-comparison-detail')
+    content = <DocsComparisonDetailPage navigate={navigate} emailId={route.emailId} />
   else
     content = (
       <div className="p-12">

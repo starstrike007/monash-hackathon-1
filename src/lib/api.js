@@ -131,7 +131,48 @@ export function submissionUrl() {
   return `${API_BASE}/api/export/submission`
 }
 
+function relativeAttachmentPath(path) {
+  return path.replace(/^attachments\//, '')
+}
+
 export function attachmentUrl(path) {
-  const relativePath = path.replace(/^attachments\//, '')
-  return `${API_BASE}/api/attachments/${relativePath}`
+  return `${API_BASE}/api/attachments/${relativeAttachmentPath(path)}`
+}
+
+export function attachmentInlineUrl(path) {
+  return `${API_BASE}/api/attachments/${relativeAttachmentPath(path)}/inline`
+}
+
+export function attachmentPageImageUrl(path, pageNumber) {
+  return `${API_BASE}/api/attachments/${relativeAttachmentPath(path)}/pages/${pageNumber}`
+}
+
+export function getAttachmentView(path) {
+  return request(`/api/attachments/${relativeAttachmentPath(path)}/view`)
+}
+
+export function getReviewItems(params = {}) {
+  return withFallback(() => request(`/api/review/items?${queryString(params)}`), {
+    items: [],
+    total: 0,
+    open_count: 0,
+  })
+}
+
+export function getReviewItem(itemId) {
+  return request(`/api/review/items/${itemId}`)
+}
+
+export function resolveReviewItem(itemId, payload) {
+  return request(`/api/review/items/${itemId}/resolve`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function overrideCategory(emailId, payload) {
+  return request(`/api/emails/${emailId}/override`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
 }

@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Archive, ChartLineUp, List, X, WarningCircle } from '@phosphor-icons/react'
+import { Archive, ChartLineUp, Files, List, X, WarningCircle } from '@phosphor-icons/react'
 
 import { cn } from '@/lib/utils'
 
 const navigation = [
   { label: 'Dashboard', path: '/dashboard', icon: ChartLineUp },
   { label: 'Inbox', path: '/inbox', icon: Archive },
+  { label: 'Docs Comparison', path: '/docs-comparison', icon: Files },
   { label: 'Review queue', path: '/review', icon: WarningCircle, badge: true },
 ]
 
@@ -66,6 +67,7 @@ export function AppShell({ pathname, navigate, children, reviewCount = 14 }) {
             const active =
               pathname === path ||
               (path === '/inbox' && pathname.startsWith('/inbox/')) ||
+              (path === '/docs-comparison' && pathname.startsWith('/docs-comparison')) ||
               (path === '/review' && pathname.startsWith('/review'))
             return (
               <button

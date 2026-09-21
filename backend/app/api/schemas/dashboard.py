@@ -15,3 +15,4 @@ class DashboardSummary(BaseModel):
     defects_by_field: dict[str, int] = Field(default_factory=dict)
     attention: list[EmailListItem] = Field(default_factory=list)
     latest_run_id: str | None = None
+    review_queue_open: int = 0
