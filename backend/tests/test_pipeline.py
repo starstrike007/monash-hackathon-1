@@ -261,3 +261,42 @@ def test_missing_value_is_review_not_mismatch():
     )
     assert result.status == ComparisonStatus.NEEDS_REVIEW
     assert result.review_reason == "missing_value"
+
+
+def test_blank_field_does_not_consume_the_next_field_label():
+    extracted = extract_document(
+        ParsedDocument(
+            path="si.txt",
+            text="""SHIPPING INSTRUCTION
+Shipper:
+Consignee: Harbour Line Trading Ltd
+Notify Party: Harbour Line Trading Ltd
+No. of Containers:
+Gross Weight: 22,000 KG""",
+            document_type=DocumentType.SHIPPING_INSTRUCTION,
+        ),
+        DocumentRole.SI,
+    )
+    fields = {field.field_name: field for field in extracted.fields}
+
+    assert fields[CanonicalField.SHIPPER].state == ExtractionState.MISSING
+    assert fields[CanonicalField.CONSIGNEE].raw_value == "Harbour Line Trading Ltd"
+    assert fields[CanonicalField.CONTAINER_COUNT].state == ExtractionState.MISSING
+    assert fields[CanonicalField.GROSS_WEIGHT_KG].normalized_value == "22000"
+
+
+def test_placeholder_with_unit_suffix_stays_unavailable():
+    extracted = extract_document(
+        ParsedDocument(
+            path="si.txt",
+            text="""SHIPPING INSTRUCTION
+Port of Loading: ____MT
+Gross Weight: ??? MTS""",
+            document_type=DocumentType.SHIPPING_INSTRUCTION,
+        ),
+        DocumentRole.SI,
+    )
+    fields = {field.field_name: field for field in extracted.fields}
+
+    assert fields[CanonicalField.PORT_OF_LOADING].state == ExtractionState.PLACEHOLDER
+    assert fields[CanonicalField.GROSS_WEIGHT_KG].state == ExtractionState.PLACEHOLDER

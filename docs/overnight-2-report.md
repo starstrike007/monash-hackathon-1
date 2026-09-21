@@ -10,7 +10,7 @@ In progress. Final results, recommended settings, retained changes, and user dec
 
 - Branch: `overnight/improve-2`, created from `main` at `c52305a`.
 - No push, merge, deployment, account creation, or modification of `main` is permitted.
-- Scorer budget: 8/14 used; full OpenAI exports: 2/2 used.
+- Scorer budget: 10/14 used; full OpenAI exports: 2/2 used.
 - The task-specified interpreter path `backend.venv\Scripts\python.exe` does not exist. The repository venv exists at `backend\.venv\Scripts\python.exe`; all Python and scorer commands use that interpreter. The scorer command is otherwise unchanged.
 - Runtime and output directories are fresh children of `C:\Users\User\monash-hackathon.runtime`.
 - The scorer is used only on complete 520-entry exports. Only aggregate scorer output is recorded.
@@ -28,6 +28,8 @@ In progress. Final results, recommended settings, retained changes, and user dec
 | 6 | 2 | Draft-BL rule on, rules-only | 0.6726 | 0.7229 | 1.0000 | 0.6087 | 28/46 | 57 |
 | 7 | 2 | Draft-BL rule off, rules-only | 0.6726 | 0.7229 | 1.0000 | 0.6087 | 28/46 | 57 |
 | 8 | 2 | Draft-BL rule off, full OpenAI | 0.7172 | 0.8715 | 1.0000 | 0.6087 | 28/46 | 100 |
+| 9 | 4 | Blank-label and unit-placeholder fix, rules-only | 0.6726 | 0.7229 | 1.0000 | 0.6087 | 28/46 | 59 |
+| 10 | 4 | Cumulative optional-port-code fix, rules-only | 0.6726 | 0.7229 | 1.0000 | 0.6087 | 28/46 | 59 |
 
 ## Step 0 — Baseline
 
@@ -96,7 +98,21 @@ The disk cache is injected only at the application/export orchestration boundary
 
 ## Step 4 — Field-state analysis and evidence-backed fixes
 
-Pending.
+Analysis used the complete default-policy rules-only store and only BL comparison rows with exactly two supported documents (124 rows).
+
+Ranked patterns:
+
+1. Named/order-mode consignee difference: 40 skipped fields. This is the dominant cause and is handled by the configurable policy from Step 1; no additional default change was made.
+2. Blank label or placeholder: four genuine unavailable field instances were already skipped (`email_516` gross weight at SI line 10, `email_517` discharge port at SI line 8, and `email_518` discharge port/gross weight at SI lines 8/10). Three additional blank-label errors were found: `email_519` SI line 4 shipper consumed line 5 consignee, SI line 9 container count consumed line 10 gross weight, and `email_520` SI line 5 consignee consumed line 6 notify party. `email_517` SI line 7 also used `____MT`, which was not recognized as a placeholder.
+3. Same printed port with optional UN/LOCODE: three review-edge comparisons printed the same place name while only the BL included a code (`email_516` lines SI 8 / BL 10, `email_519` SI 8 / BL 10, `email_520` SI 8 / BL 10). These should compare equal when the explicit names are exactly equal and any two present codes agree.
+4. Raw differences already normalized equal: nine field instances—five weights with thousands separators and four ports with known aliases/codes. Examples: `email_055` weight `243588` versus `243,588` normalized to `243588`; `email_516` loading port with and without `INNSA` normalized to `NHAVA SHEVA|INNSA`. No fix is needed.
+5. Other normalized differences: the remaining mismatches are substantive party/count/weight/place differences or conflicting explicit port names. Examples include Mombasa versus Tuticorin with the same printed code and named legal entities that differ. No fuzzy-name or code-only matching is justified.
+
+Fix 1 implemented: a blank canonical label no longer consumes the next canonical label as its value, and underscore/question-mark placeholders with unit suffixes remain unavailable. Synthetic tests cover both behaviors. It passed the scorer veto: final score 0.6726 and defect precision 1.0000 were unchanged. `MISMATCH` fell from 30 to 28, `NEEDS_REVIEW` rose from 57 to 59 for the two verified missing values, and scorer escalation recall improved from 0.9000 to 1.0000.
+
+Fix 2 implemented: ports compare as equal when their deterministic normalized names are exactly equal and only one document includes a UN/LOCODE; conflicting explicit names remain mismatches even when the printed code is the same. Synthetic tests cover both sides. The cumulative export passed the scorer veto with the same 0.6726 final score, 1.0000 defect precision, and 59 reviews.
+
+No third fix was attempted. Returns had flattened, all safely supported causes were addressed, and the remaining normalized differences are genuine or legally ambiguous. Full backend check after both retained fixes: 83 passed, 1 xfailed, 2 xpassed.
 
 ## Step 5 — Hygiene and final verification
 

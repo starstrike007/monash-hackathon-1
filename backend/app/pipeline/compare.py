@@ -37,6 +37,11 @@ def _resolve_order_mode_policy(value: str | None) -> str:
     return policy
 
 
+def _port_parts(value: str) -> tuple[str, str | None]:
+    name, separator, code = value.partition("|")
+    return name.strip(), code.strip() if separator and code.strip() else None
+
+
 def compare_documents(
     si: DocumentExtraction,
     bl: DocumentExtraction,
@@ -74,6 +79,15 @@ def compare_documents(
         if not si_value or not bl_value:
             result = "skipped"
             state = "uncertain"
+        elif field_name in {
+            CanonicalField.PORT_OF_LOADING,
+            CanonicalField.PORT_OF_DISCHARGE,
+        }:
+            si_name, si_code = _port_parts(si_value)
+            bl_name, bl_code = _port_parts(bl_value)
+            codes_compatible = not (si_code and bl_code) or si_code == bl_code
+            result = "match" if si_name == bl_name and codes_compatible else "mismatch"
+            state = result
         elif field_name == CanonicalField.CONSIGNEE:
             si_order = _is_order_mode(si_field.raw_value)
             bl_order = _is_order_mode(bl_field.raw_value)

@@ -85,6 +85,18 @@ def _effective_lines(parsed: ParsedDocument) -> tuple[list[str], list[dict]]:
     return raw_lines, [{"line": index + 1} for index in range(len(raw_lines))]
 
 
+def _is_placeholder(value: str) -> bool:
+    normalized = value.strip().upper()
+    if normalized in PLACEHOLDERS:
+        return True
+    return bool(
+        re.fullmatch(
+            r"(?:[_?\-.]+\s*)+(?:KGS?|MTS?|TONNES?)?",
+            normalized,
+        )
+    )
+
+
 def _resolve_cell(location: dict, value: str | None) -> dict:
     """Narrow a row-level xlsx location down to the specific cell that holds
     `value`, when the row's per-cell values were captured at parse time."""
@@ -123,9 +135,14 @@ def _find_value(
                 value = next((part.strip(" .;\t") for part in value.split("|") if part.strip()), "")
             location = dict(line_meta[index]) if index < len(line_meta) else {}
             if not value and index + 1 < len(lines):
-                value = lines[index + 1].strip(" .|;\t")
-                if index + 1 < len(line_meta):
-                    location = dict(line_meta[index + 1])
+                following = lines[index + 1].strip(" .|;\t")
+                # A blank field must not consume the next canonical label as
+                # its value. Real multiline values (for example addresses)
+                # remain eligible because they do not start a field label.
+                if following and not _starts_field_label(following):
+                    value = following
+                    if index + 1 < len(line_meta):
+                        location = dict(line_meta[index + 1])
             if value and pattern.lower().startswith(r"to\s+the\s+order\s+of"):
                 value = f"To the Order of {value}"
             location = _resolve_cell(location, value)
@@ -253,7 +270,7 @@ def extract_document(parsed: ParsedDocument, role: DocumentRole | None = None) -
                 confidence=Confidence.HIGH,
                 evidence=_evidence(snippet, None, location, parsed.path),
             )
-        elif raw_value.strip().upper() in PLACEHOLDERS:
+        elif _is_placeholder(raw_value):
             extraction = FieldExtraction(
                 field_name=field_name,
                 state=ExtractionState.PLACEHOLDER,

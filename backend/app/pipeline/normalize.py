@@ -77,6 +77,7 @@ def normalize_port(value: str) -> str:
             None,
         )
     name_text = re.sub(rf"\b{re.escape(code)}\b", " ", normalized) if code else normalized
+    name_text = re.sub(r"[()]", " ", name_text)
     name_text = re.sub(r"\s+", " ", name_text).strip()
 
     name = name_text
