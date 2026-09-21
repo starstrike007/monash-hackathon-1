@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { MagnifyingGlass, Paperclip } from '@phosphor-icons/react'
 
 import { CategoryBadge } from '@/components/layout/StatusBadge'
+import { BackendError } from '@/components/BackendError'
 import { getAllEmails } from '@/lib/api'
+import { businessDateKey } from '@/lib/time'
 import { formatDate } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -19,8 +21,12 @@ const GROUP_ORDER = ['Today', 'Yesterday', 'This week', 'This month', 'Earlier']
 
 function groupFor(receivedAt, now) {
   if (!receivedAt) return 'Earlier'
-  const startOfDay = (value) => new Date(value.getFullYear(), value.getMonth(), value.getDate())
-  const diffDays = Math.round((startOfDay(now) - startOfDay(new Date(receivedAt))) / 86400000)
+  const today = businessDateKey(now)
+  const received = businessDateKey(receivedAt)
+  if (!today || !received) return 'Earlier'
+  const diffDays = Math.round(
+    (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${received}T00:00:00Z`)) / 86400000,
+  )
   if (diffDays <= 0) return 'Today'
   if (diffDays === 1) return 'Yesterday'
   if (diffDays <= 6) return 'This week'
@@ -33,14 +39,27 @@ export function InboxPage({ navigate }) {
   const [query, setQuery] = useState('')
   const [data, setData] = useState({ items: [], total: 0 })
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [retryNonce, setRetryNonce] = useState(0)
 
   useEffect(() => {
     setLoading(true)
-    getAllEmails({ category, query }).then((result) => {
-      setData(result)
-      setLoading(false)
-    })
-  }, [category, query])
+    setError(null)
+    getAllEmails({ query })
+      .then((result) => {
+        setData(result)
+        setLoading(false)
+      })
+      .catch((reason) => {
+        setError(reason)
+        setLoading(false)
+      })
+  }, [query, retryNonce])
+
+  const visibleItems = useMemo(
+    () => data.items.filter((item) => !category || item.category === category),
+    [category, data.items],
+  )
 
   const counts = useMemo(() => {
     const tally = { '': data.items.length }
@@ -51,18 +70,18 @@ export function InboxPage({ navigate }) {
   const grouped = useMemo(() => {
     const now = new Date()
     const buckets = Object.fromEntries(GROUP_ORDER.map((key) => [key, []]))
-    for (const item of data.items) buckets[groupFor(item.received_at, now)].push(item)
+    for (const item of visibleItems) buckets[groupFor(item.received_at, now)].push(item)
     for (const key of GROUP_ORDER) {
       buckets[key].sort((a, b) => new Date(b.received_at || 0) - new Date(a.received_at || 0))
     }
     return buckets
-  }, [data.items])
+  }, [visibleItems])
 
   return (
     <div className="mx-auto max-w-[1400px] px-5 py-10 lg:px-14">
       <header className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
         <div>
-          <p className="text-sm font-medium text-[#62757D]">{data.total} emails</p>
+          <p className="text-sm font-medium text-[#62757D]">{visibleItems.length} emails</p>
           <h1 className="mt-1 font-serif text-5xl font-semibold tracking-tight text-[#16232B]">
             Inbox
           </h1>
@@ -78,6 +97,12 @@ export function InboxPage({ navigate }) {
           />
         </label>
       </header>
+
+      {error && (
+        <div className="mt-7">
+          <BackendError error={error} onRetry={() => setRetryNonce((value) => value + 1)} />
+        </div>
+      )}
 
       <div className="mt-9 flex flex-wrap gap-3">
         {CATEGORY_FILTERS.map((filter) => (
@@ -108,8 +133,8 @@ export function InboxPage({ navigate }) {
 
       <div className="mt-6 space-y-8">
         {loading && <div className="py-14 text-center text-sm text-[#71808A]">Loading emails…</div>}
-        {!loading &&
-          GROUP_ORDER.filter((key) => grouped[key].length).map((key) => (
+        {!loading && !error &&
+          GROUP_ORDER.map((key) => (
             <section key={key}>
               <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.1em] text-[#8A7F68]">
                 {key}
@@ -141,10 +166,13 @@ export function InboxPage({ navigate }) {
                     </span>
                   </button>
                 ))}
+                {!grouped[key].length && (
+                  <p className="px-6 py-4 text-sm text-[#8A969B]">No emails in this period.</p>
+                )}
               </div>
             </section>
           ))}
-        {!loading && !data.items.length && (
+        {!loading && !error && !visibleItems.length && (
           <div className="rounded-2xl border border-[#E3DED1] bg-white py-14 text-center text-sm text-[#71808A]">
             No emails match this filter.
           </div>

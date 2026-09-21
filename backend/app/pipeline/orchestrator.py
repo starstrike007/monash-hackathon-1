@@ -30,7 +30,7 @@ from app.services.review_queue_service import (
     sync_review_item,
 )
 from app.services.submission_service import build_submission
-from app.services.timestamps import generate_received_at
+from app.services.timestamps import ensure_received_timestamps, generate_received_at
 from app.pipeline.classify import ClassificationDecision, ClassificationService, classify_email
 from app.pipeline.compare import compare_documents
 from app.pipeline.decide import decide_result
@@ -71,9 +71,25 @@ class PipelineOrchestrator:
         return Path(self.store.runtime_dir) / "output"
 
     def ensure_seeded(self) -> None:
-        if self.store.list_latest_results():
+        # A run can legitimately finish with no saved result for a failed
+        # item. The run record still proves the store has been initialized;
+        # reseeding here would erase the visible retryable failure.
+        if self.store.list_latest_results() or self.store.latest_run():
+            ensure_received_timestamps(self.store, self.loader)
             return
         self.run()
+        ensure_received_timestamps(self.store, self.loader)
+
+    def _with_runtime_attachments(self, email: dict[str, Any]) -> dict[str, Any]:
+        """Merge reviewer-uploaded attachments into the immutable dataset email."""
+
+        meta = self.store.get_email_meta(email["email_id"]) or {}
+        excluded = set(meta.get("excluded_attachments") or [])
+        paths: list[str] = []
+        for path in [*(email.get("attachments") or []), *(meta.get("uploaded_attachments") or [])]:
+            if path not in excluded and path not in paths:
+                paths.append(path)
+        return {**email, "attachments": paths}
 
     def run(
         self,
@@ -82,7 +98,7 @@ class PipelineOrchestrator:
         rules_only: bool = False,
     ) -> dict[str, Any]:
         run_full_dataset = email_ids is None and not retry_failed_only
-        emails = self.loader.list_emails()
+        emails = [self._with_runtime_attachments(email) for email in self.loader.list_emails()]
         if retry_failed_only and not email_ids:
             latest_run = self.store.latest_run()
             if latest_run:
@@ -254,6 +270,7 @@ class PipelineOrchestrator:
         run_id: str,
         category: EmailCategory | None = None,
     ):
+        email = self._with_runtime_attachments(email)
         email_id = email["email_id"]
         category = category or self.classify_email(email)
         if category != EmailCategory.BL_COMPARISON:
@@ -278,6 +295,37 @@ class PipelineOrchestrator:
             )
 
         parsed_documents = [parse_attachment(self.loader, path) for path in attachment_paths]
+        readable_count = sum(1 for parsed in parsed_documents if parsed.readable)
+        if readable_count == 0:
+            return decide_result(
+                email_id=email_id,
+                run_id=run_id,
+                category=category,
+                comparisons=[],
+                documents=[self.extract_document(parsed, None) for parsed in parsed_documents],
+                document_reason=ReviewReason.UNREADABLE,
+                notes=["None of the referenced attachments produced readable text."],
+            )
+        if len(parsed_documents) < 2:
+            return decide_result(
+                email_id=email_id,
+                run_id=run_id,
+                category=category,
+                comparisons=[],
+                documents=[self.extract_document(parsed, None) for parsed in parsed_documents],
+                document_reason=ReviewReason.MISSING_ATTACHMENT,
+                notes=["Fewer than two usable attachments were available for the SI/BL pair."],
+            )
+        if readable_count < len(parsed_documents):
+            return decide_result(
+                email_id=email_id,
+                run_id=run_id,
+                category=category,
+                comparisons=[],
+                documents=[self.extract_document(parsed, None) for parsed in parsed_documents],
+                document_reason=ReviewReason.UNREADABLE,
+                notes=["At least one referenced attachment could not be read as text or an image."],
+            )
         documents = []
         for parsed in parsed_documents:
             role = None
@@ -293,8 +341,6 @@ class PipelineOrchestrator:
         notes: list[str] = []
         if len(si_documents) == 0 or len(bl_documents) == 0:
             reason = ReviewReason.WRONG_DOC_TYPE if all(document.readable for document in documents) else ReviewReason.UNREADABLE
-            if len(si_documents) == 0 and len(bl_documents) == 0:
-                reason = ReviewReason.MISSING_ATTACHMENT
             notes.append("The SI and BL could not be resolved unambiguously from the attachments.")
             return decide_result(
                 email_id=email_id,
@@ -333,6 +379,7 @@ class PipelineOrchestrator:
         review queue's `wrong_doc_type` action: a reviewer overrides which
         attachment is which instead of trusting the detected document type."""
 
+        email = self._with_runtime_attachments(email)
         email_id = email["email_id"]
         attachment_paths = email.get("attachments", [])
         if si_path not in attachment_paths or bl_path not in attachment_paths or si_path == bl_path:

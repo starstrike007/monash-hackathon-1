@@ -63,3 +63,15 @@ def rebase_timestamps(store: "LocalStore", loader: "DatasetLoader", *, now: date
         store.upsert_email_meta(email_id, received_at=generate_received_at(email_id, now=now))
         updated += 1
     return updated
+
+
+def ensure_received_timestamps(store: "LocalStore", loader: "DatasetLoader") -> int:
+    """Persist missing demo timestamps without changing existing values."""
+
+    updated = 0
+    for email in loader.list_emails():
+        meta = store.get_email_meta(email["email_id"]) or {}
+        if meta.get("received_at") is None:
+            store.upsert_email_meta(email["email_id"], received_at=generate_received_at(email["email_id"]))
+            updated += 1
+    return updated

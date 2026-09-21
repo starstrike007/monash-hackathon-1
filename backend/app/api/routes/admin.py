@@ -13,6 +13,5 @@ def rebase_timestamps_route(request: Request) -> dict:
     demo can be re-anchored right before a presentation without editing the
     dataset. Times are simulated because the dataset carries none."""
 
-    request.app.state.orchestrator.ensure_seeded()
     updated = rebase_timestamps(request.app.state.store, request.app.state.loader)
     return {"updated": updated}

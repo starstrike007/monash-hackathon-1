@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { ArrowLeft, ArrowSquareOut, DownloadSimple } from '@phosphor-icons/react'
 
 import { DocumentViewer } from '@/components/document-viewer/DocumentViewer'
+import { BackendError } from '@/components/BackendError'
 import { CategoryBadge } from '@/components/layout/StatusBadge'
 import { summarizeComparison } from '@/features/docs-comparison/summary'
-import { attachmentUrl, getEmail, getReviewItems, overrideCategory } from '@/lib/api'
+import { attachmentUrl, getEmail, getReviewItems, notifyDataChanged, overrideCategory } from '@/lib/api'
 import { CATEGORY_LABELS, formatDate } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -12,14 +13,16 @@ const CATEGORY_OPTIONS = Object.keys(CATEGORY_LABELS)
 
 function ComparisonSummaryCard({ navigate, detail }) {
   const [reviewItem, setReviewItem] = useState(null)
+  const [reviewError, setReviewError] = useState(null)
   const result = detail.result
   const summary = summarizeComparison(result)
 
   useEffect(() => {
     if (result?.status === 'NEEDS_REVIEW') {
-      getReviewItems({ email_id: detail.email_id, status: 'open' }).then((data) =>
-        setReviewItem(data.items?.[0] || null),
-      )
+      setReviewError(null)
+      getReviewItems({ email_id: detail.email_id, status: 'open' })
+        .then((data) => setReviewItem(data.items?.[0] || null))
+        .catch(setReviewError)
     }
   }, [detail.email_id, result?.status])
 
@@ -55,6 +58,7 @@ function ComparisonSummaryCard({ navigate, detail }) {
           Open in Docs Comparison
         </button>
       )}
+      {reviewError && <BackendError error={reviewError} compact />}
     </section>
   )
 }
@@ -99,21 +103,40 @@ export function InboxDetailPage({ navigate, emailId }) {
   const [detail, setDetail] = useState(null)
   const [saving, setSaving] = useState(false)
   const [pendingCategory, setPendingCategory] = useState('')
+  const [error, setError] = useState(null)
 
   function load() {
-    getEmail(emailId).then((data) => {
-      setDetail(data)
-      setPendingCategory(data.category_override || data.category || '')
-    })
+    setError(null)
+    getEmail(emailId)
+      .then((data) => {
+        setDetail(data)
+        setPendingCategory(data.category_override || data.category || '')
+      })
+      .catch(setError)
   }
 
   useEffect(load, [emailId])
 
   async function applyOverride(category) {
     setSaving(true)
-    await overrideCategory(emailId, { category })
-    setSaving(false)
-    load()
+    setError(null)
+    try {
+      await overrideCategory(emailId, { category })
+      notifyDataChanged()
+      load()
+    } catch (reason) {
+      setError(reason)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (error && !detail) {
+    return (
+      <div className="mx-auto max-w-[900px] px-5 py-10 lg:px-14">
+        <BackendError error={error} onRetry={load} />
+      </div>
+    )
   }
 
   if (!detail) {
@@ -155,6 +178,7 @@ export function InboxDetailPage({ navigate, emailId }) {
         Classified by {detail.classification_method === 'llm' ? 'LLM fallback' : 'rules'}
         {detail.classification_reason ? ` — ${detail.classification_reason}` : ''}
       </p>
+      {error && <div className="mt-5"><BackendError error={error} compact /></div>}
 
       <div className="mt-7 grid gap-7 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <div className="space-y-5">

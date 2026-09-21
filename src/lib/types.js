@@ -36,13 +36,4 @@ export function categoryLabel(category) {
   return CATEGORY_LABELS[category] || category || 'Unclassified'
 }
 
-export function formatDate(value) {
-  if (!value) return '19 Sep 2026'
-  return new Intl.DateTimeFormat('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(value))
-}
+export { formatBusinessDate as formatDate } from './time'
