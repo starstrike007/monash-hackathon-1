@@ -164,6 +164,7 @@ class ResultRecord(BaseModel):
     selected_bl_path: str | None = None
     version: int = 1
     comparisons: list[FieldComparison] = Field(default_factory=list)
+    result_overrides: dict[str, str] = Field(default_factory=dict)
     documents: list[DocumentExtraction] = Field(default_factory=list)
     decision_notes: list[str] = Field(default_factory=list)
     updated_at: datetime | None = None

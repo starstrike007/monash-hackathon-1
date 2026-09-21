@@ -13,6 +13,17 @@ const REASON_LABELS = {
  * N of 7 fields differ (with the first mismatch as an example when the full
  * `comparisons` array is available), or needs review with its reason - used
  * by both the list (lighter item shape) and the detail banner (full result). */
+function mismatchSummary(result) {
+  const count = result.defect_fields?.length || 0
+  const firstKey = result.defect_fields?.[0]
+  const comparison = result.comparisons?.find((item) => item.field_name === firstKey)
+  const label = fieldLabels[firstKey]?.label || firstKey
+  const detail = comparison
+    ? `${label} SI ${comparison.si?.raw_value ?? '—'} / BL ${comparison.bl?.raw_value ?? '—'}`
+    : null
+  return `${count} of 7 field${count === 1 ? '' : 's'} differ${detail ? `: ${detail}` : ''}`
+}
+
 export function summarizeComparison(result) {
   if (!result || !result.status) {
     return { tone: 'review', text: 'Not yet processed' }
@@ -21,23 +32,13 @@ export function summarizeComparison(result) {
     return { tone: 'ok', text: 'No mismatch detected' }
   }
   if (result.status === 'MISMATCH') {
-    const count = result.defect_fields?.length || 0
-    const firstKey = result.defect_fields?.[0]
-    const comparison = result.comparisons?.find((item) => item.field_name === firstKey)
-    const label = fieldLabels[firstKey]?.label || firstKey
-    const detail = comparison
-      ? `${label} SI ${comparison.si?.raw_value ?? '—'} / BL ${comparison.bl?.raw_value ?? '—'}`
-      : null
-    return {
-      tone: 'mismatch',
-      text: `${count} of 7 field${count === 1 ? '' : 's'} differ${detail ? `: ${detail}` : ''}`,
-    }
+    return { tone: 'mismatch', text: mismatchSummary(result) }
   }
   if (result.status === 'NEEDS_REVIEW') {
-    return {
-      tone: 'review',
-      text: `Needs review: ${REASON_LABELS[result.review_reason] || result.review_reason || 'unresolved'}`,
-    }
+    const review = `Needs review: ${REASON_LABELS[result.review_reason] || result.review_reason || 'unresolved'}`
+    // Fields that clearly differ are recorded even when another field needs a person, so say so.
+    const hasMismatch = (result.defect_fields?.length || 0) > 0
+    return { tone: 'review', text: hasMismatch ? `${review} · ${mismatchSummary(result)}` : review }
   }
   return { tone: 'review', text: 'Not applicable' }
 }

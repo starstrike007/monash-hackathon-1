@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -24,6 +25,13 @@ class ResolveResponse(BaseModel):
     saved: bool
     message: str
     result: dict = Field(default_factory=dict)
+
+
+class ComparisonResultOverrideRequest(BaseModel):
+    field_name: CanonicalField
+    result: Literal["match", "mismatch", "skipped"]
+    reviewer_id: str = "local-reviewer"
+    expected_version: int | None = None
 
 
 class OverrideRequest(BaseModel):

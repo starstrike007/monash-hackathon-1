@@ -49,7 +49,11 @@ def _evidence_for_result(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def sync_review_item(store: LocalStore, result: dict[str, Any]) -> None:
+def sync_review_item(
+    store: LocalStore,
+    result: dict[str, Any],
+    cleared_resolution: dict[str, Any] | None = None,
+) -> None:
     """Keep exactly one open deterministic review item per email in sync with
     its latest result, without duplicating it on retries/reruns."""
 
@@ -85,7 +89,8 @@ def sync_review_item(store: LocalStore, result: dict[str, Any]) -> None:
             existing_open["id"],
             status="resolved",
             resolved_at=utc_now(),
-            resolution={"resolution": "auto_cleared", "note": "Recomputed without a review reason."},
+            resolution=cleared_resolution
+            or {"resolution": "auto_cleared", "note": "Recomputed without a review reason."},
         )
 
 

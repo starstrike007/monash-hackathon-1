@@ -19,7 +19,16 @@ def decide_result(
     documents: list,
     document_reason: ReviewReason | None = None,
     notes: list[str] | None = None,
+    result_overrides: dict[str, str] | None = None,
 ) -> ResultRecord:
+    result_overrides = result_overrides or {}
+    for comparison in comparisons:
+        field_name = getattr(comparison.field_name, "value", comparison.field_name)
+        override = result_overrides.get(field_name)
+        if override in {"match", "mismatch", "skipped"}:
+            comparison.result = override
+            comparison.state = "uncertain" if override == "skipped" else override
+
     selected_si_path = next(
         (document.path for document in documents if document.role and document.role.value == "SI"),
         None,
@@ -38,6 +47,7 @@ def decide_result(
             selected_si_path=selected_si_path,
             selected_bl_path=selected_bl_path,
             comparisons=comparisons,
+            result_overrides=result_overrides,
             documents=documents,
             decision_notes=notes or [],
             updated_at=datetime.now(timezone.utc),
@@ -75,6 +85,7 @@ def decide_result(
         selected_si_path=selected_si_path,
         selected_bl_path=selected_bl_path,
         comparisons=comparisons,
+        result_overrides=result_overrides,
         documents=documents,
         decision_notes=notes or [],
         updated_at=datetime.now(timezone.utc),

@@ -1,12 +1,19 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { CalendarBlank, CaretDown, Funnel, MagnifyingGlass, Paperclip } from '@phosphor-icons/react'
 
 import { CategoryBadge } from '@/components/layout/StatusBadge'
 import { BackendError } from '@/components/BackendError'
 import { getAllEmails } from '@/lib/api'
+import {
+  persistVisitedEmailIds,
+  readSession,
+  readVisitedEmailIds,
+  saveScrollAnchor,
+  useRestoreScroll,
+  writeSession,
+} from '@/lib/listViewState'
 import { businessDateKey, formatBusinessDateTimeParts, GROUP_ORDER, groupFor } from '@/lib/time'
 import { cn } from '@/lib/utils'
-
 
 function ReceivedAt({ value }) {
   const parts = formatBusinessDateTimeParts(value)
@@ -26,26 +33,6 @@ const CATEGORY_FILTERS = [
   { key: 'SPAM', label: 'Spam' },
 ]
 const ALL_CATEGORY_KEYS = CATEGORY_FILTERS.map((filter) => filter.key)
-const VISITED_EMAILS_STORAGE_KEY = 'clearance:visited-email-ids'
-
-function readVisitedEmailIds() {
-  if (typeof window === 'undefined') return new Set()
-  try {
-    const stored = JSON.parse(window.localStorage.getItem(VISITED_EMAILS_STORAGE_KEY) || '[]')
-    return new Set(Array.isArray(stored) ? stored : [])
-  } catch {
-    return new Set()
-  }
-}
-
-function persistVisitedEmailIds(emailIds) {
-  try {
-    window.localStorage.setItem(VISITED_EMAILS_STORAGE_KEY, JSON.stringify([...emailIds]))
-  } catch {
-    // Browsers may block storage; the in-memory state still provides feedback for this visit.
-  }
-}
-
 const VIEW_STATE_STORAGE_KEY = 'clearance:inbox-view-state'
 const SCROLL_RESTORE_STORAGE_KEY = 'clearance:inbox-scroll-restore'
 
@@ -57,7 +44,7 @@ function readViewState() {
     query: '',
   }
   try {
-    const stored = JSON.parse(window.sessionStorage.getItem(VIEW_STATE_STORAGE_KEY) || 'null')
+    const stored = readSession(VIEW_STATE_STORAGE_KEY)
     if (!stored) return fallback
     const onlyKnown = (values, allowed) =>
       Array.isArray(values) ? values.filter((value) => allowed.includes(value)) : allowed
@@ -69,23 +56,6 @@ function readViewState() {
     }
   } catch {
     return fallback
-  }
-}
-
-function writeSession(key, value) {
-  try {
-    if (value === null) window.sessionStorage.removeItem(key)
-    else window.sessionStorage.setItem(key, JSON.stringify(value))
-  } catch {
-    // Storage may be blocked; the inbox still works, it just won't remember its view.
-  }
-}
-
-function readScrollRestore() {
-  try {
-    return JSON.parse(window.sessionStorage.getItem(SCROLL_RESTORE_STORAGE_KEY) || 'null')
-  } catch {
-    return null
   }
 }
 
@@ -116,17 +86,8 @@ export function InboxPage({ navigate }) {
     writeSession(VIEW_STATE_STORAGE_KEY, { selectedCategories, showAll, selectedPeriods, query })
   }, [selectedCategories, showAll, selectedPeriods, query])
 
-  // After returning from an email, put its row back where it was on screen. This
-  // runs once the list has rendered; before that the page is too short to scroll.
-  useLayoutEffect(() => {
-    if (loading || error) return
-    const restore = readScrollRestore()
-    if (!restore) return
-    writeSession(SCROLL_RESTORE_STORAGE_KEY, null)
-    const row = document.querySelector(`[data-email-id="${restore.emailId}"]`)
-    if (!row) return
-    window.scrollTo(0, window.scrollY + row.getBoundingClientRect().top - restore.top)
-  }, [loading, error])
+  // After returning from an email, put its row back where it was on screen.
+  useRestoreScroll(SCROLL_RESTORE_STORAGE_KEY, !loading && !error)
 
   useEffect(() => {
     if (!categoryMenuOpen && !periodMenuOpen) return undefined
@@ -230,7 +191,7 @@ export function InboxPage({ navigate }) {
   }
 
   function openEmail(emailId, row) {
-    writeSession(SCROLL_RESTORE_STORAGE_KEY, { emailId, top: row.getBoundingClientRect().top })
+    saveScrollAnchor(SCROLL_RESTORE_STORAGE_KEY, emailId, row)
     const nextVisitedEmailIds = new Set(visitedEmailIds)
     nextVisitedEmailIds.add(emailId)
     setVisitedEmailIds(nextVisitedEmailIds)
@@ -432,7 +393,9 @@ export function InboxPage({ navigate }) {
                       className="h-4 w-4 shrink-0 accent-[#0E5A66]"
                     />
                     <span className="min-w-0 flex-1 truncate">{period}</span>
-                    <span className="font-mono text-xs text-[#71808A]">{grouped[period].length}</span>
+                    <span className="font-mono text-xs text-[#71808A]">
+                      {grouped[period].length}
+                    </span>
                   </label>
                 ))}
               </div>

@@ -294,7 +294,7 @@ function OutcomeBreakdown({ outcomes, navigate }) {
               <button
                 type="button"
                 onClick={() => openComparisons(key)}
-                aria-label={`${label}: ${value} of ${total} (${percent}%). Open in Docs Comparison`}
+                aria-label={`${label}: ${value} of ${total} (${percent}%). Open in Document Comparison`}
                 className={cn(
                   'block h-full w-full cursor-pointer outline-none',
                   index === 0 && 'rounded-l-lg',

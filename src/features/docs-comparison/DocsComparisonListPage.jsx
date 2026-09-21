@@ -1,27 +1,73 @@
 import { useEffect, useMemo, useState } from 'react'
-import { MagnifyingGlass } from '@phosphor-icons/react'
+import { CalendarBlank, Funnel, MagnifyingGlass } from '@phosphor-icons/react'
 
 import { StatusBadge } from '@/components/layout/StatusBadge'
 import { BackendError } from '@/components/BackendError'
+import { FilterMenu } from '@/components/FilterMenu'
 import { ReceivedAt } from '@/components/ReceivedAt'
 import { summarizeComparison } from '@/features/docs-comparison/summary'
 import { getAllEmails } from '@/lib/api'
+import {
+  persistVisitedEmailIds,
+  readSession,
+  readVisitedEmailIds,
+  saveScrollAnchor,
+  useRestoreScroll,
+  writeSession,
+} from '@/lib/listViewState'
 import { GROUP_ORDER, groupFor } from '@/lib/time'
+import { cn } from '@/lib/utils'
 
-const FILTERS = [
-  { key: '', label: 'All' },
-  { key: 'mismatch', label: 'Mismatch' },
-  { key: 'no_mismatch', label: 'No mismatch' },
-  { key: 'needs_review', label: 'Needs review' },
+// An email "needs review" when any field is unresolved, but fields that clearly differ are still
+// recorded, so it also counts as a mismatch. The list shows both badges and both filters match.
+const hasMismatch = (item) => item.status === 'MISMATCH' || item.defect_fields?.length > 0
+const STATUS_FILTERS = [
+  { key: 'mismatch', label: 'Mismatch', matches: hasMismatch },
+  { key: 'no_mismatch', label: 'No mismatch', matches: (item) => item.status === 'OK' },
+  { key: 'needs_review', label: 'Needs review', matches: (item) => item.status === 'NEEDS_REVIEW' },
 ]
+const ALL_STATUS_KEYS = STATUS_FILTERS.map((filter) => filter.key)
+const VIEW_STATE_STORAGE_KEY = 'clearance:docs-comparison-view-state'
+const SCROLL_RESTORE_STORAGE_KEY = 'clearance:docs-comparison-scroll-restore'
+
+function readViewState(initialStatus) {
+  const fallback = { selectedStatuses: ALL_STATUS_KEYS, selectedPeriods: GROUP_ORDER, query: '' }
+  const stored = readSession(VIEW_STATE_STORAGE_KEY)
+  // A ?status= link (from the dashboard) picks the status, unless we are coming back from an
+  // email, in which case the filters the person had are kept as they were.
+  const returning = readSession(SCROLL_RESTORE_STORAGE_KEY) !== null
+  const linkedStatus = ALL_STATUS_KEYS.includes(initialStatus) && !returning ? initialStatus : null
+  if (!stored)
+    return { ...fallback, selectedStatuses: linkedStatus ? [linkedStatus] : ALL_STATUS_KEYS }
+  const onlyKnown = (values, allowed) =>
+    Array.isArray(values) ? values.filter((value) => allowed.includes(value)) : allowed
+  return {
+    selectedStatuses: linkedStatus
+      ? [linkedStatus]
+      : onlyKnown(stored.selectedStatuses, ALL_STATUS_KEYS),
+    selectedPeriods: onlyKnown(stored.selectedPeriods, GROUP_ORDER),
+    query: typeof stored.query === 'string' ? stored.query : '',
+  }
+}
 
 export function DocsComparisonListPage({ navigate, initialStatus = '' }) {
-  const [activeFilter, setActiveFilter] = useState(initialStatus || '')
-  const [query, setQuery] = useState('')
+  const [initialView] = useState(() => readViewState(initialStatus))
+  const [selectedStatuses, setSelectedStatuses] = useState(initialView.selectedStatuses)
+  const [selectedPeriods, setSelectedPeriods] = useState(initialView.selectedPeriods)
+  const [query, setQuery] = useState(initialView.query)
   const [data, setData] = useState({ items: [], total: 0 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [retryNonce, setRetryNonce] = useState(0)
+  const [visitedEmailIds, setVisitedEmailIds] = useState(readVisitedEmailIds)
+
+  // Keep the filters when an email is opened and this list is mounted again.
+  useEffect(() => {
+    writeSession(VIEW_STATE_STORAGE_KEY, { selectedStatuses, selectedPeriods, query })
+  }, [selectedStatuses, selectedPeriods, query])
+
+  // After returning from an email, put its row back where it was on screen.
+  useRestoreScroll(SCROLL_RESTORE_STORAGE_KEY, !loading && !error)
 
   useEffect(() => {
     setLoading(true)
@@ -37,17 +83,22 @@ export function DocsComparisonListPage({ navigate, initialStatus = '' }) {
       })
   }, [query, retryNonce])
 
-  const visibleItems = useMemo(
-    () =>
-      data.items.filter(
-        (item) =>
-          !activeFilter ||
-          (activeFilter === 'no_mismatch'
-            ? item.status === 'OK'
-            : item.status === activeFilter.toUpperCase()),
-      ),
-    [activeFilter, data.items],
-  )
+  function openEmail(emailId, row) {
+    saveScrollAnchor(SCROLL_RESTORE_STORAGE_KEY, emailId, row)
+    const nextVisitedEmailIds = new Set(visitedEmailIds)
+    nextVisitedEmailIds.add(emailId)
+    setVisitedEmailIds(nextVisitedEmailIds)
+    persistVisitedEmailIds(nextVisitedEmailIds)
+    navigate(`/docs-comparison/${emailId}`)
+  }
+
+  const allStatusesSelected = selectedStatuses.length === ALL_STATUS_KEYS.length
+
+  const visibleItems = useMemo(() => {
+    if (allStatusesSelected) return data.items
+    const active = STATUS_FILTERS.filter((filter) => selectedStatuses.includes(filter.key))
+    return data.items.filter((item) => active.some((filter) => filter.matches(item)))
+  }, [allStatusesSelected, selectedStatuses, data.items])
 
   const grouped = useMemo(() => {
     const now = new Date()
@@ -62,22 +113,28 @@ export function DocsComparisonListPage({ navigate, initialStatus = '' }) {
   const counts = useMemo(() => {
     const tally = { '': data.items.length, mismatch: 0, no_mismatch: 0, needs_review: 0 }
     for (const item of data.items) {
-      if (item.status === 'MISMATCH') tally.mismatch += 1
-      else if (item.status === 'OK') tally.no_mismatch += 1
-      else if (item.status === 'NEEDS_REVIEW') tally.needs_review += 1
+      for (const filter of STATUS_FILTERS) {
+        if (filter.matches(item)) tally[filter.key] += 1
+      }
     }
     return tally
   }, [data.items])
+
+  const shownGroups = GROUP_ORDER.filter(
+    (key) => selectedPeriods.includes(key) && grouped[key].length,
+  )
+  const shownCount = GROUP_ORDER.reduce(
+    (total, key) => total + (selectedPeriods.includes(key) ? grouped[key].length : 0),
+    0,
+  )
 
   return (
     <div className="mx-auto max-w-7xl px-5 py-10 lg:px-14">
       <header className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
         <div>
-          <p className="text-sm font-medium text-[#475569]">
-            {visibleItems.length} comparison requests
-          </p>
+          <p className="text-sm font-medium text-[#475569]">{shownCount} comparison requests</p>
           <h1 className="mt-1 text-5xl font-semibold tracking-tight text-[#0F172A]">
-            Docs Comparison
+            Document Comparison
           </h1>
         </div>
         <label className="flex h-14 w-full items-center gap-3 rounded-xl border border-[#CBD5E1] bg-white px-5 text-[#64748B] sm:max-w-[420px]">
@@ -98,34 +155,65 @@ export function DocsComparisonListPage({ navigate, initialStatus = '' }) {
         </div>
       )}
 
-      <div className="mt-9 flex flex-wrap gap-3">
-        {FILTERS.map((filter) => (
-          <button
-            key={filter.key}
-            type="button"
-            onClick={() => setActiveFilter(filter.key)}
-            aria-pressed={activeFilter === filter.key}
-            className={`inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 text-sm font-semibold leading-none transition-colors ${
-              activeFilter === filter.key
-                ? 'bg-[#0F172A] text-white'
-                : 'border border-slate-200 bg-white text-[#475569] hover:bg-[#F8FAFC]'
-            }`}
+      <div className="mt-9 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setSelectedStatuses(ALL_STATUS_KEYS)}
+          aria-pressed={allStatusesSelected}
+          className={cn(
+            'inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-semibold transition-colors',
+            allStatusesSelected
+              ? 'bg-[#0F172A] text-white'
+              : 'border border-slate-200 bg-white text-[#475569] hover:bg-[#F8FAFC]',
+          )}
+        >
+          All comparisons
+          <span
+            className={cn(
+              'rounded-full px-2 py-0.5 text-xs',
+              allStatusesSelected ? 'bg-[#334155] text-white' : 'bg-[#E2E8F0] text-[#475569]',
+            )}
           >
-            {filter.label}
-            <span
-              className={`rounded-full px-2 py-0.5 text-xs ${activeFilter === filter.key ? 'bg-[#334155] text-white' : 'bg-[#E2E8F0] text-[#475569]'}`}
-            >
-              {counts[filter.key]}
-            </span>
-          </button>
-        ))}
+            {counts['']}
+          </span>
+        </button>
+
+        <FilterMenu
+          id="docs-status-filter"
+          label="Status"
+          title="Show statuses"
+          icon={Funnel}
+          options={STATUS_FILTERS.map((filter) => ({
+            key: filter.key,
+            label: filter.label,
+            count: counts[filter.key],
+          }))}
+          selected={selectedStatuses}
+          onChange={setSelectedStatuses}
+        />
+
+        <FilterMenu
+          id="docs-period-filter"
+          label="Time period"
+          title="Show time periods"
+          icon={CalendarBlank}
+          options={GROUP_ORDER.map((period) => ({
+            key: period,
+            label: period,
+            count: grouped[period].length,
+          }))}
+          selected={selectedPeriods}
+          onChange={setSelectedPeriods}
+          align="right"
+          className="sm:ml-auto"
+        />
       </div>
 
       <div className="mt-6 space-y-8">
         {loading && <div className="py-14 text-center text-sm text-[#64748B]">Loading…</div>}
         {!loading &&
           !error &&
-          GROUP_ORDER.filter((key) => grouped[key].length).map((key) => (
+          shownGroups.map((key) => (
             <section key={key}>
               <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.1em] text-[#475569]">
                 {key}
@@ -137,8 +225,14 @@ export function DocsComparisonListPage({ navigate, initialStatus = '' }) {
                     <button
                       key={item.email_id}
                       type="button"
-                      onClick={() => navigate(`/docs-comparison/${item.email_id}`)}
-                      className="grid w-full grid-cols-1 gap-2 border-t border-[#E2E8F0] bg-white px-6 py-4 text-left transition-colors first:border-t-0 hover:bg-[#F8FAFC] lg:grid-cols-[90px_minmax(0,1.4fr)_170px_minmax(0,1.2fr)_100px] lg:items-start lg:gap-4"
+                      data-email-id={item.email_id}
+                      onClick={(event) => openEmail(item.email_id, event.currentTarget)}
+                      className={cn(
+                        'grid w-full grid-cols-1 gap-2 border-t border-[#E2E8F0] px-6 py-4 text-left transition-colors first:border-t-0 lg:grid-cols-[90px_minmax(0,1.4fr)_170px_minmax(0,1.2fr)_100px] lg:items-start lg:gap-4',
+                        visitedEmailIds.has(item.email_id)
+                          ? 'bg-[#F1F5F9] hover:bg-[#E2E8F0]'
+                          : 'bg-white hover:bg-[#F8FAFC]',
+                      )}
                     >
                       <span className="font-mono text-xs text-[#64748B]">{item.display_id}</span>
                       <span className="min-w-0">
@@ -149,8 +243,13 @@ export function DocsComparisonListPage({ navigate, initialStatus = '' }) {
                           {item.sender}
                         </span>
                       </span>
-                      <span>
+                      <span className="flex flex-col items-start gap-1">
                         <StatusBadge status={item.status} />
+                        {/* Needs review takes priority as the status, but fields that clearly
+                            differ are still recorded, so show that this email also has a mismatch. */}
+                        {item.status === 'NEEDS_REVIEW' && hasMismatch(item) && (
+                          <StatusBadge status="MISMATCH" />
+                        )}
                       </span>
                       <span
                         className={`line-clamp-2 text-sm ${summary.tone === 'mismatch' ? 'text-[#B91C1C]' : summary.tone === 'review' ? 'text-[#B45309]' : 'text-[#64748B]'}`}
@@ -164,7 +263,7 @@ export function DocsComparisonListPage({ navigate, initialStatus = '' }) {
               </div>
             </section>
           ))}
-        {!loading && !error && !visibleItems.length && (
+        {!loading && !error && !shownCount && (
           <div className="rounded-2xl border border-[#E2E8F0] bg-white py-14 text-center text-sm text-[#64748B]">
             No document-comparison emails match this filter.
           </div>

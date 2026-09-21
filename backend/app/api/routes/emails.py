@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from app.api.schemas.common import EmailCategory
 from app.api.schemas.emails import EmailDetail, EmailListResponse
 from app.api.schemas.review import (
+    ComparisonResultOverrideRequest,
     OverrideRequest,
     OverrideResponse,
     ResolveRequest,
@@ -13,7 +14,7 @@ from app.api.schemas.review import (
 )
 from app.services.dashboard_service import get_email_detail, to_email_item
 from app.services.override_service import OverrideError, apply_category_override
-from app.services.review_service import resolve_result
+from app.services.review_service import override_comparison_result, resolve_result
 
 router = APIRouter(tags=["emails"])
 
@@ -112,5 +113,25 @@ def resolve_email(email_id: str, payload: ResolveRequest, request: Request) -> R
         email_id=email_id,
         saved=True,
         message="Review decision saved",
+        result=result,
+    )
+
+
+@router.post("/emails/{email_id}/comparison-override", response_model=ResolveResponse)
+def override_comparison_result_route(
+    email_id: str,
+    payload: ComparisonResultOverrideRequest,
+    request: Request,
+) -> ResolveResponse:
+    try:
+        result = override_comparison_result(request.app.state.store, email_id, payload)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Result not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return ResolveResponse(
+        email_id=email_id,
+        saved=True,
+        message="Comparison result override saved",
         result=result,
     )

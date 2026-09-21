@@ -111,6 +111,13 @@ export function resolveEmail(emailId, payload) {
   })
 }
 
+export function overrideComparisonResult(emailId, payload) {
+  return request(`/api/emails/${emailId}/comparison-override`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
 export function submissionUrl() {
   return `${API_BASE}/api/export/submission`
 }
