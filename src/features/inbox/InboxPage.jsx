@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, MagnifyingGlass } from '@phosphor-icons/react'
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  MagnifyingGlass,
+  MagnifyingGlassMinus,
+  MagnifyingGlassPlus,
+} from '@phosphor-icons/react'
 
 import { CategoryBadge, StatusBadge } from '@/components/layout/StatusBadge'
 import { CategoryFilter } from '@/features/inbox/CategoryFilter'
@@ -59,6 +67,10 @@ function FilterButton({ filter, active, count, onClick }) {
   )
 }
 
+const ZOOM_MIN = 0.5
+const ZOOM_MAX = 1.5
+const ZOOM_STEP = 0.1
+
 function emailNumber(item) {
   const match = String(item.email_id || item.display_id || '').match(/\d+/)
   return match ? Number(match[0]) : 0
@@ -74,6 +86,7 @@ export function InboxPage({ navigate, initialStatus = '', from = null }) {
   const [loading, setLoading] = useState(true)
   const [sortDirection, setSortDirection] = useState('asc')
   const [hiddenCategories, setHiddenCategories] = useState([])
+  const [zoom, setZoom] = useState(1)
 
   useEffect(() => {
     setLoading(true)
@@ -105,6 +118,12 @@ export function InboxPage({ navigate, initialStatus = '', from = null }) {
     const direction = sortDirection === 'asc' ? 1 : -1
     return [...visibleItems].sort((a, b) => (emailNumber(a) - emailNumber(b)) * direction)
   }, [visibleItems, sortDirection])
+
+  function changeZoom(delta) {
+    setZoom((current) =>
+      Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round((current + delta) * 10) / 10)),
+    )
+  }
 
   function toggleCategory(key) {
     setHiddenCategories((current) =>
@@ -183,64 +202,100 @@ export function InboxPage({ navigate, initialStatus = '', from = null }) {
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.32fr)] xl:items-start">
-        <div className="overflow-hidden rounded-2xl border border-[#E3DED1] bg-white">
-          <div className="hidden grid-cols-[120px_minmax(260px,1.8fr)_190px_170px_minmax(220px,1fr)_32px] gap-4 bg-[#FBF9F4] px-6 py-4 text-xs font-semibold uppercase tracking-[0.08em] text-[#71808A] lg:grid">
-            <span>Email</span>
-            <span>Subject</span>
-            <span>Category</span>
-            <span>Status</span>
-            <span>What needs attention</span>
-            <span />
+        <div className="min-w-0">
+          <div className="mb-3 flex items-center justify-end gap-2 text-sm text-[#46555E]">
+            <span className="mr-1 hidden text-xs text-[#71808A] sm:inline">
+              Scroll sideways to see every column
+            </span>
+            <button
+              type="button"
+              onClick={() => changeZoom(-ZOOM_STEP)}
+              disabled={zoom <= ZOOM_MIN}
+              aria-label="Zoom out table"
+              className="grid h-9 w-9 place-items-center rounded-lg bg-white text-[#26353D] shadow-sm transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 disabled:opacity-40 disabled:hover:scale-100 disabled:hover:shadow-sm motion-reduce:transition-none"
+            >
+              <MagnifyingGlassMinus size={16} weight="bold" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setZoom(1)}
+              aria-label="Reset table zoom to 100%"
+              title="Reset zoom"
+              className="h-9 min-w-[3.5rem] rounded-lg bg-white px-2 font-mono text-xs font-semibold text-[#26353D] shadow-sm transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 motion-reduce:transition-none"
+            >
+              {Math.round(zoom * 100)}%
+            </button>
+            <button
+              type="button"
+              onClick={() => changeZoom(ZOOM_STEP)}
+              disabled={zoom >= ZOOM_MAX}
+              aria-label="Zoom in table"
+              className="grid h-9 w-9 place-items-center rounded-lg bg-white text-[#26353D] shadow-sm transition-all duration-200 ease-out hover:scale-105 hover:shadow-md active:scale-100 disabled:opacity-40 disabled:hover:scale-100 disabled:hover:shadow-sm motion-reduce:transition-none"
+            >
+              <MagnifyingGlassPlus size={16} weight="bold" />
+            </button>
           </div>
-          {loading && (
-            <div className="px-6 py-14 text-center text-sm text-[#71808A]">Loading emails…</div>
-          )}
-          {!loading &&
-            sortedItems.map((item) => (
-              <button
-                key={item.email_id}
-                onClick={() =>
-                  navigate(
-                    item.status === 'NEEDS_REVIEW'
-                      ? `/review/${item.email_id}`
-                      : `/inbox/${item.email_id}`,
-                  )
-                }
-                className="grid w-full grid-cols-1 gap-3 border-t border-[#E9E5D9] px-6 py-5 text-left transition-colors hover:bg-[#FCFAF4] lg:grid-cols-[120px_minmax(260px,1.8fr)_190px_170px_minmax(220px,1fr)_32px] lg:items-center lg:gap-4"
-              >
-                <span className="font-mono text-sm text-[#71808A]">{item.display_id}</span>
-                <span className="min-w-0">
-                  <strong className="block truncate text-[15px] text-[#26353D]">
-                    {item.subject}
-                  </strong>
-                  <span className="mt-1 block truncate text-sm text-[#71808A]">
-                    {item.sender} ·{' '}
-                    {item.attachments?.length
-                      ? `${item.attachments.length} attachments`
-                      : 'no attachments'}
-                  </span>
-                </span>
-                <CategoryBadge category={item.category} className="w-fit" />
-                <span>
-                  <StatusBadge status={item.status} />
-                </span>
-                <span className="truncate text-sm text-[#5E6D75]">
-                  <span className="mr-2 rounded-full bg-[#FBEBCF] px-2 py-1 font-mono text-xs text-[#8A5300]">
-                    {item.review_reason || ''}
-                  </span>
-                  {item.attention ||
-                    (item.status ? categoryLabel(item.category) : 'Classified only')}
-                </span>
-                <ArrowRight size={18} className="hidden text-[#71808A] lg:block" />
-              </button>
-            ))}
-          {!loading && !sortedItems.length && (
-            <div className="px-6 py-14 text-center text-sm text-[#71808A]">
-              {data.items.length
-                ? 'Every matching email is in a hidden category. Use Categories to show them.'
-                : 'No emails match this filter.'}
+          <div className="overflow-x-auto rounded-2xl border border-[#E3DED1] bg-white">
+            <div className="min-w-[1120px]" style={{ zoom }}>
+              <div className="grid grid-cols-[120px_minmax(260px,1.8fr)_190px_170px_minmax(220px,1fr)_32px] gap-4 bg-[#FBF9F4] px-6 py-4 text-xs font-semibold uppercase tracking-[0.08em] text-[#71808A]">
+                <span>Email</span>
+                <span>Subject</span>
+                <span>Category</span>
+                <span>Status</span>
+                <span>What needs attention</span>
+                <span />
+              </div>
+              {loading && (
+                <div className="px-6 py-14 text-center text-sm text-[#71808A]">Loading emails…</div>
+              )}
+              {!loading &&
+                sortedItems.map((item) => (
+                  <button
+                    key={item.email_id}
+                    onClick={() =>
+                      navigate(
+                        item.status === 'NEEDS_REVIEW'
+                          ? `/review/${item.email_id}`
+                          : `/inbox/${item.email_id}`,
+                      )
+                    }
+                    className="grid w-full gap-4 border-t border-[#E9E5D9] px-6 py-5 text-left transition-colors hover:bg-[#FCFAF4] grid-cols-[120px_minmax(260px,1.8fr)_190px_170px_minmax(220px,1fr)_32px] items-center"
+                  >
+                    <span className="font-mono text-sm text-[#71808A]">{item.display_id}</span>
+                    <span className="min-w-0">
+                      <strong className="block truncate text-[15px] text-[#26353D]">
+                        {item.subject}
+                      </strong>
+                      <span className="mt-1 block truncate text-sm text-[#71808A]">
+                        {item.sender} ·{' '}
+                        {item.attachments?.length
+                          ? `${item.attachments.length} attachments`
+                          : 'no attachments'}
+                      </span>
+                    </span>
+                    <CategoryBadge category={item.category} className="w-fit" />
+                    <span>
+                      <StatusBadge status={item.status} />
+                    </span>
+                    <span className="truncate text-sm text-[#5E6D75]">
+                      <span className="mr-2 rounded-full bg-[#FBEBCF] px-2 py-1 font-mono text-xs text-[#8A5300]">
+                        {item.review_reason || ''}
+                      </span>
+                      {item.attention ||
+                        (item.status ? categoryLabel(item.category) : 'Classified only')}
+                    </span>
+                    <ArrowRight size={18} className="text-[#71808A]" />
+                  </button>
+                ))}
+              {!loading && !sortedItems.length && (
+                <div className="px-6 py-14 text-center text-sm text-[#71808A]">
+                  {data.items.length
+                    ? 'Every matching email is in a hidden category. Use Categories to show them.'
+                    : 'No emails match this filter.'}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
 
         <InboxSidePanel filter={activeFilter} summary={summary} items={data.items} />
