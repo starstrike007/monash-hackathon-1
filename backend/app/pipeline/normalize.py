@@ -17,6 +17,37 @@ PORT_ALIASES = {
     "SINGAPORE": "SGSIN",
 }
 
+# Keep the descriptive port identity as well as the UN/LOCODE.  The dataset
+# contains adversarial-looking pairs where the code is the same but the
+# printed city is different (for example Mombasa versus Tuticorin with KEMBA).
+# A code-only identity would silently turn those real discrepancies into
+# matches.  These aliases only collapse harmless spelling/terminal variants;
+# an explicit conflicting city remains visible in the normalized value.
+PORT_NAME_ALIASES = {
+    "PORT KLANG WESTPORT": "PORT KLANG",
+    "PORT KLANG": "PORT KLANG",
+    "RUGAO NANTONG SHANGHAI": "RUGAO NANTONG SHANGHAI",
+    "NHAVA SHEVA": "NHAVA SHEVA",
+    "SINGAPORE": "SINGAPORE",
+    "BUATAN": "BUATAN",
+    "SHANGHAI": "SHANGHAI",
+    "NANTONG": "NANTONG",
+    "KARACHI": "KARACHI",
+    "CALLAO": "CALLAO",
+}
+
+PORT_CANONICAL_CODES = {
+    "PORT KLANG": "MYPKG",
+    "RUGAO NANTONG SHANGHAI": "CNSHA",
+    "NHAVA SHEVA": "INNSA",
+    "SINGAPORE": "SGSIN",
+    "BUATAN": "IDBUA",
+    "SHANGHAI": "CNSHA",
+    "NANTONG": "CNNTG",
+    "KARACHI": "PKKHI",
+    "CALLAO": "PECLL",
+}
+
 
 def normalize_text(value: str) -> str:
     value = unicodedata.normalize("NFKC", value).upper().strip()
@@ -36,14 +67,31 @@ def normalize_name(value: str) -> str:
 
 
 def normalize_port(value: str) -> str:
-    value = normalize_text(value)
-    code = re.search(r"\(([A-Z]{5})\)", value)
-    if code:
-        return code.group(1)
-    for alias, canonical in PORT_ALIASES.items():
-        if alias in value:
-            return canonical
-    return value
+    normalized = normalize_text(value)
+    code_match = re.search(r"\(([A-Z]{5})\)", normalized)
+    code = code_match.group(1) if code_match else None
+    if not code:
+        known_codes = set(PORT_CANONICAL_CODES.values())
+        code = next(
+            (candidate for candidate in known_codes if re.search(rf"\b{re.escape(candidate)}\b", normalized)),
+            None,
+        )
+    name_text = re.sub(rf"\b{re.escape(code)}\b", " ", normalized) if code else normalized
+    name_text = re.sub(r"\s+", " ", name_text).strip()
+
+    name = name_text
+    for alias, canonical in sorted(PORT_NAME_ALIASES.items(), key=lambda item: len(item[0]), reverse=True):
+        if alias in name_text:
+            name = canonical
+            break
+
+    if not name and code:
+        name = next((alias for alias, alias_code in PORT_CANONICAL_CODES.items() if alias_code == code), code)
+    if not code and name in PORT_CANONICAL_CODES:
+        code = PORT_CANONICAL_CODES[name]
+    if not name:
+        return code or normalized
+    return f"{name}|{code}" if code else name
 
 
 def normalize_container_count(value: str) -> str | None:

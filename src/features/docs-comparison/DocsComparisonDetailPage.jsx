@@ -6,7 +6,7 @@ import {
   CheckCircle,
   EnvelopeSimple,
   Flag,
-  WarningCircle,
+  Warning,
   XCircle,
 } from '@phosphor-icons/react'
 
@@ -31,23 +31,29 @@ const BANNER_TONE = {
   review: 'bg-[#FEF3C7] text-amber-700 border-[#FDE68A]',
 }
 
+// Same look as the "Why this needs a human review" banner: a plain outline icon and a
+// font-display semibold title in a darker shade of the banner colour.
+const BANNER_TITLE = {
+  ok: 'text-emerald-900',
+  mismatch: 'text-red-900',
+  review: 'text-[#78350F]',
+}
+
 const BANNER_ICONS = {
   ok: CheckCircle,
   mismatch: XCircle,
-  review: WarningCircle,
+  review: Warning,
 }
 
 function ResultBanner({ tone, text, children }) {
-  const BannerIcon = BANNER_ICONS[tone] || WarningCircle
+  const BannerIcon = BANNER_ICONS[tone] || Warning
 
   return (
     <div className={cn('w-full rounded-2xl border px-5 py-2.5', BANNER_TONE[tone])}>
       <div className="flex items-center gap-4">
-        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-white/70 shadow-sm">
-          <BannerIcon size={24} weight="fill" aria-hidden="true" />
-        </div>
+        <BannerIcon size={22} className="shrink-0" aria-hidden="true" />
         <div className="min-w-0">
-          <p className="font-display text-xl font-semibold">{text}</p>
+          <p className={cn('font-display font-semibold', BANNER_TITLE[tone])}>{text}</p>
           {children}
         </div>
       </div>
@@ -156,7 +162,7 @@ function ComparisonTable({
                   onSaveResult(comparison.field_name)
                 }}
                 disabled={!hasChanges || savingField === comparison.field_name}
-                className="inline-flex h-9 items-center gap-1 rounded-md bg-[#0F172A] px-2.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#E2E8F0] disabled:text-[#94A3B8]"
+                className="inline-flex h-9 items-center gap-1 rounded-md bg-[#0F172A] px-2.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#E6EEFC] disabled:text-[#94A3B8]"
               >
                 <Check size={14} aria-hidden="true" />
                 {savingField === comparison.field_name ? 'Saving...' : 'Save'}
@@ -315,7 +321,7 @@ export function DocsComparisonDetailPage({ navigate, emailId }) {
       <button
         type="button"
         onClick={() => navigate('/docs-comparison')}
-        className="mb-6 inline-flex h-10 items-center gap-2 rounded-lg border border-[#0F172A] bg-transparent px-4 text-sm font-semibold text-[#0F172A] hover:bg-white/60"
+        className="mb-6 inline-flex h-10 items-center gap-2 rounded-lg border border-[#B4C8EC] bg-[#E6EEFC] px-4 text-sm font-semibold text-[#0F172A] hover:bg-[#D6E3FA]"
       >
         <ArrowLeft size={16} />
         Document comparison
@@ -417,7 +423,7 @@ export function DocsComparisonDetailPage({ navigate, emailId }) {
               <button
                 type="button"
                 onClick={() => navigate(`/review/${openReviewItem.id}`)}
-                className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-[#0F172A] bg-transparent px-4 text-sm font-semibold text-[#0F172A] hover:bg-slate-100"
+                className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-[#B4C8EC] bg-[#E6EEFC] px-4 text-sm font-semibold text-[#0F172A] hover:bg-[#D6E3FA]"
               >
                 Go to human review
               </button>
