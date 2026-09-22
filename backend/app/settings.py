@@ -46,7 +46,7 @@ class Settings:
         self.openai_reasoning_effort_classify = (
             os.getenv("OPENAI_REASONING_EFFORT_CLASSIFY", "").strip() or None
         )
-        self.order_mode_policy = os.getenv("ORDER_MODE_POLICY", "review").strip().lower()
+        self.order_mode_policy = os.getenv("ORDER_MODE_POLICY", "same_party_match").strip().lower()
         if self.order_mode_policy not in {"review", "same_party_match", "always_mismatch"}:
             raise ValueError(
                 "ORDER_MODE_POLICY must be review, same_party_match, or always_mismatch"

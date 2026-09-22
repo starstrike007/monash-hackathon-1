@@ -207,6 +207,13 @@ Model failures are never cached.
 Render's free tier spins the service down when idle. Open the app a few
 minutes before a demo so the API has time to wake up.
 
+The dashboard bootstrap is asynchronous. It starts the pipeline once, then
+the dashboard reads the latest saved results and refreshes its summary while
+the remaining emails are processed. The `GET /api/dashboard/summary` endpoint
+is read-only, so a page refresh does not start a second full pipeline run.
+For a consistently fast first request, use an always-on Render instance or
+run the bootstrap before the demo begins.
+
 ## Vercel deployment
 
 The existing Vite app is at the repository root rather than in a `frontend/`

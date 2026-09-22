@@ -8,6 +8,13 @@ from app.services.review_item_service import ReviewItemError, resolve_review_ite
 router = APIRouter(tags=["review"])
 
 
+@router.get("/review/count")
+def review_count(request: Request) -> dict[str, int]:
+    """Return the badge count without seeding or rebuilding the dashboard."""
+
+    return {"count": len(request.app.state.store.list_review_items(status="open"))}
+
+
 @router.get("/review/items", response_model=ReviewItemListResponse)
 def list_review_items(
     request: Request,

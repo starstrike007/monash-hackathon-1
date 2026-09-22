@@ -13,11 +13,19 @@ class DatasetLoader:
         self.inbox_dir = self.data_dir / "inbox"
         self.attachments_dir = self.data_dir / "attachments"
         self.runtime_dir = Path(runtime_dir).resolve() if runtime_dir else None
+        # The bundled dataset is immutable at runtime. Keep the parsed email
+        # records and attachment metadata in memory so every dashboard poll
+        # does not reopen hundreds of JSON files or repeat filesystem stats.
+        self._emails_cache: list[dict[str, Any]] | None = None
+        self._attachment_sizes: dict[str, int | None] = {}
 
     def list_emails(self) -> list[dict[str, Any]]:
+        if self._emails_cache is not None:
+            return self._emails_cache
         records = []
         for path in sorted(self.inbox_dir.glob("email_*.json")):
             records.append(json.loads(path.read_text(encoding="utf-8")))
+        self._emails_cache = records
         return records
 
     def get_email(self, email_id: str) -> dict[str, Any]:
@@ -41,7 +49,11 @@ class DatasetLoader:
         return self.read_attachment_bytes(relative_path).decode("utf-8", errors="replace")
 
     def attachment_size(self, relative_path: str) -> int | None:
+        if relative_path in self._attachment_sizes:
+            return self._attachment_sizes[relative_path]
         try:
-            return self.resolve_attachment(relative_path).stat().st_size
+            size = self.resolve_attachment(relative_path).stat().st_size
         except FileNotFoundError:
-            return None
+            size = None
+        self._attachment_sizes[relative_path] = size
+        return size

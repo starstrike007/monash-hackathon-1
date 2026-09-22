@@ -84,3 +84,27 @@ def test_missing_dotenv_is_allowed(monkeypatch, tmp_path: Path):
         assert configured.openai_key_source is None
     finally:
         _restore_environment(original)
+
+
+def test_order_mode_policy_defaults_to_same_party_match_with_no_env_var(monkeypatch, tmp_path: Path):
+    monkeypatch.delenv("ORDER_MODE_POLICY", raising=False)
+
+    fake_settings_file = tmp_path / "repo" / "backend" / "app" / "settings.py"
+    fake_settings_file.parent.mkdir(parents=True)
+    monkeypatch.setattr(settings_module, "__file__", str(fake_settings_file))
+
+    configured = settings_module.Settings()
+
+    assert configured.order_mode_policy == "same_party_match"
+
+
+def test_order_mode_policy_env_var_still_selects_review_and_always_mismatch(monkeypatch, tmp_path: Path):
+    fake_settings_file = tmp_path / "repo" / "backend" / "app" / "settings.py"
+    fake_settings_file.parent.mkdir(parents=True)
+    monkeypatch.setattr(settings_module, "__file__", str(fake_settings_file))
+
+    monkeypatch.setenv("ORDER_MODE_POLICY", "review")
+    assert settings_module.Settings().order_mode_policy == "review"
+
+    monkeypatch.setenv("ORDER_MODE_POLICY", "always_mismatch")
+    assert settings_module.Settings().order_mode_policy == "always_mismatch"
