@@ -4,13 +4,40 @@ Date: 2026-09-22 (Asia/Singapore)
 
 ## Summary
 
-In progress. Final results, recommended settings, retained changes, and user decisions will be added here after the overnight run.
+The overnight run completed on `overnight/improve-2` without pushing or touching `main`.
+
+Headline results:
+
+| Configuration | Final score | Stage 1 macro-F1 | Defect precision | Defect recall | End-to-end | Reviews |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Baseline rules-only | 0.6726 | 0.7229 | 1.0000 | 0.6087 | 28/46 | 57 |
+| Baseline full OpenAI | 0.7012 | 0.8183 | 1.0000 | 0.6087 | 28/46 | 57 |
+| Final recommended rules-only | **0.9038** | 0.7229 | **1.0000** | **0.9783** | **45/46** | **21** |
+
+Recommended settings:
+
+- `ORDER_MODE_POLICY=same_party_match` gives the best measured result and preserves perfect defect precision. The committed default remains `review` pending the legal/business decision below.
+- `DRAFT_BL_REQUEST_RULE_ENABLED=true` remains recommended and default. Disabling it improved full Stage 1 score but increased reviews from 57 to 100 and expanded provider calls from 75 to 166.
+- Keep the persistent Stage 1 cache enabled (`IGNORE_STAGE1_LLM_CACHE=false`) for reproducibility and provider-call reuse.
+
+What changed:
+
+- Added configurable order-mode policies with deterministic same-party handling and no fuzzy matching.
+- Added a flag to route draft-BL requests either deterministically or to the LLM.
+- Added a persistent, versioned, atomic Stage 1 LLM cache with an ignore flag.
+- Prevented blank fields from consuming the next canonical label and recognized unit-suffixed placeholders.
+- Matched identical explicit port names when only one side includes a code, while preserving conflicting-name mismatches.
+
+Decisions required:
+
+1. Decide whether legal/operations accepts treating named and order-mode consignees with the exact same normalized party as a match. If yes, change `ORDER_MODE_POLICY` from the conservative `review` default to `same_party_match`.
+2. Decide whether the modest full-score gain from disabling the draft-BL deterministic rule is worth 43 additional reviews and substantially higher model usage. The recommendation is no.
 
 ## Guardrails and assumptions
 
 - Branch: `overnight/improve-2`, created from `main` at `c52305a`.
 - No push, merge, deployment, account creation, or modification of `main` is permitted.
-- Scorer budget: 10/14 used; full OpenAI exports: 2/2 used.
+- Scorer budget: 11/14 used; full OpenAI exports: 2/2 used.
 - The task-specified interpreter path `backend.venv\Scripts\python.exe` does not exist. The repository venv exists at `backend\.venv\Scripts\python.exe`; all Python and scorer commands use that interpreter. The scorer command is otherwise unchanged.
 - Runtime and output directories are fresh children of `C:\Users\User\monash-hackathon.runtime`.
 - The scorer is used only on complete 520-entry exports. Only aggregate scorer output is recorded.
@@ -30,6 +57,7 @@ In progress. Final results, recommended settings, retained changes, and user dec
 | 8 | 2 | Draft-BL rule off, full OpenAI | 0.7172 | 0.8715 | 1.0000 | 0.6087 | 28/46 | 100 |
 | 9 | 4 | Blank-label and unit-placeholder fix, rules-only | 0.6726 | 0.7229 | 1.0000 | 0.6087 | 28/46 | 59 |
 | 10 | 4 | Cumulative optional-port-code fix, rules-only | 0.6726 | 0.7229 | 1.0000 | 0.6087 | 28/46 | 59 |
+| 11 | 5 | Final cumulative recommended rules-only | 0.9038 | 0.7229 | 1.0000 | 0.9783 | 45/46 | 21 |
 
 ## Step 0 — Baseline
 
@@ -116,4 +144,8 @@ No third fix was attempted. Returns had flattened, all safely supported causes w
 
 ## Step 5 — Hygiene and final verification
 
-Pending.
+- Final recommended export summary: complete, 520 entries, zero LLM calls. Statuses: 454 OK, 45 MISMATCH, 21 NEEDS_REVIEW. Review reasons: five missing attachment, five missing value, six unreadable, five wrong document type. Seven rows contain a consignee defect.
+- `.gitignore` covers `.runtime/`, `.env`/`.env*`, `backend/output/`, and `*.zip`.
+- The prohibited-provider repository scan returned no matches.
+- The `main...HEAD` diff token-pattern scan found zero `sk-`, `AIza`, or long `eyJ` candidates.
+- Final backend suite: 83 passed, 1 xfailed, 2 xpassed, with two dependency deprecation warnings. The branch worktree was clean after the final report commit.
