@@ -177,6 +177,7 @@ function ComparisonTable({
 
 export function DocsComparisonDetailPage({ navigate, emailId }) {
   const [detail, setDetail] = useState(null)
+  const [loadingProgress, setLoadingProgress] = useState(null)
   const [reviewItem, setReviewItem] = useState(null)
   const [activeField, setActiveField] = useState(null)
   const [error, setError] = useState(null)
@@ -196,7 +197,8 @@ export function DocsComparisonDetailPage({ navigate, emailId }) {
     setError(null)
     setResultSaveError(null)
     setPendingResults({})
-    getEmail(emailId)
+    setLoadingProgress(null)
+    getEmail(emailId, { onProgress: setLoadingProgress })
       .then((data) => {
         setDetail(data)
         const comparisons = data.result?.comparisons || []
@@ -311,7 +313,11 @@ export function DocsComparisonDetailPage({ navigate, emailId }) {
   if (!detail) {
     return (
       <div className="p-8 lg:p-12">
-        <LoadingBoat label="Loading comparison" />
+        <LoadingBoat
+          label="Loading comparison"
+          percentage={loadingProgress?.percentage}
+          message={loadingProgress?.message}
+        />
       </div>
     )
   }

@@ -458,16 +458,18 @@ function ReopenIssueButton({ itemId, onSaved }) {
 export function ReviewItemDetailPage({ navigate, itemId }) {
   const [item, setItem] = useState(null)
   const [email, setEmail] = useState(null)
+  const [loadingProgress, setLoadingProgress] = useState(null)
   const [notice, setNotice] = useState('')
   const [error, setError] = useState(null)
   const [activeField, setActiveField] = useState(null)
 
   useEffect(() => {
     setError(null)
-    getReviewItem(itemId)
+    setLoadingProgress(null)
+    getReviewItem(itemId, { onProgress: setLoadingProgress })
       .then((data) => {
         setItem(data)
-        getEmail(data.email_id).then(setEmail).catch(setError)
+        getEmail(data.email_id, { onProgress: setLoadingProgress }).then(setEmail).catch(setError)
       })
       .catch(setError)
   }, [itemId])
@@ -516,7 +518,11 @@ export function ReviewItemDetailPage({ navigate, itemId }) {
   if (!item) {
     return (
       <div className="p-8 lg:p-12">
-        <LoadingBoat label="Loading review item" />
+        <LoadingBoat
+          label="Loading review item"
+          percentage={loadingProgress?.percentage}
+          message={loadingProgress?.message}
+        />
       </div>
     )
   }

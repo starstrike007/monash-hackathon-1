@@ -59,6 +59,7 @@ export function DocsComparisonListPage({ navigate, initialStatus = '' }) {
   const [query, setQuery] = useState(initialView.query)
   const [data, setData] = useState({ items: [], total: 0 })
   const [loading, setLoading] = useState(true)
+  const [loadingProgress, setLoadingProgress] = useState(null)
   const [error, setError] = useState(null)
   const [retryNonce, setRetryNonce] = useState(0)
   const [visitedEmailIds, setVisitedEmailIds] = useState(readVisitedEmailIds)
@@ -72,17 +73,31 @@ export function DocsComparisonListPage({ navigate, initialStatus = '' }) {
   useRestoreScroll(SCROLL_RESTORE_STORAGE_KEY, !loading && !error)
 
   useEffect(() => {
+    let active = true
     setLoading(true)
+    setLoadingProgress(null)
     setError(null)
-    getAllEmails({ category: 'BL_COMPARISON', query })
+    getAllEmails(
+      { category: 'BL_COMPARISON', query },
+      {
+        onProgress: (status) => {
+          if (active) setLoadingProgress(status)
+        },
+      },
+    )
       .then((result) => {
+        if (!active) return
         setData(result)
         setLoading(false)
       })
       .catch((reason) => {
+        if (!active) return
         setError(reason)
         setLoading(false)
       })
+    return () => {
+      active = false
+    }
   }, [query, retryNonce])
 
   function openEmail(emailId, row) {
@@ -212,7 +227,13 @@ export function DocsComparisonListPage({ navigate, initialStatus = '' }) {
       </div>
 
       <div className="mt-6 space-y-8">
-        {loading && <LoadingBoat label="Loading document comparison" />}
+        {loading && (
+          <LoadingBoat
+            label="Loading document comparison"
+            percentage={loadingProgress?.percentage}
+            message={loadingProgress?.message}
+          />
+        )}
         {!loading &&
           !error &&
           shownGroups.map((key) => (

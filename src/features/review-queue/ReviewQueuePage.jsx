@@ -61,6 +61,7 @@ export function ReviewQueuePage({ navigate, initialReason = '' }) {
   const [emailsById, setEmailsById] = useState({})
   const [emailsReady, setEmailsReady] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadingProgress, setLoadingProgress] = useState(null)
   const [error, setError] = useState(null)
   const [retryNonce, setRetryNonce] = useState(0)
   const [visitedEmailIds, setVisitedEmailIds] = useState(readVisitedEmailIds)
@@ -70,25 +71,53 @@ export function ReviewQueuePage({ navigate, initialReason = '' }) {
   }, [selectedPeriods, selectedReasons, query])
 
   useEffect(() => {
-    getAllEmails({})
+    let active = true
+    setLoadingProgress(null)
+    getAllEmails(
+      {},
+      {
+        onProgress: (status) => {
+          if (active) setLoadingProgress(status)
+        },
+      },
+    )
       .then((data) => {
+        if (!active) return
         setEmailsById(Object.fromEntries((data.items || []).map((item) => [item.email_id, item])))
         setEmailsReady(true)
       })
-      .catch(setError)
+      .catch((reason) => {
+        if (active) setError(reason)
+      })
+    return () => {
+      active = false
+    }
   }, [retryNonce])
 
   useEffect(() => {
+    let active = true
     setLoading(true)
-    getReviewItems({ status: statusFilter })
+    getReviewItems(
+      { status: statusFilter },
+      {
+        onProgress: (status) => {
+          if (active) setLoadingProgress(status)
+        },
+      },
+    )
       .then((data) => {
+        if (!active) return
         setItems(data.items || [])
         setLoading(false)
       })
       .catch((reason) => {
+        if (!active) return
         setError(reason)
         setLoading(false)
       })
+    return () => {
+      active = false
+    }
   }, [statusFilter, retryNonce])
 
   // Search subject, sender or email ID. Counts in the filter menus follow the search, as in the inbox.
@@ -243,7 +272,13 @@ export function ReviewQueuePage({ navigate, initialReason = '' }) {
       </div>
 
       <div className="mt-6 space-y-8">
-        {!ready && !error && <LoadingBoat label="Loading human review" />}
+        {!ready && !error && (
+          <LoadingBoat
+            label="Loading human review"
+            percentage={loadingProgress?.percentage}
+            message={loadingProgress?.message}
+          />
+        )}
         {ready &&
           GROUP_ORDER.filter((key) => grouped[key].length).map((key) => (
             <section key={key}>

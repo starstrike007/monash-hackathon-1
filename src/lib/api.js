@@ -2,6 +2,9 @@
 // client working whether the app is opened at localhost or 127.0.0.1, and
 // avoids a browser-side cross-origin request for every detail view.
 const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || ''
+const REQUEST_TIMEOUT_MS = 30_000
+const PIPELINE_POLL_INTERVAL_MS = 750
+const PIPELINE_WAIT_TIMEOUT_MS = 10 * 60 * 1000
 
 export function notifyDataChanged() {
   window.dispatchEvent(new CustomEvent('clearance:data-changed'))
@@ -18,6 +21,8 @@ export class ApiError extends Error {
 
 async function request(path, options = {}) {
   let response
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
   const headers = { ...(options.headers || {}) }
   if (options.body && !Object.keys(headers).some((key) => key.toLowerCase() === 'content-type')) {
     headers['Content-Type'] = 'application/json'
@@ -26,12 +31,18 @@ async function request(path, options = {}) {
     response = await fetch(`${API_BASE}${path}`, {
       ...options,
       headers,
+      signal: options.signal || controller.signal,
     })
   } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new ApiError('The backend request timed out. Please retry.', { cause: error })
+    }
     throw new ApiError('Backend unreachable. Start the FastAPI service and try again.', {
       backendUnavailable: true,
       cause: error,
     })
+  } finally {
+    window.clearTimeout(timeout)
   }
   if (!response.ok) {
     let detail = ''
@@ -69,8 +80,63 @@ export function getEmails(params = {}) {
   return request(`/api/emails?${queryString(params)}`)
 }
 
-export function getAllEmails(params = {}) {
+const PIPELINE_ACTIVE_STATUSES = new Set(['queued', 'running'])
+let pipelineReadyPromise = null
+const pipelineProgressListeners = new Set()
+
+function publishPipelineProgress(status) {
+  for (const listener of pipelineProgressListeners) {
+    try {
+      listener(status)
+    } catch {
+      // A page may unmount while the shared bootstrap is still running.
+    }
+  }
+}
+
+function wait(milliseconds) {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds))
+}
+
+/**
+ * Start the one shared bootstrap and wait for it without making any tab GET
+ * request own the full 520-email pipeline run. Multiple tabs join this same
+ * promise and receive the same real progress updates.
+ */
+export function ensurePipelineReady({ onProgress } = {}) {
+  if (onProgress) pipelineProgressListeners.add(onProgress)
+  if (!pipelineReadyPromise) {
+    pipelineReadyPromise = (async () => {
+      let status = await startPipelineBootstrap()
+      publishPipelineProgress(status)
+      const deadline = Date.now() + PIPELINE_WAIT_TIMEOUT_MS
+
+      while (PIPELINE_ACTIVE_STATUSES.has(status.status)) {
+        if (Date.now() >= deadline) {
+          throw new ApiError('The dashboard pipeline is taking too long. Please retry.')
+        }
+        await wait(PIPELINE_POLL_INTERVAL_MS)
+        status = await getPipelineBootstrapStatus()
+        publishPipelineProgress(status)
+      }
+
+      if (status.status === 'failed') {
+        throw new ApiError(status.message || 'The dashboard pipeline failed to load.')
+      }
+
+      return status
+    })().finally(() => {
+      pipelineReadyPromise = null
+      pipelineProgressListeners.clear()
+    })
+  }
+
+  return pipelineReadyPromise
+}
+
+export function getAllEmails(params = {}, options = {}) {
   return (async () => {
+    await ensurePipelineReady(options)
     // The API caps a page at 200 items, so collect every page for the inbox.
     const pageSize = 200
     const items = []
@@ -93,8 +159,8 @@ export function getAllEmails(params = {}) {
   })()
 }
 
-export function getEmail(emailId) {
-  return request(`/api/emails/${emailId}`)
+export function getEmail(emailId, options = {}) {
+  return ensurePipelineReady(options).then(() => request(`/api/emails/${emailId}`))
 }
 
 export function runPipeline() {
@@ -192,12 +258,12 @@ export function getAttachmentView(path) {
   return request(`/api/attachments/${relativeAttachmentPath(path)}/view`)
 }
 
-export function getReviewItems(params = {}) {
-  return request(`/api/review/items?${queryString(params)}`)
+export function getReviewItems(params = {}, options = {}) {
+  return ensurePipelineReady(options).then(() => request(`/api/review/items?${queryString(params)}`))
 }
 
-export function getReviewItem(itemId) {
-  return request(`/api/review/items/${itemId}`)
+export function getReviewItem(itemId, options = {}) {
+  return ensurePipelineReady(options).then(() => request(`/api/review/items/${itemId}`))
 }
 
 export function resolveReviewItem(itemId, payload) {

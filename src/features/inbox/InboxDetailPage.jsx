@@ -163,11 +163,13 @@ export function InboxDetailPage({ navigate, emailId }) {
   const [detail, setDetail] = useState(null)
   const [saving, setSaving] = useState(false)
   const [pendingCategory, setPendingCategory] = useState('')
+  const [loadingProgress, setLoadingProgress] = useState(null)
   const [error, setError] = useState(null)
 
   function load() {
     setError(null)
-    getEmail(emailId)
+    setLoadingProgress(null)
+    getEmail(emailId, { onProgress: setLoadingProgress })
       .then((data) => {
         setDetail(data)
         setPendingCategory(data.category_override || data.category || '')
@@ -205,7 +207,11 @@ export function InboxDetailPage({ navigate, emailId }) {
   if (!detail) {
     return (
       <div className="p-8 lg:p-12">
-        <LoadingBoat label="Loading email" />
+        <LoadingBoat
+          label="Loading email"
+          percentage={loadingProgress?.percentage}
+          message={loadingProgress?.message}
+        />
       </div>
     )
   }

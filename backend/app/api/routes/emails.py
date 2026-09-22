@@ -31,7 +31,11 @@ def list_emails(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
 ) -> EmailListResponse:
-    request.app.state.orchestrator.ensure_seeded()
+    # Reads must not block the browser while the first full pipeline run is
+    # being built. The frontend starts and polls this bootstrap explicitly;
+    # returning the currently saved results keeps the API responsive for
+    # direct consumers too.
+    request.app.state.orchestrator.start_bootstrap_for_read()
     loader = request.app.state.loader
     store = request.app.state.store
     results = {item.get("email_id"): item for item in store.list_latest_results()}
@@ -68,7 +72,7 @@ def list_emails(
 
 @router.get("/emails/{email_id}", response_model=EmailDetail)
 def email_detail(email_id: str, request: Request) -> EmailDetail:
-    request.app.state.orchestrator.ensure_seeded()
+    request.app.state.orchestrator.start_bootstrap_for_read()
     try:
         email = request.app.state.loader.get_email(email_id)
     except FileNotFoundError as exc:

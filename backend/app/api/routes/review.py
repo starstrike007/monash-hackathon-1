@@ -22,7 +22,7 @@ def list_review_items(
     reason: str | None = Query(default=None),
     email_id: str | None = Query(default=None),
 ) -> ReviewItemListResponse:
-    request.app.state.orchestrator.ensure_seeded()
+    request.app.state.orchestrator.start_bootstrap_for_read()
     store = request.app.state.store
     items = store.list_review_items(status=status, email_id=email_id)
     if reason:
@@ -33,7 +33,7 @@ def list_review_items(
 
 @router.get("/review/items/{item_id}", response_model=ReviewItem)
 def get_review_item(item_id: str, request: Request) -> ReviewItem:
-    request.app.state.orchestrator.ensure_seeded()
+    request.app.state.orchestrator.start_bootstrap_for_read()
     item = request.app.state.store.get_review_item(item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Review item not found")

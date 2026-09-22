@@ -232,6 +232,28 @@ class PipelineOrchestrator:
 
         return self.get_bootstrap_status()
 
+    def start_bootstrap_for_read(self) -> dict[str, Any]:
+        """Prepare read endpoints without making a cold request run the pipeline.
+
+        Existing results still go through the lightweight reconciliation in
+        ``ensure_seeded`` so older local stores receive review items and
+        timestamps. An empty store starts the background bootstrap instead.
+        """
+
+        with self._bootstrap_lock:
+            bootstrap_active = bool(
+                self._bootstrap_state
+                and self._bootstrap_state.get("status") in {"queued", "running"}
+            )
+        if bootstrap_active:
+            return self.get_bootstrap_status()
+
+        if self.store.latest_run() or self.store.list_latest_results():
+            self.ensure_seeded()
+            return self.get_bootstrap_status()
+
+        return self.start_bootstrap()
+
     def ensure_seeded(self) -> None:
         # A run can legitimately finish with no saved result for a failed
         # item. The run record still proves the store has been initialized;

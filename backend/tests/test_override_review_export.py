@@ -109,6 +109,36 @@ def test_review_count_does_not_start_pipeline(api_client):
     assert app.state.store.latest_run() is None
 
 
+def test_read_tabs_start_bootstrap_without_blocking_on_pipeline(api_client, monkeypatch):
+    calls = []
+
+    def start_bootstrap():
+        calls.append(True)
+        return {
+            "status": "queued",
+            "run_id": None,
+            "total_emails": 2,
+            "processed_count": 0,
+            "percentage": 0,
+            "stage": "Queued",
+            "message": "Starting the dashboard pipeline.",
+        }
+
+    def unexpected_sync_seed():
+        pytest.fail("a read tab must not synchronously run the full pipeline")
+
+    monkeypatch.setattr(app.state.orchestrator, "start_bootstrap_for_read", start_bootstrap)
+    monkeypatch.setattr(app.state.orchestrator, "ensure_seeded", unexpected_sync_seed)
+
+    emails = api_client.get("/api/emails?page=1&page_size=1")
+    reviews = api_client.get("/api/review/items?status=open")
+
+    assert emails.status_code == 200
+    assert reviews.status_code == 200
+    assert len(calls) == 2
+    assert app.state.store.latest_run() is None
+
+
 def test_override_away_from_comparison_clears_status(api_client):
     api_client.post("/api/pipeline/run", json={"email_ids": ["email_fixture_ok"]})
     before = api_client.get("/api/emails/email_fixture_ok").json()

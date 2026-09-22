@@ -83,6 +83,7 @@ export function InboxPage({ navigate, initialCategory = '' }) {
   const [query, setQuery] = useState(initialView.query)
   const [data, setData] = useState({ items: [], total: 0 })
   const [loading, setLoading] = useState(true)
+  const [loadingProgress, setLoadingProgress] = useState(null)
   const [error, setError] = useState(null)
   const [retryNonce, setRetryNonce] = useState(0)
   const [businessDay, setBusinessDay] = useState(() => businessDateKey(new Date()))
@@ -131,17 +132,31 @@ export function InboxPage({ navigate, initialCategory = '' }) {
   }, [])
 
   useEffect(() => {
+    let active = true
     setLoading(true)
+    setLoadingProgress(null)
     setError(null)
-    getAllEmails({ query })
+    getAllEmails(
+      { query },
+      {
+        onProgress: (status) => {
+          if (active) setLoadingProgress(status)
+        },
+      },
+    )
       .then((result) => {
+        if (!active) return
         setData(result)
         setLoading(false)
       })
       .catch((reason) => {
+        if (!active) return
         setError(reason)
         setLoading(false)
       })
+    return () => {
+      active = false
+    }
   }, [businessDay, query, retryNonce])
 
   useEffect(() => {
@@ -416,7 +431,13 @@ export function InboxPage({ navigate, initialCategory = '' }) {
       </div>
 
       <div className="mt-6 space-y-8">
-        {loading && <LoadingBoat label="Loading inbox" />}
+        {loading && (
+          <LoadingBoat
+            label="Loading inbox"
+            percentage={loadingProgress?.percentage}
+            message={loadingProgress?.message}
+          />
+        )}
         {!loading &&
           !error &&
           GROUP_ORDER.filter((key) => selectedPeriods.includes(key) && grouped[key].length).map(
