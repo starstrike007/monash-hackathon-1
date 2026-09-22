@@ -91,6 +91,24 @@ def test_dashboard_bootstrap_reports_real_progress(api_client):
     assert status["processed_count"] == status["total_emails"]
 
 
+def test_dashboard_summary_is_read_only_before_bootstrap(api_client):
+    response = api_client.get("/api/dashboard/summary")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["processing"]["status"] == "idle"
+    assert body["total_emails"] == len(list((FIXTURE_DATA_DIR / "inbox").glob("email_*.json")))
+    assert app.state.store.latest_run() is None
+
+
+def test_review_count_does_not_start_pipeline(api_client):
+    response = api_client.get("/api/review/count")
+
+    assert response.status_code == 200
+    assert response.json() == {"count": 0}
+    assert app.state.store.latest_run() is None
+
+
 def test_override_away_from_comparison_clears_status(api_client):
     api_client.post("/api/pipeline/run", json={"email_ids": ["email_fixture_ok"]})
     before = api_client.get("/api/emails/email_fixture_ok").json()

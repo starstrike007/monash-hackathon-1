@@ -18,10 +18,14 @@ export class ApiError extends Error {
 
 async function request(path, options = {}) {
   let response
+  const headers = { ...(options.headers || {}) }
+  if (options.body && !Object.keys(headers).some((key) => key.toLowerCase() === 'content-type')) {
+    headers['Content-Type'] = 'application/json'
+  }
   try {
     response = await fetch(`${API_BASE}${path}`, {
-      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
       ...options,
+      headers,
     })
   } catch (error) {
     throw new ApiError('Backend unreachable. Start the FastAPI service and try again.', {
@@ -55,6 +59,10 @@ function queryString(params = {}) {
 
 export function getDashboard() {
   return request('/api/dashboard/summary')
+}
+
+export function getReviewCount() {
+  return request('/api/review/count')
 }
 
 export function getEmails(params = {}) {
@@ -98,10 +106,9 @@ export function getPipelineRun(runId) {
 }
 
 export function startPipelineBootstrap() {
-  return request('/api/pipeline/bootstrap', {
-    method: 'POST',
-    body: JSON.stringify({}),
-  })
+  // The endpoint has no request body. Omitting JSON headers keeps this
+  // cross-origin POST a simple request, avoiding an extra CORS preflight.
+  return request('/api/pipeline/bootstrap', { method: 'POST' })
 }
 
 export function getPipelineBootstrapStatus() {

@@ -1,8 +1,20 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from .emails import EmailListItem
+
+
+class DashboardProcessing(BaseModel):
+    status: Literal["idle", "queued", "running", "complete", "ready", "failed"] = "ready"
+    run_id: str | None = None
+    total_emails: int = 0
+    processed_count: int = 0
+    percentage: int = 100
+    stage: str = "Ready"
+    message: str = "Dashboard data is ready."
 
 
 class DashboardSummary(BaseModel):
@@ -17,3 +29,5 @@ class DashboardSummary(BaseModel):
     latest_run_id: str | None = None
     last_run_at: str | None = None
     review_queue_open: int = 0
+    total_emails: int = 0
+    processing: DashboardProcessing = Field(default_factory=DashboardProcessing)

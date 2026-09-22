@@ -1,14 +1,42 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 
 import { AppShell } from '@/components/layout/AppShell'
-import { getDashboard } from '@/lib/api'
-import { DashboardPage } from '@/features/dashboard/DashboardPage'
-import { InboxDetailPage } from '@/features/inbox/InboxDetailPage'
-import { InboxPage } from '@/features/inbox/InboxPage'
-import { DocsComparisonDetailPage } from '@/features/docs-comparison/DocsComparisonDetailPage'
-import { DocsComparisonListPage } from '@/features/docs-comparison/DocsComparisonListPage'
-import { ReviewItemDetailPage } from '@/features/review-queue/ReviewItemDetailPage'
-import { ReviewQueuePage } from '@/features/review-queue/ReviewQueuePage'
+import { LoadingBoat } from '@/components/LoadingBoat'
+import { getReviewCount } from '@/lib/api'
+
+const DashboardPage = lazy(() =>
+  import('@/features/dashboard/DashboardPage').then((module) => ({
+    default: module.DashboardPage,
+  })),
+)
+const InboxDetailPage = lazy(() =>
+  import('@/features/inbox/InboxDetailPage').then((module) => ({
+    default: module.InboxDetailPage,
+  })),
+)
+const InboxPage = lazy(() =>
+  import('@/features/inbox/InboxPage').then((module) => ({ default: module.InboxPage })),
+)
+const DocsComparisonDetailPage = lazy(() =>
+  import('@/features/docs-comparison/DocsComparisonDetailPage').then((module) => ({
+    default: module.DocsComparisonDetailPage,
+  })),
+)
+const DocsComparisonListPage = lazy(() =>
+  import('@/features/docs-comparison/DocsComparisonListPage').then((module) => ({
+    default: module.DocsComparisonListPage,
+  })),
+)
+const ReviewItemDetailPage = lazy(() =>
+  import('@/features/review-queue/ReviewItemDetailPage').then((module) => ({
+    default: module.ReviewItemDetailPage,
+  })),
+)
+const ReviewQueuePage = lazy(() =>
+  import('@/features/review-queue/ReviewQueuePage').then((module) => ({
+    default: module.ReviewQueuePage,
+  })),
+)
 
 function currentLocation() {
   const url = new URL(window.location.href)
@@ -43,9 +71,9 @@ export function Router() {
     if (location.pathname === '/') navigate('/dashboard', true)
     let active = true
     const refreshReviewCount = () =>
-      getDashboard()
+      getReviewCount()
         .then((data) => {
-          if (active) setReviewCount(data.review_queue_open ?? 0)
+          if (active) setReviewCount(data.count ?? 0)
         })
         .catch(() => {
           if (active) setReviewCount(null)
@@ -98,7 +126,15 @@ export function Router() {
 
   return (
     <AppShell pathname={route.pathname} navigate={navigate} reviewCount={reviewCount}>
-      {content}
+      <Suspense
+        fallback={
+          <div className="mx-auto max-w-[900px] px-5 py-10 lg:px-14">
+            <LoadingBoat label="Loading page" compact />
+          </div>
+        }
+      >
+        {content}
+      </Suspense>
     </AppShell>
   )
 }

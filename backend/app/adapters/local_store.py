@@ -64,88 +64,103 @@ class LocalStore:
                 self.persist()
 
     def create_run(self, total_emails: int) -> dict[str, Any]:
-        run_id = str(uuid.uuid4())
-        run = {
-            "run_id": run_id,
-            "status": "queued",
-            "started_at": None,
-            "finished_at": None,
-            "total_emails": total_emails,
-            "summary": {},
-            "error_summary": {},
-        }
-        self.state["runs"][run_id] = run
-        self.persist()
-        return run
+        with self.lock:
+            run_id = str(uuid.uuid4())
+            run = {
+                "run_id": run_id,
+                "status": "queued",
+                "started_at": None,
+                "finished_at": None,
+                "total_emails": total_emails,
+                "summary": {},
+                "error_summary": {},
+            }
+            self.state["runs"][run_id] = run
+            self.persist()
+            return run
 
     def update_run(self, run_id: str, **changes: Any) -> dict[str, Any]:
-        self.state["runs"].setdefault(run_id, {}).update(changes)
-        self.persist()
-        return self.state["runs"][run_id]
+        with self.lock:
+            self.state["runs"].setdefault(run_id, {}).update(changes)
+            self.persist()
+            return self.state["runs"][run_id]
 
     def upsert_stage(self, run_id: str, stage_number: int, payload: dict[str, Any]) -> dict[str, Any]:
-        key = f"{run_id}:{stage_number}"
-        self.state["stages"][key] = {"run_id": run_id, **payload}
-        self.persist()
-        return self.state["stages"][key]
+        with self.lock:
+            key = f"{run_id}:{stage_number}"
+            self.state["stages"][key] = {"run_id": run_id, **payload}
+            self.persist()
+            return self.state["stages"][key]
 
     def save_result(self, result: dict[str, Any]) -> None:
-        run_id = result.get("run_id") or "latest"
-        self.state["results"][f"{run_id}:{result['email_id']}"] = result
-        self.persist()
+        with self.lock:
+            run_id = result.get("run_id") or "latest"
+            self.state["results"][f"{run_id}:{result['email_id']}"] = result
+            self.persist()
 
     def get_result(self, email_id: str, run_id: str | None = None) -> dict[str, Any] | None:
-        if run_id:
-            return self.state["results"].get(f"{run_id}:{email_id}")
-        candidates = [
-            value
-            for value in self.state["results"].values()
-            if value.get("email_id") == email_id
-        ]
-        return max(candidates, key=lambda value: value.get("updated_at", ""), default=None)
+        with self.lock:
+            if run_id:
+                return self.state["results"].get(f"{run_id}:{email_id}")
+            candidates = [
+                value
+                for value in self.state["results"].values()
+                if value.get("email_id") == email_id
+            ]
+            return max(candidates, key=lambda value: value.get("updated_at", ""), default=None)
 
     def list_latest_results(self) -> list[dict[str, Any]]:
-        latest: dict[str, dict[str, Any]] = {}
-        for value in self.state["results"].values():
-            email_id = value.get("email_id")
-            if email_id is None or value.get("updated_at", "") >= latest.get(email_id, {}).get("updated_at", ""):
-                latest[email_id] = value
-        return list(latest.values())
+        with self.lock:
+            latest: dict[str, dict[str, Any]] = {}
+            for value in self.state["results"].values():
+                email_id = value.get("email_id")
+                if email_id is None or value.get("updated_at", "") >= latest.get(email_id, {}).get("updated_at", ""):
+                    latest[email_id] = value
+            return list(latest.values())
 
     def get_run(self, run_id: str) -> dict[str, Any] | None:
-        return self.state["runs"].get(run_id)
+        with self.lock:
+            return self.state["runs"].get(run_id)
 
     def latest_run(self) -> dict[str, Any] | None:
-        return max(self.state["runs"].values(), key=lambda value: value.get("started_at") or "", default=None)
+        with self.lock:
+            return max(self.state["runs"].values(), key=lambda value: value.get("started_at") or "", default=None)
 
     def get_stages(self, run_id: str) -> list[dict[str, Any]]:
-        stages = [value for value in self.state["stages"].values() if value.get("run_id") == run_id]
-        return sorted(stages, key=lambda value: value.get("stage_number", 0))
+        with self.lock:
+            stages = [value for value in self.state["stages"].values() if value.get("run_id") == run_id]
+            return sorted(stages, key=lambda value: value.get("stage_number", 0))
 
     def save_failures(self, run_id: str, failures: list[dict[str, Any]]) -> None:
-        self.state["failures"][run_id] = failures
-        self.persist()
+        with self.lock:
+            self.state["failures"][run_id] = failures
+            self.persist()
 
     def get_failures(self, run_id: str) -> list[dict[str, Any]]:
-        return self.state.get("failures", {}).get(run_id, [])
+        with self.lock:
+            return self.state.get("failures", {}).get(run_id, [])
 
     def add_review(self, review: dict[str, Any]) -> None:
-        self.state["reviews"].append(review)
-        self.persist()
+        with self.lock:
+            self.state["reviews"].append(review)
+            self.persist()
 
     # -- Email metadata: classification provenance + category override -----
 
     def get_email_meta(self, email_id: str) -> dict[str, Any] | None:
-        return self.state["email_meta"].get(email_id)
+        with self.lock:
+            return self.state["email_meta"].get(email_id)
 
     def list_email_meta(self) -> dict[str, dict[str, Any]]:
-        return dict(self.state["email_meta"])
+        with self.lock:
+            return dict(self.state["email_meta"])
 
     def upsert_email_meta(self, email_id: str, **changes: Any) -> dict[str, Any]:
-        current = self.state["email_meta"].setdefault(email_id, {"email_id": email_id})
-        current.update(changes)
-        self.persist()
-        return current
+        with self.lock:
+            current = self.state["email_meta"].setdefault(email_id, {"email_id": email_id})
+            current.update(changes)
+            self.persist()
+            return current
 
     def append_email_attachment(self, email_id: str, path: str) -> dict[str, Any]:
         meta = self.get_email_meta(email_id) or {"email_id": email_id}
@@ -157,50 +172,56 @@ class LocalStore:
     # -- Review queue --------------------------------------------------------
 
     def add_review_item(self, item: dict[str, Any]) -> dict[str, Any]:
-        item = dict(item)
-        item.setdefault("id", str(uuid.uuid4()))
-        item.setdefault("status", "open")
-        item.setdefault("created_at", utc_now())
-        item.setdefault("resolved_at", None)
-        item.setdefault("resolution", None)
-        self.state["review_items"][item["id"]] = item
-        self.persist()
-        return item
+        with self.lock:
+            item = dict(item)
+            item.setdefault("id", str(uuid.uuid4()))
+            item.setdefault("status", "open")
+            item.setdefault("created_at", utc_now())
+            item.setdefault("resolved_at", None)
+            item.setdefault("resolution", None)
+            self.state["review_items"][item["id"]] = item
+            self.persist()
+            return item
 
     def get_review_item(self, item_id: str) -> dict[str, Any] | None:
-        return self.state["review_items"].get(item_id)
+        with self.lock:
+            return self.state["review_items"].get(item_id)
 
     def update_review_item(self, item_id: str, **changes: Any) -> dict[str, Any]:
-        current = self.state["review_items"].setdefault(item_id, {"id": item_id})
-        current.update(changes)
-        self.persist()
-        return current
+        with self.lock:
+            current = self.state["review_items"].setdefault(item_id, {"id": item_id})
+            current.update(changes)
+            self.persist()
+            return current
 
     def list_review_items(
         self, status: str | None = None, email_id: str | None = None
     ) -> list[dict[str, Any]]:
-        items = list(self.state["review_items"].values())
-        if status:
-            items = [item for item in items if item.get("status") == status]
-        if email_id:
-            items = [item for item in items if item.get("email_id") == email_id]
-        return sorted(items, key=lambda item: item.get("created_at") or "")
+        with self.lock:
+            items = list(self.state["review_items"].values())
+            if status:
+                items = [item for item in items if item.get("status") == status]
+            if email_id:
+                items = [item for item in items if item.get("email_id") == email_id]
+            return sorted(items, key=lambda item: item.get("created_at") or "")
 
     # -- Audit log (append-only) ---------------------------------------------
 
     def add_audit_entry(self, entry: dict[str, Any]) -> dict[str, Any]:
-        entry = dict(entry)
-        entry.setdefault("id", str(uuid.uuid4()))
-        entry.setdefault("created_at", utc_now())
-        self.state["audit_log"].append(entry)
-        self.persist()
-        return entry
+        with self.lock:
+            entry = dict(entry)
+            entry.setdefault("id", str(uuid.uuid4()))
+            entry.setdefault("created_at", utc_now())
+            self.state["audit_log"].append(entry)
+            self.persist()
+            return entry
 
     def list_audit_log(self, email_id: str | None = None) -> list[dict[str, Any]]:
-        entries = self.state["audit_log"]
-        if email_id:
-            entries = [entry for entry in entries if entry.get("email_id") == email_id]
-        return entries
+        with self.lock:
+            entries = self.state["audit_log"]
+            if email_id:
+                entries = [entry for entry in entries if entry.get("email_id") == email_id]
+            return entries
 
 
 class SupabaseStore(LocalStore):

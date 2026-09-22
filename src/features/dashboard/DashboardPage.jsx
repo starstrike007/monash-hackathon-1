@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowDown, ArrowRight, Clock } from '@phosphor-icons/react'
 
 import { CategoryPie } from '@/components/charts/CategoryPie'
@@ -436,8 +436,63 @@ const DASHBOARD_LOADING_PHRASES = [
   'Clearing customs',
 ]
 
+function ProcessingBanner({ processing }) {
+  if (!processing || !['queued', 'running'].includes(processing.status)) return null
+
+  return (
+    <section className="mt-4 rounded-2xl border border-[#BFD0EE] bg-white px-5 py-3 shadow-sm sm:px-6">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#34558F]">
+            Live pipeline update
+          </p>
+          <p className="mt-1 text-sm font-medium text-[#1E3A70]">
+            {processing.stage || 'Processing the email corpus'}
+          </p>
+        </div>
+        <p className="font-mono text-xs font-semibold text-[#64748B]">
+          {processing.processed_count || 0} of {processing.total_emails || 0} emails
+        </p>
+      </div>
+      <LoadingBoat
+        compact
+        label="Updating dashboard"
+        phrases={DASHBOARD_LOADING_PHRASES}
+        percentage={processing.percentage}
+        message={processing.message}
+      />
+    </section>
+  )
+}
+
+const DASHBOARD_CACHE_KEY = 'clearance:dashboard-summary'
+const DASHBOARD_CACHE_MAX_AGE_MS = 15 * 60 * 1000
+
+function readDashboardCache() {
+  try {
+    const cached = JSON.parse(window.sessionStorage.getItem(DASHBOARD_CACHE_KEY) || 'null')
+    if (!cached?.data || Date.now() - Number(cached.savedAt) > DASHBOARD_CACHE_MAX_AGE_MS)
+      return null
+    return cached.data
+  } catch {
+    return null
+  }
+}
+
+function writeDashboardCache(summary) {
+  try {
+    window.sessionStorage.setItem(
+      DASHBOARD_CACHE_KEY,
+      JSON.stringify({ savedAt: Date.now(), data: summary }),
+    )
+  } catch {
+    // Private browsing or a full storage quota should not block the dashboard.
+  }
+}
+
 export function DashboardPage({ navigate, initialRunId = null }) {
-  const [data, setData] = useState(null)
+  const [data, setData] = useState(readDashboardCache)
+  const loadGeneration = useRef(0)
   const [lastRunAt, setLastRunAt] = useState(null)
   const [runId, setRunId] = useState(initialRunId)
   const [exporting, setExporting] = useState(false)
@@ -449,19 +504,68 @@ export function DashboardPage({ navigate, initialRunId = null }) {
     message: 'Preparing the dashboard data…',
   })
 
-  async function waitForBootstrap() {
+  function applyDashboardSummary(summary) {
+    setData(summary)
+    writeDashboardCache(summary)
+    if (summary.processing) setLoadingProgress(summary.processing)
+    if (summary.last_run_at) setLastRunAt(summary.last_run_at)
+  }
+
+  async function refreshDashboard(isCurrent = () => true) {
+    const summary = await getDashboard()
+    if (isCurrent()) applyDashboardSummary(summary)
+    return summary
+  }
+
+  async function loadDashboard() {
+    const generation = loadGeneration.current + 1
+    loadGeneration.current = generation
+    const isCurrent = () => loadGeneration.current === generation
+    setError(null)
     try {
       let status = await startPipelineBootstrap()
+      if (!isCurrent()) return
       setLoadingProgress(status)
-      while (!['ready', 'complete'].includes(status.status)) {
-        if (status.status === 'failed') {
-          throw new Error(status.message || 'The dashboard pipeline failed to start.')
-        }
+      const bootstrapWasActive = status.status === 'queued' || status.status === 'running'
+
+      // Fetch immediately instead of waiting for all 520 emails. The API
+      // returns the latest saved results plus current bootstrap progress, so
+      // the overview fills in while the run is still processing.
+      let summary = await refreshDashboard(isCurrent)
+      if (!isCurrent()) return
+      status = summary.processing || status
+
+      while (status.status === 'queued' || status.status === 'running') {
         await new Promise((resolve) => window.setTimeout(resolve, 1000))
-        status = await getPipelineBootstrapStatus()
-        setLoadingProgress(status)
+        if (!isCurrent()) return
+        summary = await refreshDashboard(isCurrent)
+        if (!isCurrent()) return
+        if (summary.processing) {
+          status = summary.processing
+        } else {
+          // Compatibility with a backend deployed before the processing
+          // metadata was added to DashboardSummary.
+          status = await getPipelineBootstrapStatus()
+          setLoadingProgress(status)
+        }
+      }
+
+      if (status.status === 'failed') {
+        throw new Error(status.message || 'The dashboard pipeline failed to start.')
+      }
+
+      // Fetch the final aggregate once the worker reports completion so the
+      // last processed email is reflected in the cards.
+      if (bootstrapWasActive && (status.status === 'complete' || status.status === 'ready')) {
+        summary = await refreshDashboard(isCurrent)
+      }
+
+      if (!summary.last_run_at && summary.latest_run_id) {
+        const run = await getPipelineRun(summary.latest_run_id)
+        setLastRunAt(run?.finished_at || run?.started_at || null)
       }
     } catch (reason) {
+      if (!isCurrent()) return
       // Keep an older Render deployment usable while the API is redeployed.
       // Its dashboard endpoint still performs the original synchronous seed.
       if (reason instanceof ApiError && reason.status === 404) {
@@ -471,34 +575,32 @@ export function DashboardPage({ navigate, initialRunId = null }) {
           stage: 'Loading saved results',
           message: 'Waiting for the backend to return dashboard data…',
         })
+        try {
+          const summary = await refreshDashboard(isCurrent)
+          setLoadingProgress({
+            status: 'ready',
+            percentage: 100,
+            stage: 'Ready',
+            message: 'Dashboard data is ready.',
+          })
+          if (!summary.last_run_at && summary.latest_run_id) {
+            const run = await getPipelineRun(summary.latest_run_id)
+            setLastRunAt(run?.finished_at || run?.started_at || null)
+          }
+        } catch (fallbackReason) {
+          setError(fallbackReason)
+        }
         return
       }
-      throw reason
-    }
-  }
-
-  async function loadDashboard() {
-    setError(null)
-    try {
-      await waitForBootstrap()
-      const summary = await getDashboard()
-      setData(summary)
-
-      // Newer backends include the run timestamp in the summary. Keep the
-      // second request as a compatibility fallback for older deployments.
-      if (summary.last_run_at) {
-        setLastRunAt(summary.last_run_at)
-      } else if (summary.latest_run_id) {
-        const run = await getPipelineRun(summary.latest_run_id)
-        setLastRunAt(run?.finished_at || run?.started_at || null)
-      }
-    } catch (reason) {
       setError(reason)
     }
   }
 
   useEffect(() => {
     loadDashboard()
+    return () => {
+      loadGeneration.current += 1
+    }
   }, [])
 
   useEffect(() => {
@@ -594,6 +696,14 @@ export function DashboardPage({ navigate, initialRunId = null }) {
             </button>
           </div>
         </header>
+
+        <ProcessingBanner
+          processing={
+            ['queued', 'running'].includes(loadingProgress.status)
+              ? loadingProgress
+              : data.processing
+          }
+        />
 
         {error && (
           <div className="mt-6">
